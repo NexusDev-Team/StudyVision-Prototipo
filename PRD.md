@@ -103,4 +103,4 @@ Sem prazo definido no momento.
 - [x] Flashcards, perguntas e quiz funcionais com dados mockados
 - [x] Revisão espaçada com cronograma e contador de pendências
 - [x] Tela de upsell Vision+ (apenas apresentação, sem checkout)
-- [ ] Deploy publicado e acessível via GitHub Pages (em andamento — ver histórico de deploy)
+- [X] Deploy publicado e acessível via GitHub Pages (em andamento — ver histórico de deploy)
