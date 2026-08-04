@@ -6,3 +6,57 @@ body {
   margin: 0;
   font-family: "Inter", sans-serif;
 }
+
+/* ─── Phone shell responsiveness ─────────────────────────────────────────── */
+.sv-outer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: #0B1120;
+  font-family: "Inter", sans-serif;
+  padding: 24px;
+}
+
+.sv-frame {
+  width: 375px;
+  height: 812px;
+  max-width: 100vw;
+  max-height: 100dvh;
+  position: relative;
+  border-radius: 52px;
+  overflow: hidden;
+  box-shadow: 0 0 0 11px #1a2640, 0 0 0 13px #243352, 0 48px 96px rgba(0, 0, 0, 0.75);
+  background: #000;
+  flex-shrink: 0;
+}
+
+.sv-footer-label {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255, 255, 255, 0.18);
+  font-size: 11px;
+  font-family: "Inter", sans-serif;
+  white-space: nowrap;
+}
+
+/* Real phones: drop the decorative bezel and go edge-to-edge, like an actual app */
+@media (max-width: 480px) {
+  .sv-outer {
+    padding: 0;
+  }
+  .sv-frame {
+    width: 100vw;
+    height: 100dvh;
+    max-width: 100vw;
+    max-height: 100dvh;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .sv-footer-label {
+    display: none;
+  }
+}

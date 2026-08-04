@@ -2,12 +2,13 @@ import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Zap, Settings, FlipHorizontal, BookOpen, Search, X,
-  ChevronRight, Star, Brain, FileText, Bookmark, BookMarked,
+  ChevronRight, Star, Brain, Bookmark, BookMarked,
   CheckCircle, Sparkles, Lock, HelpCircle, CreditCard,
   Clock, ChevronLeft, Eye, SlidersHorizontal, RotateCcw,
   Camera, ArrowRight, GraduationCap, Hash, Layers,
   ThumbsUp, ThumbsDown, XCircle, CalendarClock, ListChecks
 } from "lucide-react";
+import exemploFoto1 from "./assets/exemplo-foto1.png";
 
 // ─── BRAND SVG LOGO ─────────────────────────────────────────────────────────
 function LogoSVG({ size = 32, glow = false }) {
@@ -45,6 +46,37 @@ function LogoSVG({ size = 32, glow = false }) {
       {/* Glint */}
       <circle cx="28" cy="27" r="1.5" fill="white" opacity="0.6" />
     </svg>
+  );
+}
+
+// ─── CAPTURED CONTENT PREVIEW ──────────────────────────────────────────────────
+// Simulates the photo taken by the camera: a page mockup shot at a slight angle,
+// with a camera-style vignette, instead of a generic "file" placeholder.
+function CapturedPageVisual({ item, height = 140 }) {
+  const lineWidths = ["90%", "72%", "84%", "60%", "78%"];
+  return (
+    <div style={{ position: "relative", height, borderRadius: 20, overflow: "hidden", background: `linear-gradient(135deg, ${item.subjectColor} 0%, #1e1b4b 100%)`, boxShadow: `0 4px 20px ${item.subjectColor}33` }}>
+      {/* Photographed page */}
+      <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ width: "70%", height: "82%", background: "#FAFAF7", borderRadius: 6, transform: "rotate(-4deg)", boxShadow: "0 14px 28px rgba(0,0,0,0.4)", padding: "10%", position: "relative" }}>
+          <span style={{ position: "absolute", top: 8, right: 10, fontSize: 18, lineHeight: 1 }}>{item.subjectIcon}</span>
+          {lineWidths.map((w, i) => (
+            <div key={i} style={{ height: 3.5, width: w, borderRadius: 2, marginBottom: 9, background: i === 0 ? item.subjectColor : "#CBD5E1", opacity: i === 0 ? 0.85 : 0.55 }} />
+          ))}
+        </div>
+      </div>
+      {/* Camera vignette */}
+      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 50% 42%, transparent 45%, rgba(0,0,0,0.4) 100%)", pointerEvents: "none" }} />
+      {/* Capture frame corners */}
+      {[
+        { top: 8, left: 8, borderTop: "2px solid rgba(255,255,255,0.55)", borderLeft: "2px solid rgba(255,255,255,0.55)" },
+        { top: 8, right: 8, borderTop: "2px solid rgba(255,255,255,0.55)", borderRight: "2px solid rgba(255,255,255,0.55)" },
+        { bottom: 8, left: 8, borderBottom: "2px solid rgba(255,255,255,0.55)", borderLeft: "2px solid rgba(255,255,255,0.55)" },
+        { bottom: 8, right: 8, borderBottom: "2px solid rgba(255,255,255,0.55)", borderRight: "2px solid rgba(255,255,255,0.55)" },
+      ].map((pos, i) => (
+        <div key={i} style={{ position: "absolute", width: 12, height: 12, ...pos }} />
+      ))}
+    </div>
   );
 }
 
@@ -334,18 +366,10 @@ function CameraScreen({ onCapture, onVisionPlusNav }) {
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100%", background: "#000", overflow: "hidden" }}>
-      {/* Viewfinder bg */}
-      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(160deg,#0a1628 0%,#0d1f3c 45%,#080f22 100%)" }}>
-        {/* Bokeh blobs */}
-        {[
-          { w: 100, h: 100, t: "8%", l: "10%", c: "#4f8ef7" },
-          { w: 160, h: 160, t: "30%", l: "55%", c: "#7c5cdb" },
-          { w: 80,  h: 80,  t: "65%", l: "20%", c: "#2dd4bf" },
-          { w: 120, h: 120, t: "50%", l: "70%", c: "#f59e0b" },
-          { w: 60,  h: 60,  t: "80%", l: "60%", c: "#4f8ef7" },
-        ].map((b, i) => (
-          <div key={i} style={{ position: "absolute", width: b.w, height: b.h, borderRadius: "50%", background: `radial-gradient(circle,${b.c}55,transparent)`, top: b.t, left: b.l, filter: "blur(22px)", opacity: 0.35 }} />
-        ))}
+      {/* Viewfinder bg — simulates the camera pointed at a real page of notes */}
+      <div style={{ position: "absolute", inset: 0, backgroundImage: `url(${exemploFoto1})`, backgroundSize: "cover", backgroundPosition: "center" }}>
+        {/* Dim overlay so the top/bottom controls stay legible over the photo */}
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(8,15,34,0.55) 0%, rgba(8,15,34,0.1) 22%, rgba(8,15,34,0.1) 65%, rgba(8,15,34,0.6) 100%)" }} />
         {/* Grid */}
         <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0.08 }} viewBox="0 0 375 680">
           <line x1="125" y1="0" x2="125" y2="680" stroke="white" strokeWidth="0.6"/>
@@ -598,11 +622,9 @@ function SummaryScreen({ capturedItem, onSave, onLibrary }) {
           </div>
         </motion.div>
 
-        {/* Captured image placeholder */}
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}
-          style={{ borderRadius: 20, marginBottom: 12, height: 140, background: "linear-gradient(135deg,#1e3a8a 0%,#312e81 50%,#581c87 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: "0 4px 20px rgba(37,99,235,0.2)" }}>
-          <FileText size={32} color="rgba(255,255,255,0.55)" />
-          <span style={{ fontSize: 12, fontWeight: 500, color: "rgba(255,255,255,0.6)", fontFamily: "Inter,sans-serif" }}>Imagem capturada</span>
+        {/* Captured image */}
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }} style={{ marginBottom: 12 }}>
+          <CapturedPageVisual item={item} />
         </motion.div>
 
         {/* Content blocks */}
@@ -790,10 +812,9 @@ function ContentDetailScreen({ item, onBack, onFlashcards, onQuestions, onQuiz, 
 
       {/* Scroll */}
       <div style={{ flex: 1, overflowY: "auto", padding: "14px 20px 20px" }}>
-        {/* Image placeholder */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-          style={{ borderRadius: 20, marginBottom: 12, height: 120, background: `linear-gradient(135deg,${item.subjectColor}22,${item.subjectColor}44)`, display: "flex", alignItems: "center", justifyContent: "center", border: `1px solid ${item.subjectColor}22` }}>
-          <FileText size={30} color={item.subjectColor} />
+        {/* Captured image */}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 12 }}>
+          <CapturedPageVisual item={item} height={120} />
         </motion.div>
 
         {/* Review status */}
@@ -1294,9 +1315,9 @@ export default function StudyVision() {
   const transitions = ["visionplus", "library", "review"].includes(screen) ? fadeUp : slideIn;
 
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: "#0B1120", fontFamily: "Inter,sans-serif" }}>
+    <div className="sv-outer">
       {/* Phone frame */}
-      <div style={{ width: 375, height: 812, position: "relative", borderRadius: 52, overflow: "hidden", boxShadow: "0 0 0 11px #1a2640, 0 0 0 13px #243352, 0 48px 96px rgba(0,0,0,0.75)", background: "#000", flexShrink: 0 }}>
+      <div className="sv-frame">
         {/* Notch */}
         <div style={{ position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)", width: 126, height: 34, background: "#000", borderRadius: "0 0 22px 22px", zIndex: 300 }} />
 
@@ -1381,7 +1402,7 @@ export default function StudyVision() {
       </div>
 
       {/* Desktop label */}
-      <p style={{ position: "fixed", bottom: 16, left: "50%", transform: "translateX(-50%)", color: "rgba(255,255,255,0.18)", fontSize: 11, fontFamily: "Inter,sans-serif", whiteSpace: "nowrap" }}>
+      <p className="sv-footer-label">
         JOVI Smartphones · Study Vision Prototype
       </p>
     </div>
