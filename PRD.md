@@ -1,6 +1,6 @@
 # PRD — Study Vision (JOVI Smartphones)
 
-> Documento vivo. Atualizar sempre que uma decisão de escopo, fluxo ou regra de negócio mudar. Baseado no que está implementado em `src/StudyVision.jsx` em 2026-08-04.
+> Documento vivo. Atualizar sempre que uma decisão de escopo, fluxo ou regra de negócio mudar. Baseado no que está implementado em `src/StudyVision.jsx` em 2026-08-07.
 
 ## 1. Contexto
 
@@ -57,14 +57,21 @@ Estudantes (ensino médio/superior/concursos) que fotografam conteúdo de estudo
 - Em telas maiores (desktop/tablet), mantém a moldura de smartphone 375×812 centralizada, com `max-width`/`max-height` para não estourar viewports menores que isso.
 - Implementado via classes CSS (`.sv-outer`, `.sv-frame`) em `src/index.css` com media query, em vez de estilos inline fixos.
 
-### 5.8 Imagem de conteúdo capturado
+### 5.8 Integrações — Notion e Google Calendar (mock)
+- **Exportar Conteúdo** (`ExportSection`, na tela de Resumo, antes de "Salvar na Biblioteca") — 3 opções: Notion (`notionService.exportToNotion`), Documento PDF/DOCX (`exportService.exportDocument`), Copiar Conteúdo (`exportService.copyContent`, usa `navigator.clipboard`). Cada uma simula latência de rede e mostra toast de sucesso (`"✓ Conteúdo enviado ao Notion com sucesso"`, `"✓ Documento gerado com sucesso"`, `"✓ Conteúdo copiado"`). Estrutura exportada: título, data, imagem, resumo, conceitos-chave, flashcards, perguntas.
+- **Planejamento** (`PlanningSection` + `PlanningModal`, abaixo de Exportar Conteúdo) — modal com Tipo (Prova/Trabalho/Apresentação/Revisão), Data, Horário e checkboxes de revisões automáticas (7 dias, 3 dias, 1 dia, no dia). Botão "Salvar no Google Calendar" chama `calendarService.createEvent` + `calendarService.scheduleReviews` (mock) e mostra toasts `"✓ Evento criado com sucesso"` seguido de `"✓ Revisões adicionadas automaticamente"`. O evento fica anexado ao item (`item.calendarEvent`) quando ele é salvo na Biblioteca.
+- **Biblioteca** — item com `calendarEvent` mostra badge de calendário (ícone) na listagem.
+- **Revisão** (`ReviewScreen`) — botão "Agendar Revisão" (ícone `CalendarPlus`) em cada item pendente/próximo sem evento associado; dispara os mesmos mocks de `calendarService` e persiste `calendarEvent` no item.
+- Arquitetura: `src/services/notionService.js`, `src/services/exportService.js`, `src/services/calendarService.js` — todos mockados com `setTimeout`/Promise, sem chamadas de rede reais. Preparados para trocar por Notion API, Google Calendar API, geração real de PDF/DOCX e compartilhamento Android no futuro.
+
+### 5.9 Imagem de conteúdo capturado
 - `CapturedPageVisual` (em `src/StudyVision.jsx`) substitui o placeholder genérico (ícone + texto) por uma simulação visual da "foto tirada": uma página inclinada com linhas representando texto/anotações, ícone da matéria no canto, vinheta de câmera e cantos de enquadramento — usado na tela de Resumo e no Detalhe do conteúdo.
 - Ainda é uma simulação (não é uma foto real nem gerada por IA) — mantém a linha de "tudo mockado" da seção 7, só melhora a fidelidade visual do protótipo.
 - **Tela da Câmera**: o fundo do viewfinder usa uma foto real de exemplo (`src/assets/exemplo-foto1.png` — página de caderno manuscrita sobre "Derivada", com bloom no CamScanner), simulando a câmera apontada para um conteúdo de estudo real, com um degradê escuro por cima para manter os controles legíveis. Bate com o mock `SAMPLE_ITEMS[0]` (Matemática · Derivadas), que já era o primeiro item do ciclo de captura.
 
 ## 6. Modelo de dados (mock, `localStorage`)
 
-Cada item de conteúdo (`SAMPLE_ITEMS` / itens salvos) tem: `id`, `subject`, `subjectIcon`, `subjectColor`, `subjectBg`, `topic`, `concept`, `time`, `summary`, `concepts[]`, `keywords[]`, `flashcards[]` (`front`/`back`), `questions[]`, `quiz[]` (`type: "mc"|"vf"`, `question`, `options?`, `answer`), `reviewSchedule[]` (`stage`, `label`, `dueAt`, `done`).
+Cada item de conteúdo (`SAMPLE_ITEMS` / itens salvos) tem: `id`, `subject`, `subjectIcon`, `subjectColor`, `subjectBg`, `topic`, `concept`, `time`, `summary`, `concepts[]`, `keywords[]`, `flashcards[]` (`front`/`back`), `questions[]`, `quiz[]` (`type: "mc"|"vf"`, `question`, `options?`, `answer`), `reviewSchedule[]` (`stage`, `label`, `dueAt`, `done`), `calendarEvent?` (`id`, `type`, `date`, `time`, `createdAt`, `reminders[]` — opcional, presente só quando o usuário planeja prova/trabalho/apresentação/revisão via Google Calendar mock, ver 5.8).
 
 Persistência: `localStorage` chave `sv_items`. Sem backend, sem autenticação, sem sincronização entre dispositivos.
 
@@ -75,6 +82,7 @@ Persistência: `localStorage` chave `sv_items`. Sem backend, sem autenticação,
 - **Sem backend/autenticação** — tudo roda local no navegador via `localStorage`; limpar dados do site apaga a biblioteca.
 - **Botão "Ativar Study Vision+" não tem ação** — não há checkout, paywall real nem controle de plano do usuário.
 - **Responsividade básica implementada** — em celulares reais (≤480px) o app ocupa a tela cheia sem a moldura decorativa; em telas maiores mantém a moldura de smartphone centralizada (ver 5.7). Ainda não testado em todos os tamanhos/orientações (ex: landscape).
+- **Integrações Notion/Google Calendar são mockadas** (ver 5.8) — sem OAuth real, sem chamada de API real ao Notion ou ao Google Calendar, sem geração real de PDF/DOCX; tudo simula latência com `setTimeout` e retorna dados fake.
 
 ## 8. Stack técnica
 

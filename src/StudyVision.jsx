@@ -6,9 +6,13 @@ import {
   CheckCircle, Sparkles, Lock, HelpCircle, CreditCard,
   Clock, ChevronLeft, Eye, SlidersHorizontal, RotateCcw,
   Camera, ArrowRight, GraduationCap, Hash, Layers,
-  ThumbsUp, ThumbsDown, XCircle, CalendarClock, ListChecks
+  ThumbsUp, ThumbsDown, XCircle, CalendarClock, ListChecks,
+  Calendar, FileText, Copy, CalendarPlus
 } from "lucide-react";
 import exemploFoto1 from "./assets/exemplo-foto1.png";
+import { exportToNotion } from "./services/notionService";
+import { exportDocument, copyContent } from "./services/exportService";
+import { createEvent, scheduleReviews } from "./services/calendarService";
 
 // ─── BRAND SVG LOGO ─────────────────────────────────────────────────────────
 function LogoSVG({ size = 32, glow = false }) {
@@ -399,61 +403,54 @@ function CameraScreen({ onCapture, onVisionPlusNav }) {
       </AnimatePresence>
 
       {/* TOP BAR */}
-      <div style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 20, padding: "50px 18px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 20, padding: "50px 12px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4 }}>
         {/* Flash */}
-        <button onClick={() => setFlash(v => !v)} style={{ width: 38, height: 38, borderRadius: "50%", background: flash ? "rgba(252,211,77,0.2)" : "rgba(255,255,255,0.1)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(8px)" }}>
-          <Zap size={20} fill={flash ? "#FCD34D" : "none"} color={flash ? "#FCD34D" : "white"} />
+        <button onClick={() => setFlash(v => !v)} style={{ width: 34, height: 34, flexShrink: 0, borderRadius: "50%", background: flash ? "rgba(252,211,77,0.2)" : "rgba(255,255,255,0.1)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(8px)" }}>
+          <Zap size={18} fill={flash ? "#FCD34D" : "none"} color={flash ? "#FCD34D" : "white"} />
         </button>
 
         {/* HDR + Eye (Study Vision) + Settings — center cluster */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <button style={{ background: "rgba(255,255,255,0.1)", border: "1.5px solid rgba(255,255,255,0.25)", borderRadius: 8, padding: "3px 8px", cursor: "pointer", backdropFilter: "blur(8px)" }}>
-            <span style={{ fontFamily: "Inter,sans-serif", fontSize: 11, fontWeight: 700, color: "white", letterSpacing: 1 }}>HDR</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+          <button style={{ background: "rgba(255,255,255,0.1)", border: "1.5px solid rgba(255,255,255,0.25)", borderRadius: 8, padding: "3px 6px", cursor: "pointer", backdropFilter: "blur(8px)" }}>
+            <span style={{ fontFamily: "Inter,sans-serif", fontSize: 10, fontWeight: 700, color: "white", letterSpacing: 0.5, whiteSpace: "nowrap" }}>HDR</span>
           </button>
 
           {/* 👁 Study Vision toggle */}
           <button onClick={() => setPanelOpen(v => !v)}
-            style={{ width: 38, height: 38, borderRadius: "50%", background: panelOpen ? "rgba(37,99,235,0.5)" : "rgba(255,255,255,0.1)", border: panelOpen ? "1.5px solid rgba(37,99,235,0.8)" : "1.5px solid rgba(255,255,255,0.25)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(8px)", transition: "all 0.25s" }}>
-            <Eye size={18} color="white" />
+            style={{ width: 34, height: 34, flexShrink: 0, borderRadius: "50%", background: panelOpen ? "rgba(37,99,235,0.5)" : "rgba(255,255,255,0.1)", border: panelOpen ? "1.5px solid rgba(37,99,235,0.8)" : "1.5px solid rgba(255,255,255,0.25)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(8px)", transition: "all 0.25s" }}>
+            <Eye size={16} color="white" />
           </button>
 
-          <button style={{ width: 38, height: 38, borderRadius: "50%", background: "rgba(255,255,255,0.1)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(8px)" }}>
-            <Settings size={18} color="white" />
+          <button style={{ width: 34, height: 34, flexShrink: 0, borderRadius: "50%", background: "rgba(255,255,255,0.1)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(8px)" }}>
+            <Settings size={16} color="white" />
           </button>
         </div>
 
         {/* Ratio */}
-        <button style={{ background: "rgba(255,255,255,0.1)", border: "1.5px solid rgba(255,255,255,0.25)", borderRadius: 8, padding: "3px 8px", cursor: "pointer", backdropFilter: "blur(8px)" }}>
-          <span style={{ fontFamily: "Inter,sans-serif", fontSize: 11, fontWeight: 700, color: "white", letterSpacing: 0.5 }}>4:3</span>
+        <button style={{ flexShrink: 0, background: "rgba(255,255,255,0.1)", border: "1.5px solid rgba(255,255,255,0.25)", borderRadius: 8, padding: "3px 6px", cursor: "pointer", backdropFilter: "blur(8px)" }}>
+          <span style={{ fontFamily: "Inter,sans-serif", fontSize: 10, fontWeight: 700, color: "white", letterSpacing: 0.5, whiteSpace: "nowrap" }}>4:3</span>
         </button>
       </div>
 
       {/* Study Vision Panel */}
       <AnimatePresence>
         {panelOpen && (
-          <motion.div initial={{ opacity: 0, y: -10, scale: 0.93 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8, scale: 0.95 }}
-            transition={{ type: "spring", stiffness: 360, damping: 28 }}
-            style={{ position: "absolute", top: 104, left: "50%", transform: "translateX(-50%)", zIndex: 30, width: 240, borderRadius: 20, overflow: "hidden", background: "rgba(10,16,35,0.92)", backdropFilter: "blur(24px)", border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 16px 48px rgba(0,0,0,0.4)" }}>
-            <div style={{ padding: "14px 16px 10px", display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
-              <LogoSVG size={28} glow />
-              <div>
-                <p style={{ fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 800, color: "white", margin: 0 }}>Study Vision</p>
-                <p style={{ fontFamily: "Inter,sans-serif", fontSize: 10, color: "rgba(255,255,255,0.45)", margin: 0 }}>JOVI · Modo ativo</p>
+          <div style={{ position: "absolute", top: 104, left: "50%", transform: "translateX(-50%)", zIndex: 30, width: "calc(100% - 32px)", maxWidth: 180 }}>
+            <motion.div initial={{ opacity: 0, y: -10, scale: 0.93 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8, scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 360, damping: 28 }}
+              style={{ borderRadius: 16, overflow: "hidden", background: "rgba(10,16,35,0.55)", backdropFilter: "blur(14px)", border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 8px 24px rgba(0,0,0,0.25)" }}>
+              <div style={{ padding: "9px 12px", display: "flex", alignItems: "center", gap: 8 }}>
+                <LogoSVG size={20} glow />
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ fontFamily: "Inter,sans-serif", fontSize: 12, fontWeight: 800, color: "white", margin: 0 }}>Study Vision</p>
+                  <p style={{ fontFamily: "Inter,sans-serif", fontSize: 9, color: "rgba(255,255,255,0.55)", margin: 0 }}>JOVI · Modo ativo</p>
+                </div>
+                <div style={{ marginLeft: "auto", background: "rgba(20,184,166,0.15)", borderRadius: 20, padding: "2px 7px", border: "1px solid rgba(20,184,166,0.3)", flexShrink: 0 }}>
+                  <span style={{ fontFamily: "Inter,sans-serif", fontSize: 9, fontWeight: 700, color: "#14B8A6" }}>ON</span>
+                </div>
               </div>
-              <div style={{ marginLeft: "auto", background: "rgba(20,184,166,0.15)", borderRadius: 20, padding: "2px 8px", border: "1px solid rgba(20,184,166,0.3)" }}>
-                <span style={{ fontFamily: "Inter,sans-serif", fontSize: 10, fontWeight: 700, color: "#14B8A6" }}>ON</span>
-              </div>
-            </div>
-            <div style={{ padding: "12px 16px 14px", display: "flex", flexDirection: "column", gap: 9 }}>
-              {["OCR Avançado", "Resumo Inteligente", "Organização Automática", "Biblioteca Inteligente"].map((f, i) => (
-                <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.05 * i + 0.08 }}
-                  style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <CheckCircle size={13} color="#14B8A6" />
-                  <span style={{ fontFamily: "Inter,sans-serif", fontSize: 12, color: "rgba(255,255,255,0.8)", fontWeight: 500 }}>{f}</span>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
@@ -476,10 +473,7 @@ function CameraScreen({ onCapture, onVisionPlusNav }) {
 
           {/* Shutter */}
           <motion.button whileTap={{ scale: 0.9 }} onClick={handleCapture} disabled={capturing}
-            style={{ width: 76, height: 76, borderRadius: "50%", background: "transparent", border: "4px solid rgba(255,255,255,0.6)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 0 2px rgba(255,255,255,0.15)" }}>
-            <motion.div animate={{ background: capturing ? "#14B8A6" : "white" }} transition={{ duration: 0.2 }}
-              style={{ width: 60, height: 60, borderRadius: "50%" }} />
-          </motion.button>
+            style={{ width: 76, height: 76, borderRadius: "50%", background: capturing ? "#14B8A6" : "#FFFFFF", border: "4px solid rgba(255,255,255,0.85)", cursor: "pointer", boxShadow: "0 0 0 2px rgba(255,255,255,0.15)", transition: "background 0.2s" }} />
 
           {/* Flip */}
           <button style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(255,255,255,0.12)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(8px)" }}>
@@ -549,18 +543,178 @@ function AnalysisScreen({ onDone }) {
   );
 }
 
+// ─── EXPORT CONTENT SECTION ─────────────────────────────────────────────────
+function ExportSection({ item, onToast }) {
+  const [busy, setBusy] = useState(null); // "notion" | "doc" | "copy" | null
+
+  const run = async (key, fn, successMsg) => {
+    if (busy) return;
+    setBusy(key);
+    await fn(item);
+    setBusy(null);
+    onToast(successMsg);
+  };
+
+  const options = [
+    { key: "notion", label: "Notion", icon: <BookOpen size={18} color="#111827" />, action: () => run("notion", exportToNotion, "✓ Conteúdo enviado ao Notion com sucesso") },
+    { key: "doc", label: "Documento PDF/DOCX", icon: <FileText size={18} color="#DC2626" />, action: () => run("doc", exportDocument, "✓ Documento gerado com sucesso") },
+    { key: "copy", label: "Copiar Conteúdo", icon: <Copy size={18} color="#2563EB" />, action: () => run("copy", copyContent, "✓ Conteúdo copiado") },
+  ];
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
+      style={{ background: "white", borderRadius: 20, padding: "16px 18px", marginBottom: 12, boxShadow: "0 1px 8px rgba(0,0,0,0.05)", border: "1px solid #E2E8F0" }}>
+      <p style={{ fontSize: 10, fontWeight: 700, color: "#94A3B8", letterSpacing: 1.2, marginBottom: 10 }}>EXPORTAR CONTEÚDO</p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {options.map(o => (
+          <button key={o.key} onClick={o.action} disabled={!!busy}
+            style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 12px", borderRadius: 12, background: "#F8FAFC", border: "1px solid #E2E8F0", cursor: busy ? "default" : "pointer", fontFamily: "Inter,sans-serif" }}>
+            {o.icon}
+            <span style={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>{o.label}</span>
+            {busy === o.key && <span style={{ marginLeft: "auto", fontSize: 11, color: "#94A3B8" }}>Enviando...</span>}
+          </button>
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── PLANNING SECTION (Calendário) ──────────────────────────────────────────
+const PLANNING_TYPES = ["Prova", "Trabalho", "Apresentação", "Revisão"];
+const REMINDER_OPTIONS = [
+  { days: 7, label: "7 dias antes" },
+  { days: 3, label: "3 dias antes" },
+  { days: 1, label: "1 dia antes" },
+  { days: 0, label: "No dia" },
+];
+
+function PlanningModal({ onClose, onConfirm }) {
+  const [type, setType] = useState(PLANNING_TYPES[0]);
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
+  const [reminders, setReminders] = useState([7, 3, 1, 0]);
+  const [saving, setSaving] = useState(false);
+
+  const toggleReminder = (days) => {
+    setReminders(r => r.includes(days) ? r.filter(d => d !== days) : [...r, days]);
+  };
+
+  const handleConfirm = async () => {
+    if (saving || !date || !time) return;
+    setSaving(true);
+    try {
+      await onConfirm({ type, date, time, reminders });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      style={{ position: "absolute", inset: 0, zIndex: 400, background: "rgba(15,23,42,0.5)", display: "flex", alignItems: "flex-end" }}>
+      <motion.div initial={{ y: 40 }} animate={{ y: 0 }} exit={{ y: 40 }} transition={{ type: "spring", stiffness: 340, damping: 32 }}
+        style={{ width: "100%", background: "white", borderRadius: "24px 24px 0 0", padding: "20px 20px 28px", fontFamily: "Inter,sans-serif" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+          <p style={{ fontSize: 17, fontWeight: 800, color: "#111827", margin: 0 }}>Novo Compromisso</p>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}>
+            <X size={20} color="#94A3B8" />
+          </button>
+        </div>
+
+        <p style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: 1, marginBottom: 8 }}>TIPO</p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+          {PLANNING_TYPES.map(t => (
+            <button key={t} onClick={() => setType(t)}
+              style={{ padding: "7px 14px", borderRadius: 20, background: type === t ? "#2563EB" : "#F1F5F9", color: type === t ? "white" : "#64748B", fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer" }}>
+              {t}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
+          <div style={{ flex: 1 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: 1, marginBottom: 6 }}>DATA</p>
+            <input type="date" value={date} onChange={e => setDate(e.target.value)}
+              style={{ width: "100%", height: 42, borderRadius: 12, border: "1.5px solid #E2E8F0", padding: "0 10px", fontFamily: "Inter,sans-serif", fontSize: 13, boxSizing: "border-box" }} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: 1, marginBottom: 6 }}>HORÁRIO</p>
+            <input type="time" value={time} onChange={e => setTime(e.target.value)}
+              style={{ width: "100%", height: 42, borderRadius: 12, border: "1.5px solid #E2E8F0", padding: "0 10px", fontFamily: "Inter,sans-serif", fontSize: 13, boxSizing: "border-box" }} />
+          </div>
+        </div>
+
+        <p style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: 1, marginBottom: 8 }}>REVISÕES AUTOMÁTICAS</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 20 }}>
+          {REMINDER_OPTIONS.map(o => (
+            <label key={o.days} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+              <input type="checkbox" checked={reminders.includes(o.days)} onChange={() => toggleReminder(o.days)} />
+              <span style={{ fontSize: 13, color: "#374151" }}>{o.label}</span>
+            </label>
+          ))}
+        </div>
+
+        <motion.button whileTap={{ scale: 0.97 }} onClick={handleConfirm} disabled={saving || !date || !time}
+          style={{ width: "100%", height: 52, borderRadius: 16, background: (!date || !time) ? "#CBD5E1" : "linear-gradient(135deg,#2563EB,#7C3AED)", color: "white", fontSize: 14, fontWeight: 700, border: "none", cursor: (!date || !time) ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+          <Calendar size={17} /> {saving ? "Salvando..." : "Salvar no Calendário"}
+        </motion.button>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function PlanningSection({ calendarEvent, onPlanned, onToast }) {
+  const [open, setOpen] = useState(false);
+
+  const handleConfirm = async ({ type, date, time, reminders }) => {
+    const event = await createEvent({ type, date, time });
+    await scheduleReviews({ event, reminders });
+    onPlanned({ ...event, reminders });
+    setOpen(false);
+    onToast("✓ Evento criado com sucesso");
+    setTimeout(() => onToast("✓ Revisões adicionadas automaticamente"), 1200);
+  };
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.58 }}
+      style={{ background: "white", borderRadius: 20, padding: "16px 18px", marginBottom: 12, boxShadow: "0 1px 8px rgba(0,0,0,0.05)", border: "1px solid #E2E8F0" }}>
+      <p style={{ fontSize: 10, fontWeight: 700, color: "#94A3B8", letterSpacing: 1.2, marginBottom: 10 }}>PLANEJAMENTO</p>
+      {calendarEvent ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 12, background: "#F0FDF4", border: "1px solid #BBF7D0" }}>
+          <CheckCircle size={18} color="#16A34A" />
+          <div>
+            <p style={{ fontSize: 13, fontWeight: 700, color: "#111827", margin: 0 }}>{calendarEvent.type} agendado</p>
+            <p style={{ fontSize: 11, color: "#64748B", margin: "2px 0 0" }}>{calendarEvent.date} · {calendarEvent.time}</p>
+          </div>
+        </div>
+      ) : (
+        <button onClick={() => setOpen(true)}
+          style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 12px", borderRadius: 12, background: "#F8FAFC", border: "1px solid #E2E8F0", cursor: "pointer", width: "100%", fontFamily: "Inter,sans-serif" }}>
+          <Calendar size={18} color="#2563EB" />
+          <span style={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>Salvar Compromisso</span>
+        </button>
+      )}
+      <AnimatePresence>
+        {open && <PlanningModal onClose={() => setOpen(false)} onConfirm={handleConfirm} />}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // SCREEN 3 — SUMMARY
 // ══════════════════════════════════════════════════════════════════════════════
-function SummaryScreen({ capturedItem, onSave, onLibrary }) {
+function SummaryScreen({ capturedItem, onSave, onLibrary, onToast }) {
   const [saving, setSaving] = useState(false);
+  const [calendarEvent, setCalendarEvent] = useState(null);
   const template = capturedItem || SAMPLE_ITEMS[0];
   const item = { ...template, id: `u_${Date.now()}`, time: "Agora", reviewSchedule: buildReviewSchedule(Date.now()) };
 
   const handleSave = () => {
     if (saving) return;
     setSaving(true);
-    setTimeout(() => { saveItem(item); onSave(); }, 900);
+    const toSave = calendarEvent ? { ...item, calendarEvent } : item;
+    setTimeout(() => { saveItem(toSave); onSave(); }, 900);
   };
 
   const blocks = [
@@ -635,6 +789,12 @@ function SummaryScreen({ capturedItem, onSave, onLibrary }) {
             {b.content}
           </motion.div>
         ))}
+
+        {/* Export content */}
+        <ExportSection item={item} onToast={onToast} />
+
+        {/* Planning */}
+        <PlanningSection calendarEvent={calendarEvent} onPlanned={setCalendarEvent} onToast={onToast} />
 
         {/* Action buttons */}
         <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}
@@ -743,6 +903,11 @@ function LibraryScreen({ onOpenItem, onVisionPlus }) {
                     <span style={{ fontSize: 11, fontWeight: 600, color: "#14B8A6", background: "rgba(20,184,166,0.1)", borderRadius: 6, padding: "3px 10px", fontFamily: "Inter,sans-serif" }}>Resumo</span>
                   )}
                   <span style={{ fontSize: 11, fontWeight: 600, color: "#7C3AED", background: "rgba(124,58,237,0.1)", borderRadius: 6, padding: "3px 10px", fontFamily: "Inter,sans-serif" }}>Flashcards</span>
+                  {item.calendarEvent && (
+                    <span title={`${item.calendarEvent.type} · ${item.calendarEvent.date}`} style={{ fontSize: 11, fontWeight: 600, color: "#0F766E", background: "rgba(20,184,166,0.12)", borderRadius: 6, padding: "3px 8px", fontFamily: "Inter,sans-serif", display: "flex", alignItems: "center", gap: 3 }}>
+                      <Calendar size={11} />
+                    </span>
+                  )}
                   <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 4, color: "#94A3B8" }}>
                     <Clock size={11} />
                     <span style={{ fontSize: 11, fontFamily: "Inter,sans-serif" }}>{item.time}</span>
@@ -760,9 +925,14 @@ function LibraryScreen({ onOpenItem, onVisionPlus }) {
 // ══════════════════════════════════════════════════════════════════════════════
 // SCREEN 5 — CONTENT DETAIL
 // ══════════════════════════════════════════════════════════════════════════════
-function ContentDetailScreen({ item, onBack, onFlashcards, onQuestions, onQuiz, onVisionPlus }) {
+function ContentDetailScreen({ item, onBack, onFlashcards, onQuestions, onQuiz, onVisionPlus, onToast }) {
   const next = nextPendingReview(item);
   const due = isDueForReview(item);
+  const [calendarEvent, setCalendarEvent] = useState(item.calendarEvent || null);
+  const handlePlanned = (event) => {
+    setCalendarEvent(event);
+    saveItem({ ...item, calendarEvent: event });
+  };
   const blocks = [
     {
       label: "RESUMO INTELIGENTE",
@@ -838,6 +1008,9 @@ function ContentDetailScreen({ item, onBack, onFlashcards, onQuestions, onQuiz, 
             {b.content}
           </motion.div>
         ))}
+
+        <ExportSection item={item} onToast={onToast} />
+        <PlanningSection calendarEvent={calendarEvent} onPlanned={handlePlanned} onToast={onToast} />
 
         {/* Action buttons */}
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }}
@@ -1187,16 +1360,35 @@ function VisionPlusScreen({ onBack }) {
 // ══════════════════════════════════════════════════════════════════════════════
 // SCREEN 8 — REVISÃO INTELIGENTE (Spaced Repetition)
 // ══════════════════════════════════════════════════════════════════════════════
-function ReviewScreen({ onReview }) {
+function ReviewScreen({ onReview, onToast }) {
   const [items, setItems] = useState([]);
+  const [scheduling, setScheduling] = useState(null);
 
   useEffect(() => { setItems(getStoredItems()); }, []);
+
+  const handleScheduleReview = async (item, e) => {
+    e.stopPropagation();
+    if (scheduling) return;
+    setScheduling(item.id);
+    const next = nextPendingReview(item);
+    const event = await createEvent({ type: "Revisão", date: next ? new Date(next.dueAt).toISOString().slice(0, 10) : "", time: "09:00" });
+    await scheduleReviews({ event, reminders: [0] });
+    const updated = { ...item, calendarEvent: event };
+    saveItem(updated);
+    setItems(getStoredItems());
+    setScheduling(null);
+    onToast("✓ Evento criado com sucesso");
+    setTimeout(() => onToast("✓ Revisões adicionadas automaticamente"), 1200);
+  };
 
   const due = items.filter(isDueForReview);
   const upcoming = items
     .filter(it => !isDueForReview(it) && nextPendingReview(it))
     .sort((a, b) => nextPendingReview(a).dueAt - nextPendingReview(b).dueAt)
     .slice(0, 5);
+  const commitments = items
+    .filter(it => it.calendarEvent)
+    .sort((a, b) => new Date(`${a.calendarEvent.date}T${a.calendarEvent.time || "00:00"}`) - new Date(`${b.calendarEvent.date}T${b.calendarEvent.time || "00:00"}`));
 
   return (
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#F8FAFC", fontFamily: "Inter,sans-serif", overflow: "hidden" }}>
@@ -1231,6 +1423,14 @@ function ReviewScreen({ onReview }) {
                     <p style={{ fontSize: 14, fontWeight: 700, color: "#111827", margin: 0 }}>{item.concept}</p>
                     <p style={{ fontSize: 12, color: "#64748B", margin: "2px 0 0" }}>{item.subject} · {next?.label}</p>
                   </div>
+                  {item.calendarEvent ? (
+                    <Calendar size={16} color="#0F766E" />
+                  ) : (
+                    <button onClick={(e) => handleScheduleReview(item, e)} disabled={scheduling === item.id}
+                      style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, borderRadius: 10, background: "#F1F5F9", border: "none", cursor: "pointer" }}>
+                      <CalendarPlus size={15} color="#2563EB" />
+                    </button>
+                  )}
                   <span style={{ fontSize: 11, fontWeight: 700, color: "white", background: "#DC2626", borderRadius: 10, padding: "5px 12px", fontFamily: "Inter,sans-serif" }}>Revisar</span>
                 </motion.button>
               );
@@ -1250,10 +1450,44 @@ function ReviewScreen({ onReview }) {
                   <p style={{ fontSize: 11, color: "#94A3B8", margin: "1px 0 0" }}>{next.label}</p>
                 </div>
                 <span style={{ fontSize: 12, fontWeight: 700, color: "#64748B" }}>{formatDue(next.dueAt)}</span>
+                {item.calendarEvent ? (
+                  <Calendar size={15} color="#0F766E" />
+                ) : (
+                  <button onClick={(e) => handleScheduleReview(item, e)} disabled={scheduling === item.id}
+                    style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, borderRadius: 9, background: "#F1F5F9", border: "none", cursor: "pointer" }}>
+                    <CalendarPlus size={14} color="#2563EB" />
+                  </button>
+                )}
               </div>
             );
           })}
         </div>
+
+        <p style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: 1.2, marginTop: 24, marginBottom: 2 }}>COMPROMISSOS · CALENDÁRIO</p>
+        <p style={{ fontSize: 11, color: "#94A3B8", margin: "0 0 10px" }}>Data de provas, listas...</p>
+        {commitments.length === 0 ? (
+          <div style={{ background: "white", borderRadius: 20, padding: "20px 18px", textAlign: "center", border: "1px solid #E2E8F0" }}>
+            <p style={{ fontSize: 13, color: "#64748B", margin: 0, fontFamily: "Inter,sans-serif" }}>Nenhum compromisso salvo ainda.</p>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {commitments.map(item => (
+              <div key={`${item.id}_cal`} style={{ background: "white", borderRadius: 16, padding: "12px 14px", border: "1px solid #E2E8F0", display: "flex", alignItems: "flex-start", gap: 10 }}>
+                <div style={{ width: 34, height: 34, borderRadius: 10, background: "#EFF6FF", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <Calendar size={16} color="#2563EB" />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "#2563EB", background: "#EFF6FF", borderRadius: 8, padding: "2px 8px" }}>{item.calendarEvent.type}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "#64748B" }}>{item.calendarEvent.date} · {item.calendarEvent.time}</span>
+                  </div>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: "#111827", margin: 0 }}>{item.concept}</p>
+                  <p style={{ fontSize: 11, color: "#94A3B8", margin: "1px 0 0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.subject} · {item.summary}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1341,6 +1575,7 @@ export default function StudyVision() {
                 capturedItem={capturedItem}
                 onSave={() => { showToast("✓ Conteúdo salvo com sucesso"); refreshDueCount(); setTimeout(() => goTo("library"), 500); }}
                 onLibrary={() => goTo("library")}
+                onToast={showToast}
               />
             )}
             {screen === "library" && (
@@ -1357,6 +1592,7 @@ export default function StudyVision() {
                 onQuestions={() => go("questions")}
                 onQuiz={() => go("quiz")}
                 onVisionPlus={() => go("visionplus")}
+                onToast={showToast}
               />
             )}
             {screen === "flashcards" && selectedItem && (
@@ -1375,7 +1611,7 @@ export default function StudyVision() {
               <QuizScreen item={selectedItem} onBack={goBack} />
             )}
             {screen === "review" && (
-              <ReviewScreen onReview={(item) => { setSelectedItem(item); setReviewMode(true); go("flashcards"); }} />
+              <ReviewScreen onReview={(item) => { setSelectedItem(item); setReviewMode(true); go("flashcards"); }} onToast={showToast} />
             )}
             {screen === "visionplus" && (
               <VisionPlusScreen onBack={goBack} />
