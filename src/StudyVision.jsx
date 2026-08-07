@@ -633,15 +633,15 @@ function PlanningModal({ onClose, onConfirm }) {
         </div>
 
         <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: 1, marginBottom: 6 }}>DATA</p>
             <input type="date" value={date} onChange={e => setDate(e.target.value)}
-              style={{ width: "100%", height: 42, borderRadius: 12, border: "1.5px solid #E2E8F0", padding: "0 10px", fontFamily: "Inter,sans-serif", fontSize: 13, boxSizing: "border-box" }} />
+              style={{ width: "100%", minWidth: 0, height: 42, borderRadius: 12, border: "1.5px solid #E2E8F0", padding: "0 8px", fontFamily: "Inter,sans-serif", fontSize: 12.5, boxSizing: "border-box", colorScheme: "light" }} />
           </div>
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: 1, marginBottom: 6 }}>HORÁRIO</p>
             <input type="time" value={time} onChange={e => setTime(e.target.value)}
-              style={{ width: "100%", height: 42, borderRadius: 12, border: "1.5px solid #E2E8F0", padding: "0 10px", fontFamily: "Inter,sans-serif", fontSize: 13, boxSizing: "border-box" }} />
+              style={{ width: "100%", minWidth: 0, height: 42, borderRadius: 12, border: "1.5px solid #E2E8F0", padding: "0 8px", fontFamily: "Inter,sans-serif", fontSize: 12.5, boxSizing: "border-box", colorScheme: "light" }} />
           </div>
         </div>
 
@@ -685,9 +685,9 @@ function PlanningSection({ calendarEvent, onPlanned, onToast }) {
       <p style={{ fontSize: 10, fontWeight: 700, color: "#94A3B8", letterSpacing: 1.2, marginBottom: 10 }}>PLANEJAMENTO</p>
       {calendarEvent ? (
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 12, background: "#F0FDF4", border: "1px solid #BBF7D0" }}>
-          <CheckCircle size={18} color="#16A34A" />
-          <div>
-            <p style={{ fontSize: 13, fontWeight: 700, color: "#111827", margin: 0 }}>{calendarEvent.type} agendado</p>
+          <CheckCircle size={18} color="#16A34A" style={{ flexShrink: 0 }} />
+          <div style={{ minWidth: 0 }}>
+            <p style={{ fontSize: 13, fontWeight: 700, color: "#111827", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{calendarEvent.type} agendado</p>
             <p style={{ fontSize: 11, color: "#64748B", margin: "2px 0 0" }}>{calendarEvent.date} · {calendarEvent.time}</p>
           </div>
         </div>
@@ -1423,19 +1423,19 @@ function ReviewScreen({ onReview, onToast }) {
                   <div style={{ width: 44, height: 44, borderRadius: 12, background: item.subjectBg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>
                     {item.subjectIcon}
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ fontSize: 14, fontWeight: 700, color: "#111827", margin: 0 }}>{item.concept}</p>
-                    <p style={{ fontSize: 12, color: "#64748B", margin: "2px 0 0" }}>{item.subject} · {next?.label}</p>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: 14, fontWeight: 700, color: "#111827", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.concept}</p>
+                    <p style={{ fontSize: 12, color: "#64748B", margin: "2px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.subject} · {next?.label}</p>
                   </div>
                   {item.calendarEvent ? (
-                    <Calendar size={16} color="#0F766E" />
+                    <Calendar size={16} color="#0F766E" style={{ flexShrink: 0 }} />
                   ) : (
                     <button onClick={(e) => handleScheduleReview(item, e)} disabled={scheduling === item.id}
-                      style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, borderRadius: 10, background: "#F1F5F9", border: "none", cursor: "pointer" }}>
+                      style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, borderRadius: 10, background: "#F1F5F9", border: "none", cursor: "pointer", flexShrink: 0 }}>
                       <CalendarPlus size={15} color="#2563EB" />
                     </button>
                   )}
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "white", background: "#DC2626", borderRadius: 10, padding: "5px 12px", fontFamily: "Inter,sans-serif" }}>Revisar</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "white", background: "#DC2626", borderRadius: 10, padding: "5px 12px", fontFamily: "Inter,sans-serif", flexShrink: 0 }}>Revisar</span>
                 </motion.button>
               );
             })}
@@ -1448,17 +1448,17 @@ function ReviewScreen({ onReview, onToast }) {
             const next = nextPendingReview(item);
             return (
               <div key={item.id} style={{ background: "white", borderRadius: 16, padding: "12px 14px", border: "1px solid #E2E8F0", display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 18 }}>{item.subjectIcon}</span>
-                <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: "#374151", margin: 0 }}>{item.concept}</p>
-                  <p style={{ fontSize: 11, color: "#94A3B8", margin: "1px 0 0" }}>{next.label}</p>
+                <span style={{ fontSize: 18, flexShrink: 0 }}>{item.subjectIcon}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: "#374151", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.concept}</p>
+                  <p style={{ fontSize: 11, color: "#94A3B8", margin: "1px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{next.label}</p>
                 </div>
-                <span style={{ fontSize: 12, fontWeight: 700, color: "#64748B" }}>{formatDue(next.dueAt)}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "#64748B", flexShrink: 0 }}>{formatDue(next.dueAt)}</span>
                 {item.calendarEvent ? (
-                  <Calendar size={15} color="#0F766E" />
+                  <Calendar size={15} color="#0F766E" style={{ flexShrink: 0 }} />
                 ) : (
                   <button onClick={(e) => handleScheduleReview(item, e)} disabled={scheduling === item.id}
-                    style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, borderRadius: 9, background: "#F1F5F9", border: "none", cursor: "pointer" }}>
+                    style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, borderRadius: 9, background: "#F1F5F9", border: "none", cursor: "pointer", flexShrink: 0 }}>
                     <CalendarPlus size={14} color="#2563EB" />
                   </button>
                 )}
