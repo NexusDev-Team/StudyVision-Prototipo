@@ -1,18 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Star, Search, BookOpen } from "lucide-react";
 import LogoSVG from "../components/brand/LogoSVG";
 import ContentCard from "../components/study/ContentCard";
 import FilterPills from "../components/ui/FilterPills";
-import { getStoredItems } from "../services/storage";
+import { useStudyItems } from "../hooks/useStudyItems";
 import { SUBJECT_FILTERS } from "../constants";
 
 export default function LibraryScreen({ onOpenItem, onVisionPlus }) {
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("Todos");
-  const [items, setItems] = useState([]);
-
-  useEffect(() => { setItems(getStoredItems()); }, []);
+  const { items } = useStudyItems();
 
   const filtered = items.filter(it => {
     const q = search.toLowerCase();

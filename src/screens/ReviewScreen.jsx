@@ -1,18 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { CheckCircle } from "lucide-react";
 import LogoSVG from "../components/brand/LogoSVG";
 import ReviewCard from "../components/study/ReviewCard";
 import UpcomingReviewRow from "../components/study/UpcomingReviewRow";
 import CommitmentCard from "../components/study/CommitmentCard";
-import { getStoredItems, saveItem } from "../services/storage";
+import { useStudyItems } from "../hooks/useStudyItems";
 import { nextPendingReview, isDueForReview } from "../services/reviewEngine";
 import { createEvent, scheduleReviews } from "../services/calendarService";
 
 export default function ReviewScreen({ onReview, onToast }) {
-  const [items, setItems] = useState([]);
+  const { items, save } = useStudyItems();
   const [scheduling, setScheduling] = useState(null);
-
-  useEffect(() => { setItems(getStoredItems()); }, []);
 
   const handleScheduleReview = async (item, e) => {
     e.stopPropagation();
@@ -22,8 +20,7 @@ export default function ReviewScreen({ onReview, onToast }) {
     const event = await createEvent({ type: "Revisão", date: next ? new Date(next.dueAt).toISOString().slice(0, 10) : "", time: "09:00" });
     await scheduleReviews({ event, reminders: [0] });
     const updated = { ...item, calendarEvent: event };
-    saveItem(updated);
-    setItems(getStoredItems());
+    save(updated);
     setScheduling(null);
     onToast("✓ Evento criado com sucesso");
     setTimeout(() => onToast("✓ Revisões adicionadas automaticamente"), 1200);
