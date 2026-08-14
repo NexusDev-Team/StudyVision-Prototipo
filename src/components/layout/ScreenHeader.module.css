@@ -1,0 +1,6 @@
+.header {
+  background: var(--sv-surface);
+  padding: var(--sv-header-top) 20px 14px;
+  border-bottom: 1px solid var(--sv-line-soft);
+  flex-shrink: 0;
+}

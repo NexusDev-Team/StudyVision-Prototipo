@@ -24,145 +24,12 @@ import { slideIn, fadeUp } from "./styles/motion";
 import {
   FREE_FLASHCARD_LIMIT, PLANNING_TYPES, REMINDER_OPTIONS, SUBJECT_FILTERS,
 } from "./constants";
-
-// ─── BRAND SVG LOGO ─────────────────────────────────────────────────────────
-function LogoSVG({ size = 32, glow = false }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"
-      style={glow ? { filter: "drop-shadow(0 0 8px rgba(37,99,235,0.7))" } : {}}>
-      <defs>
-        <radialGradient id="eyeGrad" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#38BDF8" />
-          <stop offset="60%" stopColor="#2563EB" />
-          <stop offset="100%" stopColor="#1E3A8A" />
-        </radialGradient>
-        <radialGradient id="irisGrad" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#0EA5E9" />
-          <stop offset="100%" stopColor="#1D4ED8" />
-        </radialGradient>
-      </defs>
-      {/* Eye outline */}
-      <path d="M4 32 C14 16, 50 16, 60 32 C50 48, 14 48, 4 32 Z"
-        fill="none" stroke="url(#eyeGrad)" strokeWidth="3.5" strokeLinecap="round" />
-      {/* Iris */}
-      <circle cx="32" cy="32" r="10" fill="url(#irisGrad)" />
-      {/* Network nodes */}
-      <circle cx="32" cy="32" r="3" fill="white" />
-      <circle cx="25" cy="28" r="2.2" fill="white" opacity="0.9" />
-      <circle cx="39" cy="28" r="2.2" fill="white" opacity="0.9" />
-      <circle cx="28" cy="37" r="1.8" fill="#7DD3FC" opacity="0.85" />
-      <circle cx="36" cy="37" r="1.8" fill="#7DD3FC" opacity="0.85" />
-      {/* Connections */}
-      <line x1="32" y1="32" x2="25" y2="28" stroke="white" strokeWidth="1.2" opacity="0.7" />
-      <line x1="32" y1="32" x2="39" y2="28" stroke="white" strokeWidth="1.2" opacity="0.7" />
-      <line x1="32" y1="32" x2="28" y2="37" stroke="#7DD3FC" strokeWidth="1" opacity="0.6" />
-      <line x1="32" y1="32" x2="36" y2="37" stroke="#7DD3FC" strokeWidth="1" opacity="0.6" />
-      <line x1="25" y1="28" x2="39" y2="28" stroke="white" strokeWidth="0.8" opacity="0.4" />
-      {/* Glint */}
-      <circle cx="28" cy="27" r="1.5" fill="white" opacity="0.6" />
-    </svg>
-  );
-}
-
-// ─── CAPTURED CONTENT PREVIEW ──────────────────────────────────────────────────
-// Simulates the photo taken by the camera: a page mockup shot at a slight angle,
-// with a camera-style vignette, instead of a generic "file" placeholder.
-function CapturedPageVisual({ item, height = 140 }) {
-  const lineWidths = ["90%", "72%", "84%", "60%", "78%"];
-  return (
-    <div style={{ position: "relative", height, borderRadius: 20, overflow: "hidden", background: `linear-gradient(135deg, ${item.subjectColor} 0%, #1e1b4b 100%)`, boxShadow: `0 4px 20px ${item.subjectColor}33` }}>
-      {/* Photographed page */}
-      <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ width: "70%", height: "82%", background: "#FAFAF7", borderRadius: 6, transform: "rotate(-4deg)", boxShadow: "0 14px 28px rgba(0,0,0,0.4)", padding: "10%", position: "relative" }}>
-          <span style={{ position: "absolute", top: 8, right: 10, fontSize: 18, lineHeight: 1 }}>{item.subjectIcon}</span>
-          {lineWidths.map((w, i) => (
-            <div key={i} style={{ height: 3.5, width: w, borderRadius: 2, marginBottom: 9, background: i === 0 ? item.subjectColor : "#CBD5E1", opacity: i === 0 ? 0.85 : 0.55 }} />
-          ))}
-        </div>
-      </div>
-      {/* Camera vignette */}
-      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 50% 42%, transparent 45%, rgba(0,0,0,0.4) 100%)", pointerEvents: "none" }} />
-      {/* Capture frame corners */}
-      {[
-        { top: 8, left: 8, borderTop: "2px solid rgba(255,255,255,0.55)", borderLeft: "2px solid rgba(255,255,255,0.55)" },
-        { top: 8, right: 8, borderTop: "2px solid rgba(255,255,255,0.55)", borderRight: "2px solid rgba(255,255,255,0.55)" },
-        { bottom: 8, left: 8, borderBottom: "2px solid rgba(255,255,255,0.55)", borderLeft: "2px solid rgba(255,255,255,0.55)" },
-        { bottom: 8, right: 8, borderBottom: "2px solid rgba(255,255,255,0.55)", borderRight: "2px solid rgba(255,255,255,0.55)" },
-      ].map((pos, i) => (
-        <div key={i} style={{ position: "absolute", width: 12, height: 12, ...pos }} />
-      ))}
-    </div>
-  );
-}
-
-// ─── STATUS BAR ──────────────────────────────────────────────────────────────
-function StatusBar({ light = false }) {
-  const c = light ? "white" : "#111827";
-  return (
-    <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 48, zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "space-between", padding: "0 22px 8px", pointerEvents: "none" }}>
-      <span style={{ fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, color: c, letterSpacing: -0.3 }}>9:41</span>
-      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <div style={{ display: "flex", alignItems: "flex-end", gap: 1.5 }}>
-          {[4, 6, 8, 10].map((h, i) => (
-            <div key={i} style={{ width: 3, height: h, background: c, borderRadius: 2, opacity: i < 3 ? 1 : 0.35 }} />
-          ))}
-        </div>
-        <svg width="16" height="12" viewBox="0 0 16 12" fill={c} opacity="0.9">
-          <rect x="0.5" y="0.5" width="13" height="10" rx="1.5" fill="none" stroke={c} strokeWidth="1.2"/>
-          <rect x="14" y="3.5" width="1.5" height="4" rx="0.75" fill={c}/>
-          <rect x="1.8" y="1.8" width="9" height="7.4" rx="0.8" fill={c} opacity="0.7"/>
-        </svg>
-      </div>
-    </div>
-  );
-}
-
-// ─── TOAST ───────────────────────────────────────────────────────────────────
-function Toast({ message, onDone }) {
-  useEffect(() => { const t = setTimeout(onDone, 2400); return () => clearTimeout(t); }, []);
-  return (
-    <motion.div initial={{ y: 100, opacity: 0, scale: 0.9 }} animate={{ y: 0, opacity: 1, scale: 1 }} exit={{ y: 80, opacity: 0, scale: 0.9 }}
-      transition={{ type: "spring", stiffness: 400, damping: 28 }}
-      style={{ position: "absolute", bottom: 90, left: 20, right: 20, zIndex: 999, background: "#111827", borderRadius: 16, padding: "14px 18px", display: "flex", alignItems: "center", gap: 10, boxShadow: "0 8px 32px rgba(0,0,0,0.3)" }}>
-      <CheckCircle size={20} color="#14B8A6" />
-      <span style={{ fontFamily: "Inter,sans-serif", fontSize: 14, fontWeight: 600, color: "white" }}>{message}</span>
-    </motion.div>
-  );
-}
-
-// ─── BOTTOM NAV ───────────────────────────────────────────────────────────────
-function BottomNav({ active, onGo, dueCount = 0 }) {
-  const items = [
-    { id: "camera", icon: <Camera size={22} />, label: "Câmera" },
-    { id: "library", icon: <BookMarked size={22} />, label: "Biblioteca" },
-    { id: "review", icon: <CalendarClock size={22} />, label: "Revisão" },
-    { id: "visionplus", icon: <Star size={22} />, label: "Vision+" },
-  ];
-  return (
-    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "rgba(255,255,255,0.97)", backdropFilter: "blur(24px)", borderTop: "1px solid #F1F5F9", display: "flex", zIndex: 150, paddingBottom: 20, paddingTop: 2 }}>
-      {items.map(item => {
-        const isActive = active === item.id;
-        return (
-          <button key={item.id} onClick={() => onGo(item.id)}
-            style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, paddingTop: 8, background: "none", border: "none", cursor: "pointer", position: "relative" }}>
-            <div style={{ position: "relative" }}>
-              <motion.span animate={{ color: isActive ? "#2563EB" : "#94A3B8" }} transition={{ duration: 0.2 }}>
-                {item.icon}
-              </motion.span>
-              {item.id === "review" && dueCount > 0 && (
-                <span style={{ position: "absolute", top: -4, right: -8, minWidth: 15, height: 15, borderRadius: 8, background: "#EF4444", color: "white", fontSize: 9, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 3px", fontFamily: "Inter,sans-serif" }}>
-                  {dueCount}
-                </span>
-              )}
-            </div>
-            <span style={{ fontFamily: "Inter,sans-serif", fontSize: 10, fontWeight: 600, color: isActive ? "#2563EB" : "#94A3B8" }}>{item.label}</span>
-            {isActive && <motion.div layoutId="navdot" style={{ width: 4, height: 4, borderRadius: "50%", background: "#2563EB" }} />}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
+import LogoSVG from "./components/brand/LogoSVG";
+import CapturedPageVisual from "./components/brand/CapturedPageVisual";
+import StatusBar from "./components/layout/StatusBar";
+import BottomNav from "./components/layout/BottomNav";
+import PhoneFrame from "./components/layout/PhoneFrame";
+import Toast from "./components/ui/Toast";
 
 // ══════════════════════════════════════════════════════════════════════════════
 // SCREEN 1 — CAMERA
@@ -1368,12 +1235,7 @@ export default function StudyVision() {
   const transitions = ["visionplus", "library", "review"].includes(screen) ? fadeUp : slideIn;
 
   return (
-    <div className="sv-outer">
-      {/* Phone frame */}
-      <div className="sv-frame">
-        {/* Notch */}
-        <div style={{ position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)", width: 126, height: 34, background: "#000", borderRadius: "0 0 22px 22px", zIndex: 300 }} />
-
+    <PhoneFrame>
         <StatusBar light={!isLight} />
 
         {/* Screen transitions */}
@@ -1454,12 +1316,6 @@ export default function StudyVision() {
         <AnimatePresence>
           {toast && <Toast message={toast} onDone={() => setToast(null)} />}
         </AnimatePresence>
-      </div>
-
-      {/* Desktop label */}
-      <p className="sv-footer-label">
-        JOVI Smartphones · Study Vision Prototype
-      </p>
-    </div>
+    </PhoneFrame>
   );
 }
