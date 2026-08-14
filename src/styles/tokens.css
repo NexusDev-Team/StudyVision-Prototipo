@@ -1,0 +1,61 @@
+:root {
+  /* brand colors */
+  --sv-blue: #2563EB;
+  --sv-blue-dark: #1D4ED8;
+  --sv-blue-bg: #EFF6FF;
+  --sv-purple: #7C3AED;
+  --sv-purple-bg: #EDE9FE;
+  --sv-purple-bg-alt: #DDD6FE;
+  --sv-purple-border: #C4B5FD;
+  --sv-purple-text: #6D28D9;
+  --sv-teal: #14B8A6;
+  --sv-green: #16A34A;
+  --sv-green-bg: #F0FDF4;
+  --sv-green-border: #BBF7D0;
+  --sv-green-border-alt: #86EFAC;
+  --sv-red: #DC2626;
+  --sv-red-bg: #FEF2F2;
+  --sv-red-border: #FECACA;
+  --sv-red-border-alt: #FCA5A5;
+  --sv-orange: #EA580C;
+  --sv-amber: #F59E0B;
+
+  /* neutrals */
+  --sv-ink: #111827;
+  --sv-text: #374151;
+  --sv-muted: #64748B;
+  --sv-faint: #94A3B8;
+  --sv-line: #E2E8F0;
+  --sv-line-soft: #F1F5F9;
+  --sv-surface: #FFFFFF;
+  --sv-bg: #F8FAFC;
+  --sv-dark: #030712;
+
+  /* gradients */
+  --sv-grad-primary: linear-gradient(135deg, #2563EB, #7C3AED);
+  --sv-grad-purple: linear-gradient(135deg, #7C3AED, #4F46E5);
+  --sv-grad-blue: linear-gradient(135deg, #2563EB, #0EA5E9);
+  --sv-grad-orange: linear-gradient(135deg, #EA580C, #F59E0B);
+  --sv-grad-purple-blue: linear-gradient(135deg, #7C3AED, #2563EB);
+
+  /* radii */
+  --sv-r-sm: 8px;
+  --sv-r-md: 12px;
+  --sv-r-lg: 16px;
+  --sv-r-xl: 20px;
+  --sv-r-2xl: 24px;
+  --sv-r-pill: 20px;
+
+  /* shadows */
+  --sv-shadow-card: 0 1px 8px rgba(0, 0, 0, 0.05);
+  --sv-shadow-card-sm: 0 1px 4px rgba(0, 0, 0, 0.06);
+  --sv-shadow-btn: 0 4px 18px rgba(37, 99, 235, 0.3);
+
+  /* spacing / layout */
+  --sv-pad-screen: 20px;
+  --sv-header-top: 52px;
+  --sv-nav-h: 80px;
+
+  /* typography */
+  --sv-font: "Inter", sans-serif;
+}
