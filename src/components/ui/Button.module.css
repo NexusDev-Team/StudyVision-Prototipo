@@ -1,0 +1,36 @@
+.btn {
+  font-family: var(--sv-font);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn:disabled {
+  cursor: default;
+}
+
+.primary {
+  background: var(--sv-grad-primary);
+  color: white;
+  border-radius: var(--sv-r-lg);
+  box-shadow: var(--sv-shadow-btn);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.outline {
+  background: var(--sv-surface);
+  border: 1.5px solid var(--sv-line);
+  border-radius: var(--sv-r-lg);
+  box-shadow: var(--sv-shadow-card-sm);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ghost {
+  background: none;
+  border: none;
+}

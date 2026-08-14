@@ -1,0 +1,16 @@
+.back {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 12px;
+  font-family: var(--sv-font);
+}
+
+.label {
+  font-size: 14px;
+  font-weight: 600;
+}

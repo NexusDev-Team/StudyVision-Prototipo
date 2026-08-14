@@ -1,0 +1,8 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--sv-font);
+  border-radius: var(--sv-r-pill);
+  white-space: nowrap;
+}

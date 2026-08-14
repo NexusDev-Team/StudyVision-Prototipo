@@ -1,0 +1,22 @@
+.row {
+  display: flex;
+  gap: 8px;
+}
+
+.scroll {
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.wrap {
+  flex-wrap: wrap;
+}
+
+.pill {
+  flex-shrink: 0;
+  font-family: var(--sv-font);
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: var(--sv-r-pill);
+  cursor: pointer;
+}
