@@ -14,6 +14,16 @@ import exemploFoto1 from "./assets/exemplo-foto1.png";
 import { exportToNotion } from "./services/notionService";
 import { exportDocument, copyContent } from "./services/exportService";
 import { createEvent, scheduleReviews } from "./services/calendarService";
+import { getStoredItems, saveItem, getDueItems } from "./services/storage";
+import {
+  buildReviewSchedule, nextPendingReview, isDueForReview,
+  completedReviews, formatDue, markReviewDone,
+} from "./services/reviewEngine";
+import { SAMPLE_ITEMS, nextCaptureTemplate } from "./data/sampleContent";
+import { slideIn, fadeUp } from "./styles/motion";
+import {
+  FREE_FLASHCARD_LIMIT, PLANNING_TYPES, REMINDER_OPTIONS, SUBJECT_FILTERS,
+} from "./constants";
 
 // ─── BRAND SVG LOGO ─────────────────────────────────────────────────────────
 function LogoSVG({ size = 32, glow = false }) {
@@ -84,192 +94,6 @@ function CapturedPageVisual({ item, height = 140 }) {
     </div>
   );
 }
-
-// ─── SPACED REPETITION ────────────────────────────────────────────────────────
-const DAY_MS = 24 * 60 * 60 * 1000;
-const REVIEW_OFFSETS = [
-  { stage: 1, label: "D+1", days: 1 },
-  { stage: 2, label: "D+3", days: 3 },
-  { stage: 3, label: "D+7", days: 7 },
-  { stage: 4, label: "D+15", days: 15 },
-  { stage: 5, label: "D+30", days: 30 },
-];
-
-function buildReviewSchedule(fromMs) {
-  return REVIEW_OFFSETS.map(o => ({
-    stage: o.stage,
-    label: o.label,
-    dueAt: fromMs + o.days * DAY_MS,
-    done: false,
-  }));
-}
-
-function nextPendingReview(item) {
-  return (item.reviewSchedule || []).find(r => !r.done) || null;
-}
-
-function isDueForReview(item) {
-  const next = nextPendingReview(item);
-  return !!next && next.dueAt <= Date.now();
-}
-
-function completedReviews(item) {
-  return (item.reviewSchedule || []).filter(r => r.done).length;
-}
-
-function formatDue(dueAt) {
-  const diffDays = Math.round((dueAt - Date.now()) / DAY_MS);
-  if (diffDays <= 0) return "Hoje";
-  if (diffDays === 1) return "Amanhã";
-  return new Date(dueAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
-}
-
-// ─── CONSTANTS ───────────────────────────────────────────────────────────────
-const SAMPLE_ITEMS = [
-  {
-    id: "s1",
-    subject: "Matemática",
-    subjectIcon: "📘",
-    subjectColor: "#2563EB",
-    subjectBg: "#EFF6FF",
-    topic: "Cálculo Diferencial",
-    concept: "Derivadas",
-    time: "Há 2 dias",
-    summary: "Uma derivada mede a taxa de variação instantânea de uma função em relação a uma de suas variáveis. É um conceito fundamental no cálculo diferencial, representado pela notação f\'(x) ou dy/dx. Geometricamente, representa a inclinação da reta tangente à curva no ponto.",
-    concepts: ["Derivadas", "Limites", "Regra da Cadeia", "Cálculo Diferencial"],
-    keywords: ["taxa de variação", "f\'(x)", "dy/dx", "tangente", "instantânea"],
-    flashcards: [
-      { front: "O que é uma derivada?", back: "A taxa de variação instantânea de uma função em relação a uma variável, representada por f\'(x) ou dy/dx." },
-      { front: "O que é a Regra da Cadeia?", back: "Uma fórmula para calcular a derivada de uma função composta: (f∘g)\'(x) = f\'(g(x)) · g\'(x)." },
-      { front: "O que representa a derivada geometricamente?", back: "A inclinação (coeficiente angular) da reta tangente ao gráfico da função no ponto considerado." },
-      { front: "Qual a notação de Leibniz para derivada?", back: "dy/dx, que representa a variação infinitesimal de y em relação a x." },
-      { front: "Quando uma função é dita derivável em um ponto?", back: "Quando o limite que define a derivada existe e é finito naquele ponto." },
-    ],
-    questions: [
-      "Qual é a definição formal de derivada de uma função?",
-      "Como aplicar a Regra da Cadeia no cálculo de derivadas compostas?",
-      "Qual a relação entre derivadas e taxas de variação instantânea?",
-    ],
-    quiz: [
-      { type: "mc", question: "A derivada de uma função representa geometricamente:", options: ["A área sob a curva", "A inclinação da reta tangente", "O valor máximo da função", "O ponto de interseção com o eixo Y"], answer: 1 },
-      { type: "vf", question: "A Regra da Cadeia é usada para derivar funções compostas.", answer: true },
-      { type: "mc", question: "A notação dy/dx foi introduzida por:", options: ["Newton", "Leibniz", "Euler", "Gauss"], answer: 1 },
-      { type: "vf", question: "Toda função contínua é derivável em todos os pontos.", answer: false },
-    ],
-    reviewSchedule: buildReviewSchedule(Date.now() - 2 * DAY_MS).map((r, i) => i === 0 ? { ...r, done: true } : r),
-  },
-  {
-    id: "s2",
-    subject: "História",
-    subjectIcon: "📗",
-    subjectColor: "#16A34A",
-    subjectBg: "#F0FDF4",
-    topic: "Século XX",
-    concept: "Segunda Guerra Mundial",
-    time: "Há 6 dias",
-    summary: "A Segunda Guerra Mundial foi o conflito armado mais destrutivo da história, envolvendo a maioria das nações do mundo entre 1939 e 1945. Dividiu o mundo em dois blocos: os Aliados e o Eixo. Resultou em mais de 70 milhões de mortes e remodelou completamente a geopolítica global.",
-    concepts: ["Nazismo", "Holocausto", "Aliados", "Eixo", "Blitzkrieg"],
-    keywords: ["1939-1945", "Hitler", "Segunda Guerra", "frentes de batalha", "rendição"],
-    flashcards: [
-      { front: "Quando ocorreu a Segunda Guerra Mundial?", back: "Entre 1939 e 1945, envolvendo a maioria das nações do mundo divididas entre Aliados e Eixo." },
-      { front: "O que foi o Blitzkrieg?", back: "Tática de guerra relâmpago alemã que combinava aviação, blindados e infantaria motorizada para ataques rápidos e devastadores." },
-      { front: "Quais formavam os países do Eixo?", back: "Principalmente Alemanha, Itália e Japão." },
-      { front: "O que foi o Holocausto?", back: "O extermínio sistemático de cerca de 6 milhões de judeus e outras minorias pelo regime nazista." },
-    ],
-    questions: [
-      "Quais foram as principais causas da Segunda Guerra Mundial?",
-      "Como o Holocausto impactou a criação da ONU e os Direitos Humanos?",
-      "Qual foi o papel do Brasil na Segunda Guerra Mundial?",
-    ],
-    quiz: [
-      { type: "mc", question: "A Segunda Guerra Mundial ocorreu entre:", options: ["1914-1918", "1939-1945", "1945-1950", "1929-1939"], answer: 1 },
-      { type: "vf", question: "O Brasil enviou tropas para lutar na Itália durante a guerra.", answer: true },
-      { type: "mc", question: "O Blitzkrieg é uma tática caracterizada por:", options: ["Guerra de trincheiras", "Ataques navais isolados", "Ofensivas rápidas e coordenadas", "Bloqueio econômico"], answer: 2 },
-    ],
-    reviewSchedule: buildReviewSchedule(Date.now() - 6 * DAY_MS).map((r, i) => i <= 1 ? { ...r, done: true } : r),
-  },
-  {
-    id: "s3",
-    subject: "Química",
-    subjectIcon: "🧪",
-    subjectColor: "#EA580C",
-    subjectBg: "#FFF7ED",
-    topic: "Físico-Química",
-    concept: "Ligações Químicas",
-    time: "Há 15 dias",
-    summary: "Ligações químicas são forças de atração que unem átomos formando moléculas ou compostos. Os três tipos principais são: iônica (transferência de elétrons entre metal e não metal), covalente (compartilhamento de elétrons entre não metais) e metálica (nuvem de elétrons livres entre átomos de metais).",
-    concepts: ["Ligação Iônica", "Ligação Covalente", "Ligação Metálica", "Eletronegatividade"],
-    keywords: ["elétrons de valência", "octeto", "compartilhamento", "transferência", "metais"],
-    flashcards: [
-      { front: "O que é uma ligação iônica?", back: "Transferência de elétrons entre um átomo metálico e um não metálico, formando íons de cargas opostas que se atraem." },
-      { front: "O que é uma ligação covalente?", back: "Compartilhamento de pares de elétrons entre átomos, geralmente entre não metais." },
-      { front: "O que é a regra do octeto?", back: "Tendência dos átomos de ganhar, perder ou compartilhar elétrons para atingir 8 elétrons na camada de valência." },
-    ],
-    questions: [
-      "Qual a diferença entre ligação iônica e covalente?",
-      "Por que os metais formam ligações metálicas e não covalentes?",
-      "Como a eletronegatividade influencia o tipo de ligação formada?",
-    ],
-    quiz: [
-      { type: "mc", question: "Uma ligação formada por transferência de elétrons é chamada de:", options: ["Covalente", "Metálica", "Iônica", "Dativa"], answer: 2 },
-      { type: "vf", question: "Ligações covalentes envolvem compartilhamento de elétrons.", answer: true },
-    ],
-    reviewSchedule: buildReviewSchedule(Date.now() - 15 * DAY_MS).map((r, i) => i <= 2 ? { ...r, done: true } : r),
-  },
-];
-
-// Pool of possible "captures" — the demo camera cycles through these to
-// simulate different content being recognized, instead of always the same one.
-const CAPTURE_POOL = [SAMPLE_ITEMS[0], SAMPLE_ITEMS[1], SAMPLE_ITEMS[2]];
-let captureIndex = 0;
-function nextCaptureTemplate() {
-  const template = CAPTURE_POOL[captureIndex % CAPTURE_POOL.length];
-  captureIndex += 1;
-  return template;
-}
-
-function getStoredItems() {
-  try {
-    const stored = JSON.parse(localStorage.getItem("sv_items") || "[]");
-    const storedIds = new Set(stored.map(s => s.id));
-    // Stored (possibly updated) items win over the hardcoded seed data for the same id.
-    return [...stored, ...SAMPLE_ITEMS.filter(s => !storedIds.has(s.id))];
-  } catch { return SAMPLE_ITEMS; }
-}
-
-function saveItem(item) {
-  try {
-    const stored = JSON.parse(localStorage.getItem("sv_items") || "[]");
-    const filtered = stored.filter(s => s.id !== item.id);
-    localStorage.setItem("sv_items", JSON.stringify([item, ...filtered]));
-  } catch {}
-}
-
-function getDueItems() {
-  return getStoredItems().filter(isDueForReview);
-}
-
-// Advances the item's earliest pending review stage to "done" and persists it.
-function markReviewDone(item) {
-  const schedule = item.reviewSchedule || [];
-  const idx = schedule.findIndex(r => !r.done);
-  if (idx === -1) return item;
-  const updated = { ...item, reviewSchedule: schedule.map((r, i) => i === idx ? { ...r, done: true } : r) };
-  saveItem(updated);
-  return updated;
-}
-
-// ─── PAGE TRANSITIONS ────────────────────────────────────────────────────────
-const slideIn = {
-  initial: { opacity: 0, x: 30 },
-  animate: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 380, damping: 32 } },
-  exit: { opacity: 0, x: -20, transition: { duration: 0.18 } },
-};
-const fadeUp = {
-  initial: { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 340, damping: 28 } },
-  exit: { opacity: 0, y: -10, transition: { duration: 0.15 } },
-};
 
 // ─── STATUS BAR ──────────────────────────────────────────────────────────────
 function StatusBar({ light = false }) {
@@ -581,13 +405,6 @@ function ExportSection({ item, onToast }) {
 }
 
 // ─── PLANNING SECTION (Calendário) ──────────────────────────────────────────
-const PLANNING_TYPES = ["Prova", "Trabalho", "Apresentação", "Revisão"];
-const REMINDER_OPTIONS = [
-  { days: 7, label: "7 dias antes" },
-  { days: 3, label: "3 dias antes" },
-  { days: 1, label: "1 dia antes" },
-  { days: 0, label: "No dia" },
-];
 
 function PlanningModal({ onClose, onConfirm }) {
   const [type, setType] = useState(PLANNING_TYPES[0]);
@@ -827,7 +644,7 @@ function LibraryScreen({ onOpenItem, onVisionPlus }) {
 
   useEffect(() => { setItems(getStoredItems()); }, []);
 
-  const filters = ["Todos", "Matemática", "História", "Química"];
+  const filters = SUBJECT_FILTERS;
   const filtered = items.filter(it => {
     const q = search.toLowerCase();
     const matchSearch = !q || it.concept.toLowerCase().includes(q) || it.subject.toLowerCase().includes(q);
@@ -1043,8 +860,6 @@ function ContentDetailScreen({ item, onBack, onFlashcards, onQuestions, onQuiz, 
 // ══════════════════════════════════════════════════════════════════════════════
 // SCREEN 6a — FLASHCARDS
 // ══════════════════════════════════════════════════════════════════════════════
-const FREE_FLASHCARD_LIMIT = 5;
-
 function FlashcardsScreen({ item, onBack, onVisionPlus, reviewMode = false, onReviewComplete }) {
   const allCards = item?.flashcards || [];
   const cards = allCards.slice(0, FREE_FLASHCARD_LIMIT);
