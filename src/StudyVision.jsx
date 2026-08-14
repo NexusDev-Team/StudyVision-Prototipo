@@ -1,18 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
-import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Zap, Settings, FlipHorizontal, BookOpen, Search, X,
-  ChevronRight, Star, Brain, Bookmark, BookMarked,
+  Zap, Settings, FlipHorizontal, BookOpen, Search,
+  Star, Brain, Bookmark, BookMarked,
   CheckCircle, Sparkles, Lock, HelpCircle, CreditCard,
-  Clock, ChevronLeft, Eye, SlidersHorizontal, RotateCcw,
-  Camera, ArrowRight, GraduationCap, Hash, Layers,
-  ThumbsUp, ThumbsDown, XCircle, CalendarClock, ListChecks,
-  Calendar, FileText, Copy, CalendarPlus
+  ChevronLeft, Eye, GraduationCap,
+  ThumbsUp, ThumbsDown, CalendarClock, ListChecks,
 } from "lucide-react";
 import exemploFoto1 from "./assets/exemplo-foto1.png";
-import { exportToNotion } from "./services/notionService";
-import { exportDocument, copyContent } from "./services/exportService";
 import { createEvent, scheduleReviews } from "./services/calendarService";
 import { getStoredItems, saveItem, getDueItems } from "./services/storage";
 import {
@@ -21,15 +16,22 @@ import {
 } from "./services/reviewEngine";
 import { SAMPLE_ITEMS, nextCaptureTemplate } from "./data/sampleContent";
 import { slideIn, fadeUp } from "./styles/motion";
-import {
-  FREE_FLASHCARD_LIMIT, PLANNING_TYPES, REMINDER_OPTIONS, SUBJECT_FILTERS,
-} from "./constants";
+import { FREE_FLASHCARD_LIMIT, SUBJECT_FILTERS } from "./constants";
 import LogoSVG from "./components/brand/LogoSVG";
 import CapturedPageVisual from "./components/brand/CapturedPageVisual";
 import StatusBar from "./components/layout/StatusBar";
 import BottomNav from "./components/layout/BottomNav";
 import PhoneFrame from "./components/layout/PhoneFrame";
 import Toast from "./components/ui/Toast";
+import ContentBlocks from "./components/study/ContentBlocks";
+import ContentCard from "./components/study/ContentCard";
+import ExportSection from "./components/study/ExportSection";
+import PlanningSection from "./components/study/PlanningSection";
+import Flashcard from "./components/study/Flashcard";
+import QuizQuestion from "./components/study/QuizQuestion";
+import ReviewCard from "./components/study/ReviewCard";
+import UpcomingReviewRow from "./components/study/UpcomingReviewRow";
+import CommitmentCard from "./components/study/CommitmentCard";
 
 // ══════════════════════════════════════════════════════════════════════════════
 // SCREEN 1 — CAMERA
@@ -235,160 +237,6 @@ function AnalysisScreen({ onDone }) {
   );
 }
 
-// ─── EXPORT CONTENT SECTION ─────────────────────────────────────────────────
-function ExportSection({ item, onToast }) {
-  const [busy, setBusy] = useState(null); // "notion" | "doc" | "copy" | null
-
-  const run = async (key, fn, successMsg) => {
-    if (busy) return;
-    setBusy(key);
-    await fn(item);
-    setBusy(null);
-    onToast(successMsg);
-  };
-
-  const options = [
-    { key: "notion", label: "Notion", icon: <BookOpen size={18} color="#111827" />, action: () => run("notion", exportToNotion, "✓ Conteúdo enviado ao Notion com sucesso") },
-    { key: "doc", label: "Documento PDF/DOCX", icon: <FileText size={18} color="#DC2626" />, action: () => run("doc", exportDocument, "✓ Documento gerado com sucesso") },
-    { key: "copy", label: "Copiar Conteúdo", icon: <Copy size={18} color="#2563EB" />, action: () => run("copy", copyContent, "✓ Conteúdo copiado") },
-  ];
-
-  return (
-    <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
-      style={{ background: "white", borderRadius: 20, padding: "16px 18px", marginBottom: 12, boxShadow: "0 1px 8px rgba(0,0,0,0.05)", border: "1px solid #E2E8F0" }}>
-      <p style={{ fontSize: 10, fontWeight: 700, color: "#94A3B8", letterSpacing: 1.2, marginBottom: 10 }}>EXPORTAR CONTEÚDO</p>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {options.map(o => (
-          <button key={o.key} onClick={o.action} disabled={!!busy}
-            style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 12px", borderRadius: 12, background: "#F8FAFC", border: "1px solid #E2E8F0", cursor: busy ? "default" : "pointer", fontFamily: "Inter,sans-serif" }}>
-            {o.icon}
-            <span style={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>{o.label}</span>
-            {busy === o.key && <span style={{ marginLeft: "auto", fontSize: 11, color: "#94A3B8" }}>Enviando...</span>}
-          </button>
-        ))}
-      </div>
-    </motion.div>
-  );
-}
-
-// ─── PLANNING SECTION (Calendário) ──────────────────────────────────────────
-
-function PlanningModal({ onClose, onConfirm }) {
-  const [type, setType] = useState(PLANNING_TYPES[0]);
-  const [date, setDate] = useState("");
-  const [time, setTime] = useState("");
-  const [reminders, setReminders] = useState([7, 3, 1, 0]);
-  const [saving, setSaving] = useState(false);
-
-  const toggleReminder = (days) => {
-    setReminders(r => r.includes(days) ? r.filter(d => d !== days) : [...r, days]);
-  };
-
-  const handleConfirm = async () => {
-    if (saving || !date || !time) return;
-    setSaving(true);
-    try {
-      await onConfirm({ type, date, time, reminders });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const modal = (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      style={{ position: "absolute", inset: 0, zIndex: 400, background: "rgba(15,23,42,0.5)", display: "flex", alignItems: "flex-end" }}>
-      <motion.div initial={{ y: 40 }} animate={{ y: 0 }} exit={{ y: 40 }} transition={{ type: "spring", stiffness: 340, damping: 32 }}
-        style={{ width: "100%", maxHeight: "88%", overflowY: "auto", background: "white", borderRadius: "24px 24px 0 0", padding: "20px 20px 28px", fontFamily: "Inter,sans-serif", boxSizing: "border-box" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-          <p style={{ fontSize: 17, fontWeight: 800, color: "#111827", margin: 0 }}>Novo Compromisso</p>
-          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}>
-            <X size={20} color="#94A3B8" />
-          </button>
-        </div>
-
-        <p style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: 1, marginBottom: 8 }}>TIPO</p>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
-          {PLANNING_TYPES.map(t => (
-            <button key={t} onClick={() => setType(t)}
-              style={{ padding: "7px 14px", borderRadius: 20, background: type === t ? "#2563EB" : "#F1F5F9", color: type === t ? "white" : "#64748B", fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer" }}>
-              {t}
-            </button>
-          ))}
-        </div>
-
-        <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: 1, marginBottom: 6 }}>DATA</p>
-            <input type="date" value={date} onChange={e => setDate(e.target.value)}
-              style={{ width: "100%", minWidth: 0, height: 42, borderRadius: 12, border: "1.5px solid #E2E8F0", padding: "0 8px", fontFamily: "Inter,sans-serif", fontSize: 12.5, boxSizing: "border-box", colorScheme: "light" }} />
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: 1, marginBottom: 6 }}>HORÁRIO</p>
-            <input type="time" value={time} onChange={e => setTime(e.target.value)}
-              style={{ width: "100%", minWidth: 0, height: 42, borderRadius: 12, border: "1.5px solid #E2E8F0", padding: "0 8px", fontFamily: "Inter,sans-serif", fontSize: 12.5, boxSizing: "border-box", colorScheme: "light" }} />
-          </div>
-        </div>
-
-        <p style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: 1, marginBottom: 8 }}>REVISÕES AUTOMÁTICAS</p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 20 }}>
-          {REMINDER_OPTIONS.map(o => (
-            <label key={o.days} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
-              <input type="checkbox" checked={reminders.includes(o.days)} onChange={() => toggleReminder(o.days)} />
-              <span style={{ fontSize: 13, color: "#374151" }}>{o.label}</span>
-            </label>
-          ))}
-        </div>
-
-        <motion.button whileTap={{ scale: 0.97 }} onClick={handleConfirm} disabled={saving || !date || !time}
-          style={{ width: "100%", height: 52, borderRadius: 16, background: (!date || !time) ? "#CBD5E1" : "linear-gradient(135deg,#2563EB,#7C3AED)", color: "white", fontSize: 14, fontWeight: 700, border: "none", cursor: (!date || !time) ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-          <Calendar size={17} /> {saving ? "Salvando..." : "Salvar no Calendário"}
-        </motion.button>
-      </motion.div>
-    </motion.div>
-  );
-
-  const portalTarget = typeof document !== "undefined" ? document.querySelector(".sv-frame") : null;
-  return portalTarget ? createPortal(modal, portalTarget) : modal;
-}
-
-function PlanningSection({ calendarEvent, onPlanned, onToast }) {
-  const [open, setOpen] = useState(false);
-
-  const handleConfirm = async ({ type, date, time, reminders }) => {
-    const event = await createEvent({ type, date, time });
-    await scheduleReviews({ event, reminders });
-    onPlanned({ ...event, reminders });
-    setOpen(false);
-    onToast("✓ Evento criado com sucesso");
-    setTimeout(() => onToast("✓ Revisões adicionadas automaticamente"), 1200);
-  };
-
-  return (
-    <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.58 }}
-      style={{ background: "white", borderRadius: 20, padding: "16px 18px", marginBottom: 12, boxShadow: "0 1px 8px rgba(0,0,0,0.05)", border: "1px solid #E2E8F0" }}>
-      <p style={{ fontSize: 10, fontWeight: 700, color: "#94A3B8", letterSpacing: 1.2, marginBottom: 10 }}>PLANEJAMENTO</p>
-      {calendarEvent ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 12, background: "#F0FDF4", border: "1px solid #BBF7D0" }}>
-          <CheckCircle size={18} color="#16A34A" style={{ flexShrink: 0 }} />
-          <div style={{ minWidth: 0 }}>
-            <p style={{ fontSize: 13, fontWeight: 700, color: "#111827", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{calendarEvent.type} agendado</p>
-            <p style={{ fontSize: 11, color: "#64748B", margin: "2px 0 0" }}>{calendarEvent.date} · {calendarEvent.time}</p>
-          </div>
-        </div>
-      ) : (
-        <button onClick={() => setOpen(true)}
-          style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 12px", borderRadius: 12, background: "#F8FAFC", border: "1px solid #E2E8F0", cursor: "pointer", width: "100%", fontFamily: "Inter,sans-serif" }}>
-          <Calendar size={18} color="#2563EB" />
-          <span style={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>Salvar Compromisso</span>
-        </button>
-      )}
-      <AnimatePresence>
-        {open && <PlanningModal onClose={() => setOpen(false)} onConfirm={handleConfirm} />}
-      </AnimatePresence>
-    </motion.div>
-  );
-}
-
 // ══════════════════════════════════════════════════════════════════════════════
 // SCREEN 3 — SUMMARY
 // ══════════════════════════════════════════════════════════════════════════════
@@ -404,33 +252,6 @@ function SummaryScreen({ capturedItem, onSave, onLibrary, onToast }) {
     const toSave = calendarEvent ? { ...item, calendarEvent } : item;
     setTimeout(() => { saveItem(toSave); onSave(); }, 900);
   };
-
-  const blocks = [
-    {
-      label: "RESUMO INTELIGENTE", delay: 0.25,
-      content: <p style={{ fontFamily: "Inter,sans-serif", fontSize: 14, lineHeight: 1.75, color: "#374151", margin: 0 }}>{item.summary}</p>,
-    },
-    {
-      label: "CONCEITOS ENCONTRADOS", delay: 0.35,
-      content: (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {item.concepts.map((c, i) => (
-            <span key={i} style={{ fontFamily: "Inter,sans-serif", fontSize: 12, fontWeight: 600, color: "#2563EB", background: "#EFF6FF", borderRadius: 20, padding: "5px 14px" }}>{c}</span>
-          ))}
-        </div>
-      ),
-    },
-    {
-      label: "PALAVRAS-CHAVE", delay: 0.45,
-      content: (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {item.keywords.map((k, i) => (
-            <span key={i} style={{ fontFamily: "Inter,sans-serif", fontSize: 12, fontWeight: 500, color: "#64748B", background: "#F1F5F9", borderRadius: 20, padding: "4px 12px" }}>#{k}</span>
-          ))}
-        </div>
-      ),
-    },
-  ];
 
   return (
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#F8FAFC", fontFamily: "Inter,sans-serif", overflow: "hidden" }}>
@@ -470,13 +291,7 @@ function SummaryScreen({ capturedItem, onSave, onLibrary, onToast }) {
         </motion.div>
 
         {/* Content blocks */}
-        {blocks.map((b, i) => (
-          <motion.div key={i} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: b.delay }}
-            style={{ background: "white", borderRadius: 20, padding: "16px 18px", marginBottom: 12, boxShadow: "0 1px 8px rgba(0,0,0,0.05)", border: "1px solid #E2E8F0" }}>
-            <p style={{ fontSize: 10, fontWeight: 700, color: "#94A3B8", letterSpacing: 1.2, marginBottom: 10 }}>{b.label}</p>
-            {b.content}
-          </motion.div>
-        ))}
+        <ContentBlocks item={item} variant="summary" />
 
         {/* Export content */}
         <ExportSection item={item} onToast={onToast} />
@@ -565,43 +380,7 @@ function LibraryScreen({ onOpenItem, onVisionPlus }) {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {filtered.map((item, i) => (
-              <motion.button key={item.id}
-                initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => onOpenItem(item)}
-                style={{ background: "white", borderRadius: 20, padding: "16px 16px", boxShadow: "0 1px 8px rgba(0,0,0,0.05)", border: "1px solid #E2E8F0", cursor: "pointer", textAlign: "left", width: "100%" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <div style={{ width: 46, height: 46, borderRadius: 14, background: item.subjectBg || "#EFF6FF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, flexShrink: 0 }}>
-                      {item.subjectIcon}
-                    </div>
-                    <div>
-                      <p style={{ fontFamily: "Inter,sans-serif", fontSize: 15, fontWeight: 700, color: "#111827", margin: 0 }}>{item.concept}</p>
-                      <p style={{ fontFamily: "Inter,sans-serif", fontSize: 12, color: "#64748B", margin: "2px 0 0" }}>{item.subject} · {item.topic}</p>
-                    </div>
-                  </div>
-                  <ChevronRight size={18} color="#CBD5E1" />
-                </div>
-                <div style={{ marginTop: 10, display: "flex", gap: 6, alignItems: "center" }}>
-                  {isDueForReview(item) ? (
-                    <span style={{ fontSize: 11, fontWeight: 700, color: "#DC2626", background: "rgba(220,38,38,0.1)", borderRadius: 6, padding: "3px 10px", fontFamily: "Inter,sans-serif", display: "flex", alignItems: "center", gap: 4 }}>
-                      <CalendarClock size={11} /> Revisar hoje
-                    </span>
-                  ) : (
-                    <span style={{ fontSize: 11, fontWeight: 600, color: "#14B8A6", background: "rgba(20,184,166,0.1)", borderRadius: 6, padding: "3px 10px", fontFamily: "Inter,sans-serif" }}>Resumo</span>
-                  )}
-                  <span style={{ fontSize: 11, fontWeight: 600, color: "#7C3AED", background: "rgba(124,58,237,0.1)", borderRadius: 6, padding: "3px 10px", fontFamily: "Inter,sans-serif" }}>Flashcards</span>
-                  {item.calendarEvent && (
-                    <span title={`${item.calendarEvent.type} · ${item.calendarEvent.date}`} style={{ fontSize: 11, fontWeight: 600, color: "#0F766E", background: "rgba(20,184,166,0.12)", borderRadius: 6, padding: "3px 8px", fontFamily: "Inter,sans-serif", display: "flex", alignItems: "center", gap: 3 }}>
-                      <Calendar size={11} />
-                    </span>
-                  )}
-                  <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 4, color: "#94A3B8" }}>
-                    <Clock size={11} />
-                    <span style={{ fontSize: 11, fontFamily: "Inter,sans-serif" }}>{item.time}</span>
-                  </div>
-                </div>
-              </motion.button>
+              <ContentCard key={item.id} item={item} index={i} onClick={() => onOpenItem(item)} />
             ))}
           </div>
         )}
@@ -621,33 +400,6 @@ function ContentDetailScreen({ item, onBack, onFlashcards, onQuestions, onQuiz, 
     setCalendarEvent(event);
     saveItem({ ...item, calendarEvent: event });
   };
-  const blocks = [
-    {
-      label: "RESUMO INTELIGENTE",
-      content: <p style={{ fontFamily: "Inter,sans-serif", fontSize: 14, lineHeight: 1.75, color: "#374151", margin: 0 }}>{item.summary}</p>,
-    },
-    {
-      label: "CONCEITOS",
-      content: (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {item.concepts.map((c, i) => (
-            <span key={i} style={{ fontSize: 12, fontWeight: 600, color: item.subjectColor, background: item.subjectBg, borderRadius: 20, padding: "5px 14px", fontFamily: "Inter,sans-serif" }}>{c}</span>
-          ))}
-        </div>
-      ),
-    },
-    {
-      label: "PALAVRAS-CHAVE",
-      content: (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {item.keywords.map((k, i) => (
-            <span key={i} style={{ fontSize: 12, fontWeight: 500, color: "#64748B", background: "#F1F5F9", borderRadius: 20, padding: "4px 12px", fontFamily: "Inter,sans-serif" }}>#{k}</span>
-          ))}
-        </div>
-      ),
-    },
-  ];
-
   return (
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#F8FAFC", fontFamily: "Inter,sans-serif", overflow: "hidden" }}>
       {/* Header */}
@@ -689,13 +441,7 @@ function ContentDetailScreen({ item, onBack, onFlashcards, onQuestions, onQuiz, 
           </motion.div>
         )}
 
-        {blocks.map((b, i) => (
-          <motion.div key={i} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 * (i + 1) }}
-            style={{ background: "white", borderRadius: 20, padding: "16px 18px", marginBottom: 10, boxShadow: "0 1px 8px rgba(0,0,0,0.05)", border: "1px solid #E2E8F0" }}>
-            <p style={{ fontSize: 10, fontWeight: 700, color: "#94A3B8", letterSpacing: 1.2, marginBottom: 10 }}>{b.label}</p>
-            {b.content}
-          </motion.div>
-        ))}
+        <ContentBlocks item={item} variant="detail" />
 
         <ExportSection item={item} onToast={onToast} />
         <PlanningSection calendarEvent={calendarEvent} onPlanned={handlePlanned} onToast={onToast} />
@@ -770,23 +516,7 @@ function FlashcardsScreen({ item, onBack, onVisionPlus, reviewMode = false, onRe
       <div style={{ flex: 1, overflowY: "auto", padding: "18px 20px 24px", display: "flex", flexDirection: "column" }}>
         {!done && cards.length > 0 && (
           <>
-            <motion.div key={index} initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }}
-              onClick={() => setFlipped(f => !f)}
-              style={{ perspective: 1000, cursor: "pointer", marginBottom: 18 }}>
-              <motion.div animate={{ rotateY: flipped ? 180 : 0 }} transition={{ duration: 0.45 }}
-                style={{ position: "relative", width: "100%", minHeight: 220, transformStyle: "preserve-3d" }}>
-                {/* Front */}
-                <div style={{ position: "absolute", inset: 0, backfaceVisibility: "hidden", background: "white", borderRadius: 20, padding: "22px 20px", boxShadow: "0 4px 20px rgba(124,58,237,0.12)", border: "1px solid #E2E8F0", display: "flex", flexDirection: "column", justifyContent: "center" }}>
-                  <p style={{ fontSize: 10, fontWeight: 700, color: "#7C3AED", letterSpacing: 1.2, marginBottom: 10 }}>FRENTE · toque para virar</p>
-                  <p style={{ fontSize: 17, fontWeight: 700, color: "#111827", margin: 0, lineHeight: 1.4 }}>{cards[index].front}</p>
-                </div>
-                {/* Back */}
-                <div style={{ position: "absolute", inset: 0, backfaceVisibility: "hidden", transform: "rotateY(180deg)", background: "#7C3AED", borderRadius: 20, padding: "22px 20px", boxShadow: "0 4px 20px rgba(124,58,237,0.3)", display: "flex", flexDirection: "column", justifyContent: "center" }}>
-                  <p style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.7)", letterSpacing: 1.2, marginBottom: 10 }}>VERSO</p>
-                  <p style={{ fontSize: 15, color: "white", margin: 0, lineHeight: 1.55 }}>{cards[index].back}</p>
-                </div>
-              </motion.div>
-            </motion.div>
+            <Flashcard card={cards[index]} index={index} flipped={flipped} onFlip={() => setFlipped(f => !f)} />
 
             {flipped ? (
               <div style={{ display: "flex", gap: 10 }}>
@@ -880,10 +610,7 @@ function QuizScreen({ item, onBack }) {
   const [score, setScore] = useState(0);
   const done = index >= questions.length;
   const q = questions[index];
-
-  const options = q?.type === "vf" ? [true, false] : q?.options || [];
-  const optionLabel = (opt) => (q.type === "vf" ? (opt ? "Verdadeiro" : "Falso") : opt);
-  const isCorrect = (opt) => opt === q.answer;
+  const isCorrect = (opt) => opt === q?.answer;
 
   const choose = (opt) => {
     if (selected !== null) return;
@@ -912,34 +639,7 @@ function QuizScreen({ item, onBack }) {
 
       <div style={{ flex: 1, overflowY: "auto", padding: "18px 20px 24px" }}>
         {!done && q && (
-          <motion.div key={index} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
-            style={{ background: "white", borderRadius: 20, padding: "18px", border: "1px solid #E2E8F0", boxShadow: "0 1px 8px rgba(0,0,0,0.05)" }}>
-            <p style={{ fontSize: 16, fontWeight: 700, color: "#111827", margin: "0 0 16px", lineHeight: 1.4 }}>{q.question}</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {options.map((opt, i) => {
-                const chosen = selected !== null;
-                const isThisCorrect = isCorrect(opt);
-                const isThisSelected = selected === opt;
-                let bg = "white", border = "#E2E8F0", color = "#374151";
-                if (chosen && isThisCorrect) { bg = "#F0FDF4"; border = "#86EFAC"; color = "#16A34A"; }
-                else if (chosen && isThisSelected && !isThisCorrect) { bg = "#FEF2F2"; border = "#FCA5A5"; color = "#DC2626"; }
-                return (
-                  <button key={i} onClick={() => choose(opt)} disabled={chosen}
-                    style={{ textAlign: "left", padding: "12px 14px", borderRadius: 12, background: bg, border: `1.5px solid ${border}`, color, fontFamily: "Inter,sans-serif", fontSize: 14, fontWeight: 600, cursor: chosen ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    {optionLabel(opt)}
-                    {chosen && isThisCorrect && <CheckCircle size={16} color="#16A34A" />}
-                    {chosen && isThisSelected && !isThisCorrect && <XCircle size={16} color="#DC2626" />}
-                  </button>
-                );
-              })}
-            </div>
-            {selected !== null && (
-              <motion.button initial={{ opacity: 0 }} animate={{ opacity: 1 }} whileTap={{ scale: 0.96 }} onClick={next}
-                style={{ marginTop: 16, width: "100%", height: 46, borderRadius: 12, background: "#111827", color: "white", fontFamily: "Inter,sans-serif", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer" }}>
-                {index + 1 === questions.length ? "Ver resultado" : "Próxima"}
-              </motion.button>
-            )}
-          </motion.div>
+          <QuizQuestion q={q} index={index} selected={selected} onChoose={choose} onNext={next} isLast={index + 1 === questions.length} />
         )}
 
         {done && (
@@ -1096,57 +796,17 @@ function ReviewScreen({ onReview, onToast }) {
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 }}>
-            {due.map((item, i) => {
-              const next = nextPendingReview(item);
-              return (
-                <motion.button key={item.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
-                  whileTap={{ scale: 0.98 }} onClick={() => onReview(item)}
-                  style={{ background: "white", borderRadius: 20, padding: "14px 16px", border: "1px solid #FECACA", boxShadow: "0 1px 8px rgba(0,0,0,0.05)", cursor: "pointer", textAlign: "left", width: "100%", display: "flex", alignItems: "center", gap: 12 }}>
-                  <div style={{ width: 44, height: 44, borderRadius: 12, background: item.subjectBg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>
-                    {item.subjectIcon}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: 14, fontWeight: 700, color: "#111827", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.concept}</p>
-                    <p style={{ fontSize: 12, color: "#64748B", margin: "2px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.subject} · {next?.label}</p>
-                  </div>
-                  {item.calendarEvent ? (
-                    <Calendar size={16} color="#0F766E" style={{ flexShrink: 0 }} />
-                  ) : (
-                    <button onClick={(e) => handleScheduleReview(item, e)} disabled={scheduling === item.id}
-                      style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, borderRadius: 10, background: "#F1F5F9", border: "none", cursor: "pointer", flexShrink: 0 }}>
-                      <CalendarPlus size={15} color="#2563EB" />
-                    </button>
-                  )}
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "white", background: "#DC2626", borderRadius: 10, padding: "5px 12px", fontFamily: "Inter,sans-serif", flexShrink: 0 }}>Revisar</span>
-                </motion.button>
-              );
-            })}
+            {due.map((item, i) => (
+              <ReviewCard key={item.id} item={item} index={i} onReview={onReview} onSchedule={handleScheduleReview} scheduling={scheduling} />
+            ))}
           </div>
         )}
 
         <p style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: 1.2, marginBottom: 10 }}>PRÓXIMAS REVISÕES</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {upcoming.map(item => {
-            const next = nextPendingReview(item);
-            return (
-              <div key={item.id} style={{ background: "white", borderRadius: 16, padding: "12px 14px", border: "1px solid #E2E8F0", display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 18, flexShrink: 0 }}>{item.subjectIcon}</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: "#374151", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.concept}</p>
-                  <p style={{ fontSize: 11, color: "#94A3B8", margin: "1px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{next.label}</p>
-                </div>
-                <span style={{ fontSize: 12, fontWeight: 700, color: "#64748B", flexShrink: 0 }}>{formatDue(next.dueAt)}</span>
-                {item.calendarEvent ? (
-                  <Calendar size={15} color="#0F766E" style={{ flexShrink: 0 }} />
-                ) : (
-                  <button onClick={(e) => handleScheduleReview(item, e)} disabled={scheduling === item.id}
-                    style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, borderRadius: 9, background: "#F1F5F9", border: "none", cursor: "pointer", flexShrink: 0 }}>
-                    <CalendarPlus size={14} color="#2563EB" />
-                  </button>
-                )}
-              </div>
-            );
-          })}
+          {upcoming.map(item => (
+            <UpcomingReviewRow key={item.id} item={item} onSchedule={handleScheduleReview} scheduling={scheduling} />
+          ))}
         </div>
 
         <p style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: 1.2, marginTop: 24, marginBottom: 2 }}>COMPROMISSOS · CALENDÁRIO</p>
@@ -1158,19 +818,7 @@ function ReviewScreen({ onReview, onToast }) {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {commitments.map(item => (
-              <div key={`${item.id}_cal`} style={{ background: "white", borderRadius: 16, padding: "12px 14px", border: "1px solid #E2E8F0", display: "flex", alignItems: "flex-start", gap: 10 }}>
-                <div style={{ width: 34, height: 34, borderRadius: 10, background: "#EFF6FF", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <Calendar size={16} color="#2563EB" />
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: "#2563EB", background: "#EFF6FF", borderRadius: 8, padding: "2px 8px" }}>{item.calendarEvent.type}</span>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "#64748B" }}>{item.calendarEvent.date} · {item.calendarEvent.time}</span>
-                  </div>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: "#111827", margin: 0 }}>{item.concept}</p>
-                  <p style={{ fontSize: 11, color: "#94A3B8", margin: "1px 0 0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.subject} · {item.summary}</p>
-                </div>
-              </div>
+              <CommitmentCard key={`${item.id}_cal`} item={item} />
             ))}
           </div>
         )}
