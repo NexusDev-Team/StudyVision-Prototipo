@@ -4,9 +4,16 @@ import { isDueForReview } from "./reviewEngine";
 export function getStoredItems() {
   try {
     const stored = JSON.parse(localStorage.getItem("sv_items") || "[]");
-    const storedIds = new Set(stored.map(s => s.id));
-    // Stored (possibly updated) items win over the hardcoded seed data for the same id.
-    return [...stored, ...SAMPLE_ITEMS.filter(s => !storedIds.has(s.id))];
+    // Demo captures reuse the same handful of concepts — keep only the most
+    // recent save per concept (stored is newest-first, and takes priority
+    // over the hardcoded seed data) so repeated captures don't pile up
+    // duplicate library entries / due reviews.
+    const seenConcepts = new Set();
+    return [...stored, ...SAMPLE_ITEMS].filter(s => {
+      if (seenConcepts.has(s.concept)) return false;
+      seenConcepts.add(s.concept);
+      return true;
+    });
   } catch { return SAMPLE_ITEMS; }
 }
 

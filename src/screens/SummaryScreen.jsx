@@ -14,8 +14,17 @@ import { fadeUp } from "../styles/motion";
 export default function SummaryScreen({ capturedItem, onSave, onLibrary, onToast }) {
   const [saving, setSaving] = useState(false);
   const [calendarEvent, setCalendarEvent] = useState(null);
+  // Stable per screen instance — recomputing these on every render (e.g. after
+  // setCalendarEvent) would mint a new id/schedule and split the item in two.
+  const [itemId] = useState(() => `u_${Date.now()}`);
+  const [reviewSchedule] = useState(() => buildReviewSchedule(Date.now()));
   const template = capturedItem || SAMPLE_ITEMS[0];
-  const item = { ...template, id: `u_${Date.now()}`, time: "Agora", reviewSchedule: buildReviewSchedule(Date.now()) };
+  const item = { ...template, id: itemId, time: "Agora", reviewSchedule };
+
+  const handlePlanned = (event) => {
+    setCalendarEvent(event);
+    saveItem({ ...item, calendarEvent: event });
+  };
 
   const handleSave = () => {
     if (saving) return;
@@ -68,7 +77,7 @@ export default function SummaryScreen({ capturedItem, onSave, onLibrary, onToast
         <ExportSection item={item} onToast={onToast} />
 
         {/* Planning */}
-        <PlanningSection calendarEvent={calendarEvent} onPlanned={setCalendarEvent} onToast={onToast} />
+        <PlanningSection calendarEvent={calendarEvent} onPlanned={handlePlanned} onToast={onToast} />
 
         {/* Action buttons */}
         <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}
