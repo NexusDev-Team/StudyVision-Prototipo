@@ -25,10 +25,11 @@ Nenhum novo estado global, nenhuma persistência nova — usa o que já existe.
 - Estado local: mês/ano exibido (`useState`, inicia no mês atual).
 - Dia atual: contorno azul sutil.
 - Dia sem compromisso: não clicável, só número.
-- Dia com compromisso(s): bolinha abaixo do número.
-  - 1 matéria → bolinha cor sólida (`item.subjectColor`).
-  - 2+ matérias → `conic-gradient` com fatias iguais, uma cor por matéria distinta
-    presente naquele dia (matéria repetida não duplica fatia).
+- Dia com compromisso(s): bolinha de contorno do número preenchida com a cor da matéria.
+  - 1 matéria → bolinha (contorno do número) cor sólida (`item.subjectColor`).
+  - 2+ matérias → bolinha (contorno do número) com `conic-gradient` em fatias
+    iguais, uma cor por matéria distinta presente naquele dia (matéria repetida
+    não duplica fatia).
 - Clique em dia com compromisso → abre `DayEventsModal` com a lista daquele dia.
 - Props: `commitmentsByDate` (map `date -> item[]`), `onSelectDate(date)`.
 
