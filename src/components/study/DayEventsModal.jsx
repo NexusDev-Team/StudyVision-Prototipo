@@ -11,7 +11,7 @@ function formatDate(dateStr) {
   return `${d} de ${MONTHS[m - 1]}`;
 }
 
-export default function DayEventsModal({ date, items, onClose }) {
+export default function DayEventsModal({ date, entries, onClose }) {
   return (
     <Modal center>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
@@ -25,16 +25,16 @@ export default function DayEventsModal({ date, items, onClose }) {
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {items.map(item => (
-          <div key={`${item.id}_day`} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 14, background: "#F8FAFC", border: "1px solid #E2E8F0" }}>
+        {entries.map(({ id, item, type, time, stageLabel }) => (
+          <div key={id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 14, background: "#F8FAFC", border: "1px solid #E2E8F0" }}>
             <div style={{ width: 10, height: 10, borderRadius: "50%", background: item.subjectColor, flexShrink: 0 }} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ fontSize: 13, fontWeight: 700, color: "#111827", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.concept}</p>
               <p style={{ fontSize: 11, color: "#94A3B8", margin: "1px 0 0" }}>{item.subject}</p>
             </div>
             <div style={{ textAlign: "right", flexShrink: 0 }}>
-              <span style={{ display: "block", fontSize: 10, fontWeight: 700, color: item.subjectColor, background: item.subjectBg, borderRadius: 8, padding: "2px 7px", marginBottom: 3 }}>{item.calendarEvent.type}</span>
-              <span style={{ fontSize: 11, fontWeight: 600, color: "#64748B" }}>{item.calendarEvent.time}</span>
+              <span style={{ display: "block", fontSize: 10, fontWeight: 700, color: item.subjectColor, background: item.subjectBg, borderRadius: 8, padding: "2px 7px", marginBottom: 3 }}>{type}</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: "#64748B" }}>{time || stageLabel}</span>
             </div>
           </div>
         ))}

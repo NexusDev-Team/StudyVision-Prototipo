@@ -36,13 +36,26 @@ export default function ReviewScreen({ onReview, onToast }) {
     .slice(0, 5);
 
   const commitmentsByDate = {};
+  const addEntry = (date, entry) => (commitmentsByDate[date] ||= []).push(entry);
   for (const item of items) {
-    if (!item.calendarEvent) continue;
-    const d = item.calendarEvent.date;
-    if (!d) continue;
-    (commitmentsByDate[d] ||= []).push(item);
+    // manually saved commitment (prova, trabalho, apresentação ou revisão agendada)
+    if (item.calendarEvent?.date) {
+      addEntry(item.calendarEvent.date, {
+        id: `${item.id}_event`,
+        item,
+        type: item.calendarEvent.type,
+        time: item.calendarEvent.time,
+      });
+    }
+    // revisões pendentes da repetição espaçada aparecem sozinhas, sem precisar agendar
+    for (const stage of item.reviewSchedule || []) {
+      if (stage.done) continue;
+      const date = new Date(stage.dueAt).toISOString().slice(0, 10);
+      if (item.calendarEvent?.date === date) continue; // já representada acima
+      addEntry(date, { id: `${item.id}_review_${stage.stage}`, item, type: "Revisão", stageLabel: stage.label });
+    }
   }
-  const selectedItems = selectedDate ? (commitmentsByDate[selectedDate] || []) : [];
+  const selectedEntries = selectedDate ? (commitmentsByDate[selectedDate] || []) : [];
 
   return (
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#F8FAFC", fontFamily: "Inter,sans-serif", overflow: "hidden" }}>
@@ -83,7 +96,7 @@ export default function ReviewScreen({ onReview, onToast }) {
 
       <AnimatePresence>
         {selectedDate && (
-          <DayEventsModal date={selectedDate} items={selectedItems} onClose={() => setSelectedDate(null)} />
+          <DayEventsModal date={selectedDate} entries={selectedEntries} onClose={() => setSelectedDate(null)} />
         )}
       </AnimatePresence>
     </div>

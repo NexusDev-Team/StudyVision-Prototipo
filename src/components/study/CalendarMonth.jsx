@@ -11,26 +11,21 @@ function toDateStr(year, month, day) {
   return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
-function subjectColorsForDay(items) {
+function subjectColorsForDay(entries) {
   const seen = [];
-  for (const item of items) {
-    if (!seen.includes(item.subjectColor)) seen.push(item.subjectColor);
+  for (const entry of entries) {
+    if (!seen.includes(entry.item.subjectColor)) seen.push(entry.item.subjectColor);
   }
   return seen;
 }
 
-function ringStyle(colors) {
+function fillStyle(colors) {
   if (colors.length <= 1) {
-    return { border: `2.5px solid ${colors[0] || "transparent"}` };
+    return { background: colors[0] || "transparent" };
   }
   const slice = 360 / colors.length;
   const stops = colors.map((c, i) => `${c} ${i * slice}deg ${(i + 1) * slice}deg`).join(", ");
-  return {
-    border: "2.5px solid transparent",
-    backgroundImage: `linear-gradient(white, white), conic-gradient(${stops})`,
-    backgroundOrigin: "border-box",
-    backgroundClip: "content-box, border-box",
-  };
+  return { background: `conic-gradient(${stops})` };
 }
 
 export default function CalendarMonth({ commitmentsByDate, onSelectDate }) {
@@ -76,10 +71,10 @@ export default function CalendarMonth({ commitmentsByDate, onSelectDate }) {
         {cells.map((day, i) => {
           if (day === null) return <div key={i} />;
           const dateStr = toDateStr(cursor.year, cursor.month, day);
-          const dayItems = commitmentsByDate[dateStr] || [];
-          const hasEvents = dayItems.length > 0;
+          const dayEntries = commitmentsByDate[dateStr] || [];
+          const hasEvents = dayEntries.length > 0;
           const isToday = dateStr === todayStr;
-          const colors = subjectColorsForDay(dayItems);
+          const colors = subjectColorsForDay(dayEntries);
 
           return (
             <button
@@ -90,13 +85,13 @@ export default function CalendarMonth({ commitmentsByDate, onSelectDate }) {
                 aspectRatio: "1",
                 borderRadius: "50%",
                 cursor: hasEvents ? "pointer" : "default",
-                background: "white",
+                border: isToday ? "1.5px solid #2563EB" : "1.5px solid transparent",
                 fontFamily: "Inter,sans-serif",
                 fontSize: 12,
-                fontWeight: isToday ? 800 : 600,
-                color: isToday ? "#2563EB" : "#111827",
+                fontWeight: isToday || hasEvents ? 800 : 600,
+                color: hasEvents ? "white" : isToday ? "#2563EB" : "#111827",
                 boxSizing: "border-box",
-                ...(hasEvents ? ringStyle(colors) : { border: isToday ? "1.5px solid #2563EB" : "1.5px solid transparent" }),
+                ...(hasEvents ? fillStyle(colors) : { background: "white" }),
               }}
             >
               {day}
