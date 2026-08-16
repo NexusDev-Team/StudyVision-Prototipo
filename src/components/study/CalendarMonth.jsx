@@ -74,6 +74,7 @@ export default function CalendarMonth({ commitmentsByDate, onSelectDate }) {
           const dayEntries = commitmentsByDate[dateStr] || [];
           const hasEvents = dayEntries.length > 0;
           const isToday = dateStr === todayStr;
+          const isPast = dateStr < todayStr;
           const colors = subjectColorsForDay(dayEntries);
 
           return (
@@ -91,6 +92,7 @@ export default function CalendarMonth({ commitmentsByDate, onSelectDate }) {
                 fontWeight: isToday || hasEvents ? 800 : 600,
                 color: hasEvents ? "white" : isToday ? "#2563EB" : "#111827",
                 boxSizing: "border-box",
+                opacity: isPast ? 0.4 : 1,
                 ...(hasEvents ? fillStyle(colors) : { background: "white" }),
               }}
             >
