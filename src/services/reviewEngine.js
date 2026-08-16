@@ -23,9 +23,17 @@ export function nextPendingReview(item) {
   return (item.reviewSchedule || []).find(r => !r.done) || null;
 }
 
+// End of the current calendar day (23:59:59.999 local) — a review due later
+// today still counts as due "hoje", not as an upcoming review a few hours out.
+export function endOfToday() {
+  const d = new Date();
+  d.setHours(23, 59, 59, 999);
+  return d.getTime();
+}
+
 export function isDueForReview(item) {
   const next = nextPendingReview(item);
-  return !!next && next.dueAt <= Date.now();
+  return !!next && next.dueAt <= endOfToday();
 }
 
 export function completedReviews(item) {

@@ -7,7 +7,7 @@ import UpcomingReviewRow from "../components/study/UpcomingReviewRow";
 import CalendarMonth from "../components/study/CalendarMonth";
 import DayEventsModal from "../components/study/DayEventsModal";
 import { useStudyItems } from "../hooks/useStudyItems";
-import { nextPendingReview, isDueForReview } from "../services/reviewEngine";
+import { nextPendingReview, isDueForReview, endOfToday, DAY_MS } from "../services/reviewEngine";
 import { createEvent, scheduleReviews } from "../services/calendarService";
 
 export default function ReviewScreen({ onReview, onToast }) {
@@ -30,10 +30,11 @@ export default function ReviewScreen({ onReview, onToast }) {
   };
 
   const due = items.filter(isDueForReview);
+  const next3DaysEnd = endOfToday() + 3 * DAY_MS;
   const upcoming = items
     .filter(it => !isDueForReview(it) && nextPendingReview(it))
-    .sort((a, b) => nextPendingReview(a).dueAt - nextPendingReview(b).dueAt)
-    .slice(0, 5);
+    .filter(it => nextPendingReview(it).dueAt <= next3DaysEnd)
+    .sort((a, b) => nextPendingReview(a).dueAt - nextPendingReview(b).dueAt);
 
   const commitmentsByDate = {};
   const addEntry = (date, entry) => (commitmentsByDate[date] ||= []).push(entry);
