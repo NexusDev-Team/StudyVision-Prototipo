@@ -57,6 +57,7 @@ export default function App() {
             <CameraScreen
               onCapture={() => { setCapturedItem(nextCaptureTemplate()); go("analysis"); }}
               onVisionPlusNav={() => go("visionplus")}
+              onLibraryNav={() => goTo("library")}
             />
           )}
           {screen === "analysis" && (
@@ -125,7 +126,7 @@ export default function App() {
 
       {/* Toast */}
       <AnimatePresence>
-        {toast && <Toast message={toast} onDone={clearToast} />}
+        {toast && <Toast key={toast} message={toast} onDone={clearToast} />}
       </AnimatePresence>
     </PhoneFrame>
   );

@@ -4,14 +4,14 @@ import { CheckCircle } from "lucide-react";
 import LogoSVG from "../components/brand/LogoSVG";
 
 const STEPS = [
-  { text: "Texto identificado", delay: 0.9 },
-  { text: "Legibilidade 96%", delay: 1.6 },
-  { text: "Qualidade excelente", delay: 2.3 },
-  { text: "Conteúdo pronto para estudo", delay: 2.9 },
+  { text: "Texto identificado", delay: 0.35 },
+  { text: "Legibilidade 96%", delay: 0.65 },
+  { text: "Qualidade excelente", delay: 0.95 },
+  { text: "Conteúdo pronto para estudo", delay: 1.25 },
 ];
 
 export default function AnalysisScreen({ onDone }) {
-  useEffect(() => { const t = setTimeout(onDone, 4600); return () => clearTimeout(t); }, []);
+  useEffect(() => { const t = setTimeout(onDone, 1900); return () => clearTimeout(t); }, []);
 
   return (
     <div style={{ width: "100%", height: "100%", background: "linear-gradient(160deg,#030712 0%,#0f172a 55%,#1e1b4b 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>

@@ -11,7 +11,7 @@ const FOCUS_CORNERS = [
   { bottom: 0, right: 0 },
 ];
 
-export default function CameraScreen({ onCapture, onVisionPlusNav }) {
+export default function CameraScreen({ onCapture, onVisionPlusNav, onLibraryNav }) {
   const [flash, setFlash] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [capturing, setCapturing] = useState(false);
@@ -131,7 +131,7 @@ export default function CameraScreen({ onCapture, onVisionPlusNav }) {
       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 20, paddingBottom: 36, paddingTop: 16 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-around", paddingLeft: 20, paddingRight: 20 }}>
           {/* Gallery */}
-          <button style={{ width: 52, height: 52, borderRadius: 14, overflow: "hidden", border: "2.5px solid rgba(255,255,255,0.4)", cursor: "pointer", background: "linear-gradient(135deg,#1e3a8a,#7c3aed)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <button onClick={onLibraryNav} style={{ width: 52, height: 52, borderRadius: 14, overflow: "hidden", border: "2.5px solid rgba(255,255,255,0.4)", cursor: "pointer", background: "linear-gradient(135deg,#1e3a8a,#7c3aed)", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <BookOpen size={22} color="rgba(255,255,255,0.8)" />
           </button>
 

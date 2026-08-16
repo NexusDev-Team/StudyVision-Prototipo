@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { CheckCircle } from "lucide-react";
 
 export default function Toast({ message, onDone }) {
-  useEffect(() => { const t = setTimeout(onDone, 2400); return () => clearTimeout(t); }, []);
+  useEffect(() => { const t = setTimeout(onDone, 1800); return () => clearTimeout(t); }, [message]);
   return (
     <motion.div initial={{ y: 100, opacity: 0, scale: 0.9 }} animate={{ y: 0, opacity: 1, scale: 1 }} exit={{ y: 80, opacity: 0, scale: 0.9 }}
       transition={{ type: "spring", stiffness: 400, damping: 28 }}
