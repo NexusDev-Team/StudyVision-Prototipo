@@ -1,9 +1,11 @@
 import { useState } from "react";
+import { AnimatePresence } from "framer-motion";
 import { CheckCircle } from "lucide-react";
 import LogoSVG from "../components/brand/LogoSVG";
 import ReviewCard from "../components/study/ReviewCard";
 import UpcomingReviewRow from "../components/study/UpcomingReviewRow";
-import CommitmentCard from "../components/study/CommitmentCard";
+import CalendarMonth from "../components/study/CalendarMonth";
+import DayEventsModal from "../components/study/DayEventsModal";
 import { useStudyItems } from "../hooks/useStudyItems";
 import { nextPendingReview, isDueForReview } from "../services/reviewEngine";
 import { createEvent, scheduleReviews } from "../services/calendarService";
@@ -11,6 +13,7 @@ import { createEvent, scheduleReviews } from "../services/calendarService";
 export default function ReviewScreen({ onReview, onToast }) {
   const { items, save } = useStudyItems();
   const [scheduling, setScheduling] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(null);
 
   const handleScheduleReview = async (item, e) => {
     e.stopPropagation();
@@ -31,9 +34,15 @@ export default function ReviewScreen({ onReview, onToast }) {
     .filter(it => !isDueForReview(it) && nextPendingReview(it))
     .sort((a, b) => nextPendingReview(a).dueAt - nextPendingReview(b).dueAt)
     .slice(0, 5);
-  const commitments = items
-    .filter(it => it.calendarEvent)
-    .sort((a, b) => new Date(`${a.calendarEvent.date}T${a.calendarEvent.time || "00:00"}`) - new Date(`${b.calendarEvent.date}T${b.calendarEvent.time || "00:00"}`));
+
+  const commitmentsByDate = {};
+  for (const item of items) {
+    if (!item.calendarEvent) continue;
+    const d = item.calendarEvent.date;
+    if (!d) continue;
+    (commitmentsByDate[d] ||= []).push(item);
+  }
+  const selectedItems = selectedDate ? (commitmentsByDate[selectedDate] || []) : [];
 
   return (
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#F8FAFC", fontFamily: "Inter,sans-serif", overflow: "hidden" }}>
@@ -62,26 +71,21 @@ export default function ReviewScreen({ onReview, onToast }) {
         )}
 
         <p style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: 1.2, marginBottom: 10 }}>PRÓXIMAS REVISÕES</p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
           {upcoming.map(item => (
             <UpcomingReviewRow key={item.id} item={item} onSchedule={handleScheduleReview} scheduling={scheduling} />
           ))}
         </div>
 
-        <p style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: 1.2, marginTop: 24, marginBottom: 2 }}>COMPROMISSOS · CALENDÁRIO</p>
-        <p style={{ fontSize: 11, color: "#94A3B8", margin: "0 0 10px" }}>Data de provas, listas...</p>
-        {commitments.length === 0 ? (
-          <div style={{ background: "white", borderRadius: 20, padding: "20px 18px", textAlign: "center", border: "1px solid #E2E8F0" }}>
-            <p style={{ fontSize: 13, color: "#64748B", margin: 0, fontFamily: "Inter,sans-serif" }}>Nenhum compromisso salvo ainda.</p>
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {commitments.map(item => (
-              <CommitmentCard key={`${item.id}_cal`} item={item} />
-            ))}
-          </div>
-        )}
+        <p style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: 1.2, marginBottom: 10 }}>CALENDÁRIO</p>
+        <CalendarMonth commitmentsByDate={commitmentsByDate} onSelectDate={setSelectedDate} />
       </div>
+
+      <AnimatePresence>
+        {selectedDate && (
+          <DayEventsModal date={selectedDate} items={selectedItems} onClose={() => setSelectedDate(null)} />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
