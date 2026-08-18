@@ -8,26 +8,10 @@ import CalendarMonth from "../components/study/CalendarMonth";
 import DayEventsModal from "../components/study/DayEventsModal";
 import { useStudyItems } from "../hooks/useStudyItems";
 import { nextPendingReview, isDueForReview, endOfToday, DAY_MS } from "../services/reviewEngine";
-import { createEvent, scheduleReviews } from "../services/calendarService";
 
-export default function ReviewScreen({ onReview, onToast }) {
-  const { items, save } = useStudyItems();
-  const [scheduling, setScheduling] = useState(null);
+export default function ReviewScreen({ onReview }) {
+  const { items } = useStudyItems();
   const [selectedDate, setSelectedDate] = useState(null);
-
-  const handleScheduleReview = async (item, e) => {
-    e.stopPropagation();
-    if (scheduling) return;
-    setScheduling(item.id);
-    const next = nextPendingReview(item);
-    const event = await createEvent({ type: "Revisão", date: next ? new Date(next.dueAt).toISOString().slice(0, 10) : "", time: "09:00" });
-    await scheduleReviews({ event, reminders: [0] });
-    const updated = { ...item, calendarEvent: event };
-    save(updated);
-    setScheduling(null);
-    onToast("✓ Evento criado com sucesso");
-    setTimeout(() => onToast("✓ Revisões adicionadas automaticamente"), 1200);
-  };
 
   const due = items.filter(isDueForReview);
   const next3DaysEnd = endOfToday() + 3 * DAY_MS;
@@ -79,7 +63,7 @@ export default function ReviewScreen({ onReview, onToast }) {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 }}>
             {due.map((item, i) => (
-              <ReviewCard key={item.id} item={item} index={i} onReview={onReview} onSchedule={handleScheduleReview} scheduling={scheduling} />
+              <ReviewCard key={item.id} item={item} index={i} onReview={onReview} />
             ))}
           </div>
         )}
@@ -87,7 +71,7 @@ export default function ReviewScreen({ onReview, onToast }) {
         <p style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: 1.2, marginBottom: 10 }}>PRÓXIMAS REVISÕES</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
           {upcoming.map(item => (
-            <UpcomingReviewRow key={item.id} item={item} onSchedule={handleScheduleReview} scheduling={scheduling} />
+            <UpcomingReviewRow key={item.id} item={item} />
           ))}
         </div>
 
