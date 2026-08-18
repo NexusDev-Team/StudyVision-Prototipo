@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Star, Search, BookOpen } from "lucide-react";
 import LogoSVG from "../components/brand/LogoSVG";
 import ContentCard from "../components/study/ContentCard";
-import FilterPills from "../components/ui/FilterPills";
+import SubjectFolderGrid from "../components/ui/SubjectFolderGrid";
 import { useStudyItems } from "../hooks/useStudyItems";
 import { SUBJECT_FILTERS } from "../constants";
 
@@ -45,13 +45,7 @@ export default function LibraryScreen({ onOpenItem, onVisionPlus }) {
         </div>
 
         {/* Filters */}
-        <FilterPills
-          options={SUBJECT_FILTERS} active={activeFilter} onSelect={setActiveFilter}
-          layout="scroll" padding="5px 14px"
-          activeBg="#2563EB" activeColor="white"
-          inactiveBg="white" inactiveColor="#64748B" inactiveBorder="1.5px solid #E2E8F0"
-          style={{ marginTop: 10 }}
-        />
+        <SubjectFolderGrid options={SUBJECT_FILTERS} active={activeFilter} onSelect={setActiveFilter} />
       </div>
 
       {/* List */}

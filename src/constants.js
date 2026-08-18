@@ -10,3 +10,10 @@ export const REMINDER_OPTIONS = [
 ];
 
 export const SUBJECT_FILTERS = ["Todos", "Matemática", "História", "Química"];
+
+export const SUBJECT_META = {
+  Todos: { icon: "LayoutGrid", color: "#64748B", bg: "#F1F5F9" },
+  Matemática: { icon: "Calculator", color: "#2563EB", bg: "#EFF6FF" },
+  História: { icon: "Landmark", color: "#16A34A", bg: "#F0FDF4" },
+  Química: { icon: "FlaskConical", color: "#EA580C", bg: "#FFF7ED" },
+};
