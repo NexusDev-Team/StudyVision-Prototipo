@@ -3,6 +3,7 @@ import Screen from "../components/layout/Screen";
 import ScrollArea from "../components/layout/ScrollArea";
 import PlusHeader from "../components/plus/PlusHeader";
 import PlusHero from "../components/plus/PlusHero";
+import MetricCards from "../components/plus/MetricCards";
 
 export default function VisionPlusScreen({ onBack, isPlus, daysRemaining, onStartTrial, onResetToFree, onToast }) {
   return (
@@ -16,7 +17,8 @@ export default function VisionPlusScreen({ onBack, isPlus, daysRemaining, onStar
       <ScrollArea padding="18px 20px 30px" flexColumn>
         <PlusHeader />
         {!isPlus && <PlusHero onStartTrial={onStartTrial} />}
-        {/* Dashboard e paywall entram nas próximas tarefas do plano */}
+        <MetricCards />
+        {/* Evolução por matéria, desempenho, insights e paywall entram nas próximas tarefas */}
       </ScrollArea>
     </Screen>
   );
