@@ -1,8 +1,8 @@
-import { LayoutGrid, Calculator, Landmark, FlaskConical } from "lucide-react";
+import { LayoutGrid, Calculator, Landmark, FlaskConical, Atom, Code2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { SUBJECT_META } from "../../constants";
 
-const ICONS = { LayoutGrid, Calculator, Landmark, FlaskConical };
+const ICONS = { LayoutGrid, Calculator, Landmark, FlaskConical, Atom, Code2 };
 
 export default function SubjectFolderGrid({ options, active, onSelect }) {
   return (

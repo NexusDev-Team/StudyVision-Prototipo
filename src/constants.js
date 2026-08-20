@@ -16,4 +16,6 @@ export const SUBJECT_META = {
   Matemática: { icon: "Calculator", color: "#2563EB", bg: "#EFF6FF" },
   História: { icon: "Landmark", color: "#16A34A", bg: "#F0FDF4" },
   Química: { icon: "FlaskConical", color: "#EA580C", bg: "#FFF7ED" },
+  Física: { icon: "Atom", color: "#7C3AED", bg: "#EDE9FE" },
+  Programação: { icon: "Code2", color: "#14B8A6", bg: "#F0FDFA" },
 };
