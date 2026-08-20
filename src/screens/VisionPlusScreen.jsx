@@ -31,7 +31,7 @@ export default function VisionPlusScreen({ onBack, isPlus, daysRemaining, onStar
         </button>
       </div>
       <ScrollArea ref={scrollRef} padding="18px 20px 30px" flexColumn>
-        <PlusHeader />
+        <PlusHeader onResetToFree={onResetToFree} />
         {isPlus ? <PlusActiveStatus daysRemaining={daysRemaining} /> : <PlusHero onStartTrial={handleStartTrial} />}
         <MetricCards />
         <SubjectProgress locked={!isPlus} onStartTrial={handleStartTrial} />

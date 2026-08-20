@@ -45,3 +45,9 @@ No GitHub: **Settings → Pages → Source: Deploy from a branch → Branch `mai
 ## Planejamento
 
 Planos de trabalho ficam em `plans/`.
+
+## Demonstração do Study Vision+
+
+O estado de assinatura (`sv_subscription` no localStorage) persiste entre sessões.
+Para reiniciar a demonstração — voltar ao estado Free durante uma apresentação —
+segure (long-press, ~1s) o selo **PLUS** no topo da aba Study Vision+.
