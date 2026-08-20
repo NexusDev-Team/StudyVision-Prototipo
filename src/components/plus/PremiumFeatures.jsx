@@ -20,7 +20,7 @@ export default function PremiumFeatures() {
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
         {SIMPLE_FEATURES.map(f => (
-          <Card key={f.title} style={{ padding: "14px 16px", display: "flex", alignItems: "flex-start", gap: 12 }}>
+          <Card key={f.title} style={{ padding: "14px 16px", margin: 0, display: "flex", alignItems: "flex-start", gap: 12 }}>
             <div style={{ width: 36, height: 36, borderRadius: 10, background: `${f.color}1A`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <f.icon size={18} color={f.color} />
             </div>

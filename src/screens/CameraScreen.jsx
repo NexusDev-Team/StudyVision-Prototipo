@@ -11,7 +11,7 @@ const FOCUS_CORNERS = [
   { bottom: 0, right: 0 },
 ];
 
-export default function CameraScreen({ onCapture, onVisionPlusNav, onLibraryNav }) {
+export default function CameraScreen({ onCapture, onLibraryNav }) {
   const [flash, setFlash] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [capturing, setCapturing] = useState(false);

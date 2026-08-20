@@ -61,7 +61,6 @@ export default function App() {
           {screen === "camera" && (
             <CameraScreen
               onCapture={() => { setCapturedItem(nextCaptureTemplate()); go("analysis"); }}
-              onVisionPlusNav={() => go("visionplus")}
               onLibraryNav={() => goTo("library")}
             />
           )}

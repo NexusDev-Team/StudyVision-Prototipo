@@ -33,7 +33,7 @@ export default function SubjectProgress({ locked, visibleCount = 2, onStartTrial
   return (
     <div style={{ marginBottom: 20 }}>
       <SectionLabel>Evolução por matéria</SectionLabel>
-      <Card style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
+      <Card style={{ padding: "18px 20px", margin: 0, display: "flex", flexDirection: "column", gap: 16 }}>
         <SubjectRows subjects={visible} />
         {rest.length > 0 && (
           <PlusPaywall locked title="Ver evolução por tópico" message="Continue vendo o domínio em todas as suas matérias." onStartTrial={onStartTrial}>

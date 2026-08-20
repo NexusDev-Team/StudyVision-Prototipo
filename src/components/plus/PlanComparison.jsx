@@ -15,7 +15,7 @@ const PLUS_ITEMS = [
 
 function PlanColumn({ title, items, accent }) {
   return (
-    <Card style={{ flex: 1, padding: "16px 14px", border: accent ? "1.5px solid #C4B5FD" : undefined }}>
+    <Card style={{ flex: 1, padding: "16px 14px", margin: 0, border: accent ? "1.5px solid #C4B5FD" : undefined }}>
       <p style={{ fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 800, color: accent ? "#6D28D9" : "#111827", margin: "0 0 12px" }}>{title}</p>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {items.map(item => (

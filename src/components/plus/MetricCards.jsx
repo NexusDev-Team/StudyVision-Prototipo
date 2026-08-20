@@ -27,7 +27,7 @@ export default function MetricCards() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 20 }}>
-      <Card initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} style={{ padding: "18px 20px", display: "flex", alignItems: "center", gap: 16 }}>
+      <Card initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} style={{ padding: "18px 20px", margin: 0, display: "flex", alignItems: "center", gap: 16 }}>
         <ProgressRing value={mastery} size={72} stroke={8} color="#2563EB">
           <span style={{ fontFamily: "Inter,sans-serif", fontSize: 18, fontWeight: 800, color: "#111827" }}>{mastery}%</span>
         </ProgressRing>
@@ -38,12 +38,12 @@ export default function MetricCards() {
       </Card>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <Card initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }} style={{ padding: "16px" }}>
+        <Card initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }} style={{ padding: "16px", margin: 0 }}>
           <p style={{ fontFamily: "Inter,sans-serif", fontSize: 18, fontWeight: 800, color: "#111827", margin: "0 0 2px" }}>{formatMinutes(studyMinutes)}</p>
           <p style={{ fontFamily: "Inter,sans-serif", fontSize: 12, color: "#64748B", margin: "0 0 8px" }}>tempo estudado</p>
           <DeltaTag value={studyDelta} suffix="% vs. período anterior" />
         </Card>
-        <Card initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }} style={{ padding: "16px" }}>
+        <Card initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }} style={{ padding: "16px", margin: 0 }}>
           <p style={{ fontFamily: "Inter,sans-serif", fontSize: 18, fontWeight: 800, color: "#111827", margin: "0 0 2px" }}>{contents} conteúdos</p>
           <p style={{ fontFamily: "Inter,sans-serif", fontSize: 12, color: "#64748B", margin: 0 }}>organizados e revisados</p>
         </Card>
