@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useStudyItems } from "./hooks/useStudyItems";
 import { useNavigation } from "./hooks/useNavigation";
 import { useToast } from "./hooks/useToast";
+import { useSubscription } from "./hooks/useSubscription";
 import { nextCaptureTemplate } from "./data/sampleContent";
 import { slideIn, fadeUp } from "./styles/motion";
 import StatusBar from "./components/layout/StatusBar";
@@ -26,6 +27,7 @@ export default function App() {
   const [capturedItem, setCapturedItem] = useState(null);
   const { toast, showToast, clearToast } = useToast();
   const { dueCount, reload: refreshDueCount, markDone } = useStudyItems();
+  const { isPlus, daysRemaining, startTrial, resetToFree } = useSubscription();
 
   const handleReviewComplete = () => {
     const updated = markDone(selectedItem);
@@ -107,7 +109,14 @@ export default function App() {
             <ReviewScreen onReview={(item) => { setSelectedItem(item); setReviewMode(true); go("flashcards"); }} onToast={showToast} />
           )}
           {screen === "visionplus" && (
-            <VisionPlusScreen onBack={goBack} />
+            <VisionPlusScreen
+              onBack={goBack}
+              isPlus={isPlus}
+              daysRemaining={daysRemaining}
+              onStartTrial={startTrial}
+              onResetToFree={resetToFree}
+              onToast={showToast}
+            />
           )}
         </motion.div>
       </AnimatePresence>
@@ -119,7 +128,7 @@ export default function App() {
             if (id === "camera") goTo("camera");
             else if (id === "library") goTo("library");
             else if (id === "review") goTo("review");
-            else goTo("visionplus");
+            else if (id === "visionplus") goTo("visionplus");
           }}
         />
       )}
