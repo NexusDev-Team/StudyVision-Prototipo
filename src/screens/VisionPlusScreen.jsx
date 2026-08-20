@@ -24,13 +24,13 @@ export default function VisionPlusScreen({ onBack, isPlus, daysRemaining, onStar
         <PlusHeader />
         {!isPlus && <PlusHero onStartTrial={onStartTrial} />}
         <MetricCards />
-        <SubjectProgress />
-        <PerformanceChart />
+        <SubjectProgress locked={!isPlus} onStartTrial={onStartTrial} />
+        <PerformanceChart locked={!isPlus} onStartTrial={onStartTrial} />
         <StrengthsCard />
-        <AttentionCard />
-        <InsightCard />
+        <AttentionCard hideNames={!isPlus} />
+        <InsightCard locked={!isPlus} onStartTrial={onStartTrial} />
         <PremiumFeatures />
-        {/* Comparação de planos e paywall entram nas próximas tarefas */}
+        {/* Comparação de planos entra em T3.1 */}
       </ScrollArea>
     </Screen>
   );
