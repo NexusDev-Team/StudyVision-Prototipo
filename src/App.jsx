@@ -42,7 +42,7 @@ export default function App() {
     : ["library", "detail", "flashcards", "questions", "quiz"].includes(screen) ? "library"
     : screen === "visionplus" ? "visionplus" : "camera";
 
-  const isLight = !["camera", "analysis", "visionplus"].includes(screen);
+  const isLight = !["camera", "analysis"].includes(screen);
   const showNav = !["camera", "analysis"].includes(screen);
 
   const transitions = ["visionplus", "library", "review"].includes(screen) ? fadeUp : slideIn;
