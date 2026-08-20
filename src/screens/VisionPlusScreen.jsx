@@ -13,6 +13,7 @@ import AttentionCard from "../components/plus/AttentionCard";
 import InsightCard from "../components/plus/InsightCard";
 import PremiumFeatures from "../components/plus/PremiumFeatures";
 import PlanComparison from "../components/plus/PlanComparison";
+import PlusFinalCta from "../components/plus/PlusFinalCta";
 
 export default function VisionPlusScreen({ onBack, isPlus, daysRemaining, onStartTrial, onResetToFree, onToast }) {
   const scrollRef = useRef(null);
@@ -41,6 +42,7 @@ export default function VisionPlusScreen({ onBack, isPlus, daysRemaining, onStar
         <InsightCard locked={!isPlus} onStartTrial={handleStartTrial} />
         <PremiumFeatures />
         <PlanComparison />
+        {!isPlus && <PlusFinalCta onStartTrial={handleStartTrial} />}
         {isPlus && (
           <p style={{ fontFamily: "Inter,sans-serif", fontSize: 11, color: "#94A3B8", textAlign: "center", margin: "4px 0 0" }}>
             Depois do teste, R$ 9,90/mês · cancele quando quiser
