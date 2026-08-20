@@ -4,6 +4,7 @@ import Screen from "../components/layout/Screen";
 import ScrollArea from "../components/layout/ScrollArea";
 import PlusHeader from "../components/plus/PlusHeader";
 import PlusHero from "../components/plus/PlusHero";
+import PlusActiveStatus from "../components/plus/PlusActiveStatus";
 import MetricCards from "../components/plus/MetricCards";
 import SubjectProgress from "../components/plus/SubjectProgress";
 import PerformanceChart from "../components/plus/PerformanceChart";
@@ -31,7 +32,7 @@ export default function VisionPlusScreen({ onBack, isPlus, daysRemaining, onStar
       </div>
       <ScrollArea ref={scrollRef} padding="18px 20px 30px" flexColumn>
         <PlusHeader />
-        {!isPlus && <PlusHero onStartTrial={handleStartTrial} />}
+        {isPlus ? <PlusActiveStatus daysRemaining={daysRemaining} /> : <PlusHero onStartTrial={handleStartTrial} />}
         <MetricCards />
         <SubjectProgress locked={!isPlus} onStartTrial={handleStartTrial} />
         <PerformanceChart locked={!isPlus} onStartTrial={handleStartTrial} />
@@ -40,6 +41,11 @@ export default function VisionPlusScreen({ onBack, isPlus, daysRemaining, onStar
         <InsightCard locked={!isPlus} onStartTrial={handleStartTrial} />
         <PremiumFeatures />
         <PlanComparison />
+        {isPlus && (
+          <p style={{ fontFamily: "Inter,sans-serif", fontSize: 11, color: "#94A3B8", textAlign: "center", margin: "4px 0 0" }}>
+            Depois do teste, R$ 9,90/mês · cancele quando quiser
+          </p>
+        )}
       </ScrollArea>
     </Screen>
   );
