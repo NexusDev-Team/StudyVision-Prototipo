@@ -6,6 +6,9 @@ import PlusHero from "../components/plus/PlusHero";
 import MetricCards from "../components/plus/MetricCards";
 import SubjectProgress from "../components/plus/SubjectProgress";
 import PerformanceChart from "../components/plus/PerformanceChart";
+import StrengthsCard from "../components/plus/StrengthsCard";
+import AttentionCard from "../components/plus/AttentionCard";
+import InsightCard from "../components/plus/InsightCard";
 
 export default function VisionPlusScreen({ onBack, isPlus, daysRemaining, onStartTrial, onResetToFree, onToast }) {
   return (
@@ -22,7 +25,10 @@ export default function VisionPlusScreen({ onBack, isPlus, daysRemaining, onStar
         <MetricCards />
         <SubjectProgress />
         <PerformanceChart />
-        {/* Pontos fortes, atenção, insight e paywall entram nas próximas tarefas */}
+        <StrengthsCard />
+        <AttentionCard />
+        <InsightCard />
+        {/* Recursos premium, comparação de planos e paywall entram nas próximas tarefas */}
       </ScrollArea>
     </Screen>
   );

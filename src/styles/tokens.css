@@ -19,6 +19,9 @@
   --sv-red-border-alt: #FCA5A5;
   --sv-orange: #EA580C;
   --sv-amber: #F59E0B;
+  --sv-amber-bg: #FFFBEB;
+  --sv-amber-border: #FDE68A;
+  --sv-amber-text: #B45309;
 
   /* neutrals */
   --sv-ink: #111827;
