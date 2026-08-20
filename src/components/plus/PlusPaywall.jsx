@@ -28,7 +28,7 @@ export default function PlusPaywall({ locked, title = "Desbloqueie sua evoluçã
             <Lock size={22} color="#7C3AED" style={{ marginBottom: 8 }} />
             <p style={{ fontFamily: "Inter,sans-serif", fontSize: 15, fontWeight: 800, color: "#111827", margin: "0 0 4px" }}>{title}</p>
             {message && <p style={{ fontFamily: "Inter,sans-serif", fontSize: 12, color: "#64748B", margin: "0 0 14px", maxWidth: 240, lineHeight: 1.5 }}>{message}</p>}
-            <Button variant="primary" onClick={onStartTrial} style={{ padding: "10px 22px", height: "auto", fontSize: 13 }}>
+            <Button variant="primary" onClick={onStartTrial} style={{ padding: "0 22px", height: 44, fontSize: 13 }}>
               Começar 7 dias grátis
             </Button>
             <p style={{ fontFamily: "Inter,sans-serif", fontSize: 11, color: "#94A3B8", margin: "8px 0 0" }}>Depois, R$ 9,90/mês · cancele quando quiser</p>

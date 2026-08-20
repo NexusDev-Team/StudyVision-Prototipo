@@ -29,7 +29,7 @@ export default function PlusHero({ onStartTrial }) {
       </Button>
       <p style={{ fontFamily: "Inter,sans-serif", fontSize: 12, color: "#94A3B8", margin: "10px 0 0" }}>Cancele quando quiser.</p>
 
-      <button onClick={scrollToFeatures} style={{ marginTop: 14, background: "none", border: "none", cursor: "pointer", fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, color: "#7C3AED" }}>
+      <button onClick={scrollToFeatures} style={{ marginTop: 6, padding: "12px 16px", minHeight: 44, background: "none", border: "none", cursor: "pointer", fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, color: "#7C3AED" }}>
         Conhecer recursos
       </button>
     </motion.div>
