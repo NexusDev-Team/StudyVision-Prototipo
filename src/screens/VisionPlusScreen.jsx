@@ -10,6 +10,7 @@ import StrengthsCard from "../components/plus/StrengthsCard";
 import AttentionCard from "../components/plus/AttentionCard";
 import InsightCard from "../components/plus/InsightCard";
 import PremiumFeatures from "../components/plus/PremiumFeatures";
+import PlanComparison from "../components/plus/PlanComparison";
 
 export default function VisionPlusScreen({ onBack, isPlus, daysRemaining, onStartTrial, onResetToFree, onToast }) {
   return (
@@ -30,7 +31,7 @@ export default function VisionPlusScreen({ onBack, isPlus, daysRemaining, onStar
         <AttentionCard hideNames={!isPlus} />
         <InsightCard locked={!isPlus} onStartTrial={onStartTrial} />
         <PremiumFeatures />
-        {/* Comparação de planos entra em T3.1 */}
+        <PlanComparison />
       </ScrollArea>
     </Screen>
   );
