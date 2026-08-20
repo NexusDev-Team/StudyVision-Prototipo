@@ -95,15 +95,16 @@ export default function App() {
               item={selectedItem}
               onBack={goBack}
               onVisionPlus={() => go("visionplus")}
+              isPlus={isPlus}
               reviewMode={reviewMode}
               onReviewComplete={handleReviewComplete}
             />
           )}
           {screen === "questions" && (
-            <QuestionsScreen item={selectedItem} onBack={goBack} />
+            <QuestionsScreen item={selectedItem} onBack={goBack} isPlus={isPlus} onVisionPlus={() => go("visionplus")} />
           )}
           {screen === "quiz" && (
-            <QuizScreen item={selectedItem} onBack={goBack} />
+            <QuizScreen item={selectedItem} onBack={goBack} isPlus={isPlus} onVisionPlus={() => go("visionplus")} />
           )}
           {screen === "review" && (
             <ReviewScreen onReview={(item) => { setSelectedItem(item); setReviewMode(true); go("flashcards"); }} onToast={showToast} />

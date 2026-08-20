@@ -3,8 +3,15 @@ import { motion } from "framer-motion";
 import { ChevronLeft, ListChecks, Sparkles } from "lucide-react";
 import QuizQuestion from "../components/study/QuizQuestion";
 
-export default function QuizScreen({ item, onBack }) {
-  const questions = item?.quiz || [];
+function generateQuizQuestion(item, n) {
+  const concept = item?.concepts?.[n % (item.concepts?.length || 1)] || item?.concept || "este conteúdo";
+  return { type: "vf", question: `${concept} é um dos pontos centrais de "${item?.concept}".`, answer: true };
+}
+
+export default function QuizScreen({ item, onBack, isPlus = false, onVisionPlus }) {
+  const baseQuestions = item?.quiz || [];
+  const [extraQuestions, setExtraQuestions] = useState([]);
+  const questions = [...baseQuestions, ...extraQuestions];
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState(null);
   const [score, setScore] = useState(0);
@@ -19,6 +26,10 @@ export default function QuizScreen({ item, onBack }) {
   };
 
   const next = () => { setSelected(null); setIndex(i => i + 1); };
+
+  const generateMore = () => {
+    setExtraQuestions(prev => [...prev, generateQuizQuestion(item, baseQuestions.length + prev.length)]);
+  };
 
   return (
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#F8FAFC", fontFamily: "Inter,sans-serif", overflow: "hidden" }}>
@@ -54,6 +65,24 @@ export default function QuizScreen({ item, onBack }) {
             </motion.button>
           </motion.div>
         )}
+
+        {done && (isPlus ? (
+          <motion.button whileTap={{ scale: 0.96 }} onClick={generateMore}
+            style={{ width: "100%", padding: "13px 20px", borderRadius: 14, background: "#FFF7ED", border: "1.5px solid #FED7AA", color: "#EA580C", fontFamily: "Inter,sans-serif", fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 14 }}>
+            <Sparkles size={16} />
+            Gerar mais perguntas
+          </motion.button>
+        ) : (
+          <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
+            style={{ background: "linear-gradient(135deg,#FFF7ED,#FFEDD5)", borderRadius: 20, padding: "18px 20px", textAlign: "center", border: "1px solid #FED7AA", marginTop: 14 }}>
+            <p style={{ fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, color: "#C2410C", margin: "0 0 4px" }}>Quer mais perguntas sobre este conteúdo?</p>
+            <p style={{ fontFamily: "Inter,sans-serif", fontSize: 12, color: "#EA580C", margin: "0 0 12px" }}>Gere quizzes ilimitados com o Vision+</p>
+            <motion.button whileTap={{ scale: 0.96 }} onClick={onVisionPlus}
+              style={{ padding: "10px 24px", borderRadius: 12, background: "linear-gradient(135deg,#EA580C,#F59E0B)", color: "white", fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, border: "none", cursor: "pointer" }}>
+              Ver Vision+
+            </motion.button>
+          </motion.div>
+        ))}
       </div>
     </div>
   );

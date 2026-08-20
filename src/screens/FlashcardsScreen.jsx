@@ -1,18 +1,28 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ChevronLeft, CreditCard, ThumbsUp, ThumbsDown, CheckCircle, Lock } from "lucide-react";
+import { ChevronLeft, CreditCard, ThumbsUp, ThumbsDown, CheckCircle, Lock, Sparkles } from "lucide-react";
 import Flashcard from "../components/study/Flashcard";
 import { FREE_FLASHCARD_LIMIT } from "../constants";
 
-export default function FlashcardsScreen({ item, onBack, onVisionPlus, reviewMode = false, onReviewComplete }) {
+function generateFlashcard(item, n) {
+  const concept = item?.concepts?.[n % (item.concepts?.length || 1)] || item?.concept || "este conteúdo";
+  return { front: `O que você lembra sobre ${concept}?`, back: `Revise o material de "${item?.concept}" para aprofundar em ${concept}.` };
+}
+
+export default function FlashcardsScreen({ item, onBack, onVisionPlus, isPlus = false, reviewMode = false, onReviewComplete }) {
   const allCards = item?.flashcards || [];
-  const cards = allCards.slice(0, FREE_FLASHCARD_LIMIT);
-  const lockedCount = Math.max(0, allCards.length - FREE_FLASHCARD_LIMIT);
+  const [extraCards, setExtraCards] = useState([]);
+  const cards = isPlus ? [...allCards, ...extraCards] : allCards.slice(0, FREE_FLASHCARD_LIMIT);
+  const lockedCount = isPlus ? 0 : Math.max(0, allCards.length - FREE_FLASHCARD_LIMIT);
 
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [grades, setGrades] = useState([]); // true = lembrei, false = não lembrei
   const done = index >= cards.length;
+
+  const generateMore = () => {
+    setExtraCards(prev => [...prev, generateFlashcard(item, allCards.length + prev.length)]);
+  };
 
   const grade = (remembered) => {
     setGrades(g => [...g, remembered]);
@@ -81,8 +91,8 @@ export default function FlashcardsScreen({ item, onBack, onVisionPlus, reviewMod
           </motion.div>
         )}
 
-        {/* Unlock CTA for cards beyond the free limit */}
-        {done && lockedCount > 0 && (
+        {/* Unlock CTA for cards beyond the free limit — appears after the value already delivered */}
+        {done && !isPlus && lockedCount > 0 && (
           <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
             style={{ background: "linear-gradient(135deg,#EDE9FE,#DDD6FE)", borderRadius: 20, padding: "22px 20px", textAlign: "center", border: "1px solid #C4B5FD", marginTop: 14 }}>
             <Lock size={24} color="#7C3AED" style={{ margin: "0 auto 10px" }} />
@@ -91,6 +101,17 @@ export default function FlashcardsScreen({ item, onBack, onVisionPlus, reviewMod
             <motion.button whileTap={{ scale: 0.96 }} onClick={onVisionPlus}
               style={{ padding: "11px 28px", borderRadius: 14, background: "linear-gradient(135deg,#7C3AED,#2563EB)", color: "white", fontFamily: "Inter,sans-serif", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer", boxShadow: "0 4px 14px rgba(124,58,237,0.35)" }}>
               Ver Vision+
+            </motion.button>
+          </motion.div>
+        )}
+
+        {/* Plus: generate more cards instead of hitting a limit */}
+        {done && isPlus && (
+          <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} style={{ marginTop: 14 }}>
+            <motion.button whileTap={{ scale: 0.96 }} onClick={generateMore}
+              style={{ width: "100%", padding: "13px 20px", borderRadius: 14, background: "#EDE9FE", border: "1.5px solid #C4B5FD", color: "#7C3AED", fontFamily: "Inter,sans-serif", fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              <Sparkles size={16} />
+              Gerar mais flashcards
             </motion.button>
           </motion.div>
         )}

@@ -1,8 +1,19 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { ChevronLeft, HelpCircle } from "lucide-react";
+import { ChevronLeft, HelpCircle, Sparkles } from "lucide-react";
 
-export default function QuestionsScreen({ item, onBack }) {
-  const qs = item?.questions || [];
+function generateQuestion(item, n) {
+  const concept = item?.concepts?.[n % (item.concepts?.length || 1)] || item?.concept || "este conteúdo";
+  return `Como você explicaria ${concept} com suas próprias palavras?`;
+}
+
+export default function QuestionsScreen({ item, onBack, isPlus = false, onVisionPlus }) {
+  const baseQs = item?.questions || [];
+  const [extraQs, setExtraQs] = useState([]);
+  const qs = [...baseQs, ...extraQs];
+
+  const generateMore = () => setExtraQs(prev => [...prev, generateQuestion(item, baseQs.length + prev.length)]);
+
   return (
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#F8FAFC", fontFamily: "Inter,sans-serif", overflow: "hidden" }}>
       <div style={{ background: "white", padding: "52px 20px 14px", borderBottom: "1px solid #F1F5F9", flexShrink: 0 }}>
@@ -25,6 +36,24 @@ export default function QuestionsScreen({ item, onBack }) {
             <p style={{ fontSize: 14, color: "#374151", lineHeight: 1.55, margin: 0 }}>{q}</p>
           </motion.div>
         ))}
+
+        {isPlus ? (
+          <motion.button whileTap={{ scale: 0.96 }} onClick={generateMore}
+            style={{ width: "100%", padding: "13px 20px", borderRadius: 14, background: "#EFF6FF", border: "1.5px solid #BFDBFE", color: "#2563EB", fontFamily: "Inter,sans-serif", fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 4 }}>
+            <Sparkles size={16} />
+            Gerar mais perguntas
+          </motion.button>
+        ) : (
+          <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
+            style={{ background: "linear-gradient(135deg,#EFF6FF,#DBEAFE)", borderRadius: 20, padding: "18px 20px", textAlign: "center", border: "1px solid #BFDBFE", marginTop: 4 }}>
+            <p style={{ fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, color: "#1D4ED8", margin: "0 0 4px" }}>Quer mais perguntas sobre este conteúdo?</p>
+            <p style={{ fontFamily: "Inter,sans-serif", fontSize: 12, color: "#2563EB", margin: "0 0 12px" }}>Gere perguntas ilimitadas com o Vision+</p>
+            <motion.button whileTap={{ scale: 0.96 }} onClick={onVisionPlus}
+              style={{ padding: "10px 24px", borderRadius: 12, background: "linear-gradient(135deg,#2563EB,#7C3AED)", color: "white", fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, border: "none", cursor: "pointer" }}>
+              Ver Vision+
+            </motion.button>
+          </motion.div>
+        )}
       </div>
     </div>
   );
