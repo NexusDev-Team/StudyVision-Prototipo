@@ -29,6 +29,9 @@ export default function App() {
   const { dueCount, reload: refreshDueCount, markDone } = useStudyItems();
   const { isPlus, daysRemaining, startTrial, resetToFree } = useSubscription();
 
+  const handleStartTrial = () => { startTrial(); showToast("✓ Study Vision+ ativado"); };
+  const handleResetToFree = () => { resetToFree(); showToast("Demonstração reiniciada"); };
+
   const handleReviewComplete = () => {
     const updated = markDone(selectedItem);
     setSelectedItem(updated);
@@ -114,8 +117,8 @@ export default function App() {
               onBack={goBack}
               isPlus={isPlus}
               daysRemaining={daysRemaining}
-              onStartTrial={startTrial}
-              onResetToFree={resetToFree}
+              onStartTrial={handleStartTrial}
+              onResetToFree={handleResetToFree}
               onToast={showToast}
             />
           )}

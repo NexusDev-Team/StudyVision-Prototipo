@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { ChevronLeft } from "lucide-react";
 import Screen from "../components/layout/Screen";
 import ScrollArea from "../components/layout/ScrollArea";
@@ -13,6 +14,13 @@ import PremiumFeatures from "../components/plus/PremiumFeatures";
 import PlanComparison from "../components/plus/PlanComparison";
 
 export default function VisionPlusScreen({ onBack, isPlus, daysRemaining, onStartTrial, onResetToFree, onToast }) {
+  const scrollRef = useRef(null);
+
+  const handleStartTrial = () => {
+    onStartTrial();
+    scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   return (
     <Screen>
       <div style={{ padding: "52px 20px 0", flexShrink: 0 }}>
@@ -21,15 +29,15 @@ export default function VisionPlusScreen({ onBack, isPlus, daysRemaining, onStar
           <span style={{ fontSize: 14, fontWeight: 600, color: "#64748B" }}>Voltar</span>
         </button>
       </div>
-      <ScrollArea padding="18px 20px 30px" flexColumn>
+      <ScrollArea ref={scrollRef} padding="18px 20px 30px" flexColumn>
         <PlusHeader />
-        {!isPlus && <PlusHero onStartTrial={onStartTrial} />}
+        {!isPlus && <PlusHero onStartTrial={handleStartTrial} />}
         <MetricCards />
-        <SubjectProgress locked={!isPlus} onStartTrial={onStartTrial} />
-        <PerformanceChart locked={!isPlus} onStartTrial={onStartTrial} />
+        <SubjectProgress locked={!isPlus} onStartTrial={handleStartTrial} />
+        <PerformanceChart locked={!isPlus} onStartTrial={handleStartTrial} />
         <StrengthsCard />
         <AttentionCard hideNames={!isPlus} />
-        <InsightCard locked={!isPlus} onStartTrial={onStartTrial} />
+        <InsightCard locked={!isPlus} onStartTrial={handleStartTrial} />
         <PremiumFeatures />
         <PlanComparison />
       </ScrollArea>
