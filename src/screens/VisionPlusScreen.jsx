@@ -1,6 +1,8 @@
 import { ChevronLeft } from "lucide-react";
 import Screen from "../components/layout/Screen";
 import ScrollArea from "../components/layout/ScrollArea";
+import PlusHeader from "../components/plus/PlusHeader";
+import PlusHero from "../components/plus/PlusHero";
 
 export default function VisionPlusScreen({ onBack, isPlus, daysRemaining, onStartTrial, onResetToFree, onToast }) {
   return (
@@ -12,7 +14,9 @@ export default function VisionPlusScreen({ onBack, isPlus, daysRemaining, onStar
         </button>
       </div>
       <ScrollArea padding="18px 20px 30px" flexColumn>
-        {/* Header, hero e dashboard entram nas próximas tarefas do plano */}
+        <PlusHeader />
+        {!isPlus && <PlusHero onStartTrial={onStartTrial} />}
+        {/* Dashboard e paywall entram nas próximas tarefas do plano */}
       </ScrollArea>
     </Screen>
   );
