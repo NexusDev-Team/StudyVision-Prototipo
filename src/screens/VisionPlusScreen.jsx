@@ -9,6 +9,7 @@ import PerformanceChart from "../components/plus/PerformanceChart";
 import StrengthsCard from "../components/plus/StrengthsCard";
 import AttentionCard from "../components/plus/AttentionCard";
 import InsightCard from "../components/plus/InsightCard";
+import PremiumFeatures from "../components/plus/PremiumFeatures";
 
 export default function VisionPlusScreen({ onBack, isPlus, daysRemaining, onStartTrial, onResetToFree, onToast }) {
   return (
@@ -28,7 +29,8 @@ export default function VisionPlusScreen({ onBack, isPlus, daysRemaining, onStar
         <StrengthsCard />
         <AttentionCard />
         <InsightCard />
-        {/* Recursos premium, comparação de planos e paywall entram nas próximas tarefas */}
+        <PremiumFeatures />
+        {/* Comparação de planos e paywall entram nas próximas tarefas */}
       </ScrollArea>
     </Screen>
   );
