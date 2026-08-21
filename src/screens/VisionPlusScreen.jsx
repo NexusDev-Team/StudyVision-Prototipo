@@ -39,7 +39,7 @@ export default function VisionPlusScreen({ onBack, isPlus, daysRemaining, onStar
         <StrengthsCard />
         <AttentionCard hideNames={!isPlus} />
         <InsightCard locked={!isPlus} onStartTrial={handleStartTrial} />
-        <PlanComparison />
+        {!isPlus && <PlanComparison />}
         {!isPlus && <PlusFinalCta onStartTrial={handleStartTrial} />}
         {isPlus && (
           <p style={{ fontFamily: "Inter,sans-serif", fontSize: 11, color: "#94A3B8", textAlign: "center", margin: "4px 0 0" }}>
