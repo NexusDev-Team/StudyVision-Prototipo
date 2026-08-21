@@ -31,7 +31,7 @@ function PlanColumn({ title, items, accent }) {
 
 export default function PlanComparison() {
   return (
-    <div style={{ marginBottom: 20 }}>
+    <div id="plus-features" style={{ marginBottom: 20 }}>
       <SectionLabel>Free vs Plus</SectionLabel>
       <p style={{ fontFamily: "Inter,sans-serif", fontSize: 12, color: "#64748B", margin: "0 0 12px", lineHeight: 1.5 }}>
         O Free já resolve o problema. O Plus leva o aprendizado além.

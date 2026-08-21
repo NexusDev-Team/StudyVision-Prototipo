@@ -11,7 +11,6 @@ import PerformanceChart from "../components/plus/PerformanceChart";
 import StrengthsCard from "../components/plus/StrengthsCard";
 import AttentionCard from "../components/plus/AttentionCard";
 import InsightCard from "../components/plus/InsightCard";
-import PremiumFeatures from "../components/plus/PremiumFeatures";
 import PlanComparison from "../components/plus/PlanComparison";
 import PlusFinalCta from "../components/plus/PlusFinalCta";
 
@@ -40,7 +39,6 @@ export default function VisionPlusScreen({ onBack, isPlus, daysRemaining, onStar
         <StrengthsCard />
         <AttentionCard hideNames={!isPlus} />
         <InsightCard locked={!isPlus} onStartTrial={handleStartTrial} />
-        <PremiumFeatures />
         <PlanComparison />
         {!isPlus && <PlusFinalCta onStartTrial={handleStartTrial} />}
         {isPlus && (
