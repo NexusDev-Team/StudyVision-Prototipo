@@ -9,7 +9,7 @@ export const REMINDER_OPTIONS = [
   { days: 0, label: "No dia" },
 ];
 
-export const SUBJECT_FILTERS = ["Todos", "Matemática", "História", "Química"];
+export const SUBJECT_FILTERS = ["Todos", "Matemática", "História", "Química", "Física", "Português"];
 
 export const SUBJECT_META = {
   Todos: { icon: "LayoutGrid", color: "#64748B", bg: "#F1F5F9" },
@@ -17,5 +17,6 @@ export const SUBJECT_META = {
   História: { icon: "Landmark", color: "#16A34A", bg: "#F0FDF4" },
   Química: { icon: "FlaskConical", color: "#EA580C", bg: "#FFF7ED" },
   Física: { icon: "Atom", color: "#7C3AED", bg: "#EDE9FE" },
+  Português: { icon: "BookA", color: "#DB2777", bg: "#FDF2F8" },
   Programação: { icon: "Code2", color: "#14B8A6", bg: "#F0FDFA" },
 };
