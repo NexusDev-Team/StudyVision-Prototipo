@@ -5,7 +5,11 @@ import Button from "../ui/Button";
 // Locked content stays visible but blurred behind a bottom-anchored gradient +
 // conversion block — never a blank screen or generic modal. Unlocking animates
 // the blur away instead of instantly swapping the DOM.
-export default function PlusPaywall({ locked, title = "Desbloqueie sua evolução", message, onStartTrial, children }) {
+//
+// `compact`: skips message/button/price — just a lock + clickable label that
+// still calls onStartTrial. Used where the full CTA would repeat too often
+// on the same page (the performance chart keeps the full version).
+export default function PlusPaywall({ locked, compact = false, title = "Desbloqueie sua evolução", message, onStartTrial, children }) {
   return (
     <div style={{ position: "relative", borderRadius: 20, overflow: "hidden" }}>
       <motion.div
@@ -16,7 +20,20 @@ export default function PlusPaywall({ locked, title = "Desbloqueie sua evoluçã
         {children}
       </motion.div>
       <AnimatePresence>
-        {locked && (
+        {locked && (compact ? (
+          <motion.button
+            onClick={onStartTrial}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}
+            style={{
+              position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              minHeight: 44, background: "linear-gradient(180deg, rgba(248,250,252,0.3) 0%, rgba(248,250,252,0.94) 45%, rgba(248,250,252,0.98) 100%)",
+              border: "none", cursor: "pointer", padding: "12px 16px",
+            }}
+          >
+            <Lock size={15} color="#7C3AED" />
+            <span style={{ fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, color: "#7C3AED" }}>{title}</span>
+          </motion.button>
+        ) : (
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}
             style={{
@@ -33,7 +50,7 @@ export default function PlusPaywall({ locked, title = "Desbloqueie sua evoluçã
             </Button>
             <p style={{ fontFamily: "Inter,sans-serif", fontSize: 11, color: "#94A3B8", margin: "8px 0 0" }}>Depois, R$ 9,90/mês · cancele quando quiser</p>
           </motion.div>
-        )}
+        ))}
       </AnimatePresence>
     </div>
   );

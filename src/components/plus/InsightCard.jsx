@@ -5,7 +5,7 @@ import { PLUS_METRICS } from "../../data/plusMetrics";
 export default function InsightCard({ locked, onStartTrial }) {
   return (
     <div style={{ marginBottom: 20 }}>
-      <PlusPaywall locked={locked} title="Ver insight completo" message="Veja o que os seus dados dizem sobre sua evolução." onStartTrial={onStartTrial}>
+      <PlusPaywall locked={locked} compact title="Ver insight completo" onStartTrial={onStartTrial}>
         <div style={{ borderRadius: 20, padding: "18px 20px", background: "linear-gradient(135deg,#EFF6FF,#EDE9FE)", border: "1px solid #DDD6FE" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
             <Sparkles size={16} color="#7C3AED" />
