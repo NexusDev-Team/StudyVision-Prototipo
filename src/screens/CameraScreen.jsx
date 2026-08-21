@@ -11,7 +11,7 @@ const FOCUS_CORNERS = [
   { bottom: 0, right: 0 },
 ];
 
-export default function CameraScreen({ onCapture, onLibraryNav }) {
+export default function CameraScreen({ onCapture, onLibraryNav, previewPhoto }) {
   const [flash, setFlash] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [capturing, setCapturing] = useState(false);
@@ -40,7 +40,7 @@ export default function CameraScreen({ onCapture, onLibraryNav }) {
   return (
     <div style={{ position: "relative", width: "100%", height: "100%", background: "#000", overflow: "hidden" }}>
       {/* Viewfinder bg — simulates the camera pointed at a real page of notes */}
-      <div style={{ position: "absolute", inset: 0, backgroundImage: `url(${exemploFoto1})`, backgroundSize: "cover", backgroundPosition: "center" }}>
+      <div style={{ position: "absolute", inset: 0, backgroundImage: `url(${previewPhoto ?? exemploFoto1})`, backgroundSize: "cover", backgroundPosition: "center" }}>
         {/* Dim overlay so the top/bottom controls stay legible over the photo */}
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(8,15,34,0.55) 0%, rgba(8,15,34,0.1) 22%, rgba(8,15,34,0.1) 65%, rgba(8,15,34,0.6) 100%)" }} />
         {/* Grid */}

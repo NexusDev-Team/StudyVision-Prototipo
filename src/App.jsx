@@ -3,7 +3,7 @@ import { useStudyItems } from "./hooks/useStudyItems";
 import { useNavigation } from "./hooks/useNavigation";
 import { useToast } from "./hooks/useToast";
 import { useSubscription } from "./hooks/useSubscription";
-import { nextCaptureTemplate } from "./data/sampleContent";
+import { nextCaptureTemplate, peekCaptureTemplate } from "./data/sampleContent";
 import { slideIn, fadeUp } from "./styles/motion";
 import StatusBar from "./components/layout/StatusBar";
 import BottomNav from "./components/layout/BottomNav";
@@ -60,6 +60,7 @@ export default function App() {
           style={{ position: "absolute", inset: 0, paddingBottom: showNav ? 80 : 0 }}>
           {screen === "camera" && (
             <CameraScreen
+              previewPhoto={peekCaptureTemplate().photo}
               onCapture={() => { setCapturedItem(nextCaptureTemplate()); go("analysis"); }}
               onLibraryNav={() => goTo("library")}
             />
