@@ -67,23 +67,6 @@ src/
 └── main.jsx
 ```
 
-## Build e publicação (GitHub Pages)
-
-O deploy é manual, direto da branch `main`. Não existe branch `gh-pages` nem script `deploy`.
-
-```bash
-npm run build      # gera a pasta docs/ (outDir configurado no vite.config.js)
-git add docs
-git commit -m "build: atualiza docs/ para publicação"
-git push
-```
-
-No GitHub: **Settings → Pages → Source: Deploy from a branch → Branch `main` / pasta `/docs`**.
-
-## Planejamento
-
-Planos de trabalho ficam em `plans/`.
-
 ## Demonstração do Study Vision+
 
 O estado de assinatura (`sv_subscription` no localStorage) persiste entre sessões.
