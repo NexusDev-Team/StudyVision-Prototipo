@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { LayoutGrid, Calculator, Landmark, FlaskConical, Atom, BookA, Code2, ChevronLeft, ChevronRight } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { SUBJECT_META } from "../../constants";
 import styles from "./SubjectFolderGrid.module.css";
 
@@ -38,7 +38,13 @@ export default function SubjectFolderGrid({ options, active, onSelect }) {
   };
 
   return (
-    <div style={{ position: "relative" }}>
+    <div className={styles.wrap}>
+      <motion.button animate={{ opacity: canScrollLeft ? 1 : 0 }} transition={{ duration: 0.15 }}
+        whileTap={canScrollLeft ? { scale: 0.9 } : undefined} onClick={() => scrollBy(-1)} aria-label="Ver matérias anteriores"
+        className={styles.navBtn} style={{ pointerEvents: canScrollLeft ? "auto" : "none" }}>
+        <ChevronLeft size={15} strokeWidth={2.75} color="#475569" />
+      </motion.button>
+
       <div ref={scrollRef} className={styles.row}>
         {options.map(opt => {
           const meta = SUBJECT_META[opt] || SUBJECT_META.Todos;
@@ -68,24 +74,11 @@ export default function SubjectFolderGrid({ options, active, onSelect }) {
         })}
       </div>
 
-      <AnimatePresence>
-        {canScrollLeft && (
-          <motion.button key="left" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            whileTap={{ scale: 0.9 }} onClick={() => scrollBy(-1)} aria-label="Ver matérias anteriores"
-            className={styles.navBtn} style={{ left: -2 }}>
-            <ChevronLeft size={15} strokeWidth={2.75} color="#475569" />
-          </motion.button>
-        )}
-      </AnimatePresence>
-      <AnimatePresence>
-        {canScrollRight && (
-          <motion.button key="right" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            whileTap={{ scale: 0.9 }} onClick={() => scrollBy(1)} aria-label="Ver mais matérias"
-            className={styles.navBtn} style={{ right: -2 }}>
-            <ChevronRight size={15} strokeWidth={2.75} color="#475569" />
-          </motion.button>
-        )}
-      </AnimatePresence>
+      <motion.button animate={{ opacity: canScrollRight ? 1 : 0 }} transition={{ duration: 0.15 }}
+        whileTap={canScrollRight ? { scale: 0.9 } : undefined} onClick={() => scrollBy(1)} aria-label="Ver mais matérias"
+        className={styles.navBtn} style={{ pointerEvents: canScrollRight ? "auto" : "none" }}>
+        <ChevronRight size={15} strokeWidth={2.75} color="#475569" />
+      </motion.button>
     </div>
   );
 }

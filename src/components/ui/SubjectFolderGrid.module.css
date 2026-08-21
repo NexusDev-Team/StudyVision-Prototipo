@@ -1,7 +1,13 @@
+.wrap {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 10px;
+}
+
 .row {
   display: flex;
   gap: 10px;
-  margin-top: 10px;
   overflow-x: auto;
   padding: 8px 0 4px;
   scrollbar-width: none;
@@ -17,9 +23,7 @@
 }
 
 .navBtn {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
+  flex-shrink: 0;
   width: 26px;
   height: 26px;
   border-radius: 50%;
@@ -31,5 +35,4 @@
   justify-content: center;
   cursor: pointer;
   padding: 0;
-  z-index: 2;
 }
