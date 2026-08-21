@@ -1,22 +1,23 @@
-import { LayoutGrid, Calculator, Landmark, FlaskConical, Atom, Code2 } from "lucide-react";
+import { LayoutGrid, Calculator, Landmark, FlaskConical, Atom, BookA, Code2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { SUBJECT_META } from "../../constants";
+import styles from "./SubjectFolderGrid.module.css";
 
-const ICONS = { LayoutGrid, Calculator, Landmark, FlaskConical, Atom, Code2 };
+const ICONS = { LayoutGrid, Calculator, Landmark, FlaskConical, Atom, BookA, Code2 };
 
 export default function SubjectFolderGrid({ options, active, onSelect }) {
   return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 10 }}>
+    <div className={styles.row}>
       {options.map(opt => {
         const meta = SUBJECT_META[opt] || SUBJECT_META.Todos;
         const Icon = ICONS[meta.icon];
         const isActive = active === opt;
         return (
-          <motion.button key={opt} whileTap={{ scale: 0.95 }} onClick={() => onSelect(opt)}
+          <motion.button key={opt} className={styles.folder} whileTap={{ scale: 0.95 }} onClick={() => onSelect(opt)}
             style={{
               display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
               gap: 4, width: 72, height: 64, borderRadius: 14, cursor: "pointer",
-              position: "relative", flexShrink: 0,
+              position: "relative",
               background: isActive ? meta.color : meta.bg,
               border: isActive ? `1.5px solid ${meta.color}` : `1.5px solid ${meta.bg}`,
               boxShadow: isActive ? `0 4px 10px ${meta.color}40` : "none",

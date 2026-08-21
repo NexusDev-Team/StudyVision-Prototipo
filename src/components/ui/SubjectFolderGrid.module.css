@@ -1,0 +1,17 @@
+.row {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+  overflow-x: auto;
+  padding: 8px 0 4px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.row::-webkit-scrollbar {
+  display: none;
+}
+
+.folder {
+  flex-shrink: 0;
+}
