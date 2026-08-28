@@ -34,7 +34,7 @@ O Vite abrirá o servidor local (padrão `http://localhost:5173`).
 Outros comandos disponíveis:
 
 ```bash
-npm run build      # gera build de produção na pasta docs/
+npm run build      # gera build de produção na pasta dist/
 npm run preview    # serve a build de produção localmente
 ```
 
