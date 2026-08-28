@@ -6,3 +6,5 @@ docs
 .agents
 .playwright-mcp
 plans
+.vercel
+.env*
