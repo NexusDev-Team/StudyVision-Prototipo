@@ -4,7 +4,7 @@ Protótipo do **Study Vision**, feature nativa de câmera com IA desenvolvida pa
 
 Este repositório contém o **front-end do protótipo**, 100% mocado (sem backend/API real), construído para validar experiência e fluxo de produto. Contexto completo de negócio, pesquisa e roadmap em `PRD.md` e `contexto-studyvision.md`.
 
-**Deploy:** https://nexusdev-team.github.io/StudyVision-Prototipo/
+**Deploy:** https://study-vision-prototipo-as1a.vercel.app
 
 ## Tecnologias utilizadas
 
