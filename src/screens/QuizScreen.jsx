@@ -2,10 +2,25 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { ChevronLeft, ListChecks, Sparkles } from "lucide-react";
 import QuizQuestion from "../components/study/QuizQuestion";
+import { SAMPLE_ITEMS } from "../data/sampleContent";
 
-function generateQuizQuestion(item, n) {
-  const concept = item?.concepts?.[n % (item.concepts?.length || 1)] || item?.concept || "este conteúdo";
-  return { type: "vf", question: `${concept} é um dos pontos centrais de "${item?.concept}".`, answer: true };
+// Randomly generated V/F question — the affirmation is sometimes true (a real
+// concept from this item) and sometimes false (a concept borrowed from another
+// subject), so "gerar mais" doesn't always answer to the same pattern.
+function generateQuizQuestion(item) {
+  const concepts = item?.concepts?.length ? item.concepts : [item?.concept || "este conteúdo"];
+  const isTrue = Math.random() < 0.5;
+  let concept = concepts[Math.floor(Math.random() * concepts.length)];
+
+  if (!isTrue) {
+    const others = SAMPLE_ITEMS.filter(s => s.id !== item?.id && s.concepts?.length);
+    if (others.length) {
+      const other = others[Math.floor(Math.random() * others.length)];
+      concept = other.concepts[Math.floor(Math.random() * other.concepts.length)];
+    }
+  }
+
+  return { type: "vf", question: `${concept} é um dos pontos centrais de "${item?.concept}".`, answer: isTrue };
 }
 
 export default function QuizScreen({ item, onBack, isPlus = false, onVisionPlus }) {
@@ -28,7 +43,7 @@ export default function QuizScreen({ item, onBack, isPlus = false, onVisionPlus 
   const next = () => { setSelected(null); setIndex(i => i + 1); };
 
   const generateMore = () => {
-    setExtraQuestions(prev => [...prev, generateQuizQuestion(item, baseQuestions.length + prev.length)]);
+    setExtraQuestions(prev => [...prev, generateQuizQuestion(item)]);
   };
 
   return (

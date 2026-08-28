@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { ChevronLeft, CreditCard, ThumbsUp, ThumbsDown, CheckCircle, Lock, Sparkles } from "lucide-react";
 import Flashcard from "../components/study/Flashcard";
 import { FREE_FLASHCARD_LIMIT } from "../constants";
+import { shuffle } from "../services/reviewEngine";
 
 function generateFlashcard(item, n) {
   const concept = item?.concepts?.[n % (item.concepts?.length || 1)] || item?.concept || "este conteúdo";
@@ -12,7 +13,9 @@ function generateFlashcard(item, n) {
 export default function FlashcardsScreen({ item, onBack, onVisionPlus, isPlus = false, reviewMode = false, onReviewComplete }) {
   const allCards = item?.flashcards || [];
   const [extraCards, setExtraCards] = useState([]);
-  const cards = isPlus ? [...allCards, ...extraCards] : allCards.slice(0, FREE_FLASHCARD_LIMIT);
+  // Order shuffled once per screen entry — repeated review sessions don't always start with the same card.
+  const [shuffledCards] = useState(() => shuffle(allCards));
+  const cards = isPlus ? [...shuffledCards, ...extraCards] : shuffledCards.slice(0, FREE_FLASHCARD_LIMIT);
   const lockedCount = isPlus ? 0 : Math.max(0, allCards.length - FREE_FLASHCARD_LIMIT);
 
   const [index, setIndex] = useState(0);
