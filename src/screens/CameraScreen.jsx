@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Zap, Settings, FlipHorizontal, BookOpen, Eye } from "lucide-react";
-import exemploFoto1 from "../assets/exemplo-foto1.png";
+import { Zap, Settings, FlipHorizontal, BookOpen, Eye, CameraOff } from "lucide-react";
 import LogoSVG from "../components/brand/LogoSVG";
+import { captureFrame } from "../utils/image";
 
 const FOCUS_CORNERS = [
   { top: 0, left: 0 },
@@ -11,11 +11,48 @@ const FOCUS_CORNERS = [
   { bottom: 0, right: 0 },
 ];
 
-export default function CameraScreen({ onCapture, onLibraryNav, previewPhoto }) {
+export default function CameraScreen({ onCapture, onLibraryNav }) {
   const [flash, setFlash] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [capturing, setCapturing] = useState(false);
   const [flashWhite, setFlashWhite] = useState(false);
+  const [cameraError, setCameraError] = useState(null);
+  const [cameraReady, setCameraReady] = useState(false);
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+
+  const startCamera = () => {
+    setCameraError(null);
+    setCameraReady(false);
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraError("Este navegador não suporta acesso à câmera.");
+      return;
+    }
+    navigator.mediaDevices
+      .getUserMedia({ video: { facingMode: "environment", width: { ideal: 1920 } }, audio: false })
+      .then((stream) => {
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.onloadedmetadata = () => setCameraReady(true);
+        }
+      })
+      .catch((err) => {
+        setCameraError(
+          err?.name === "NotAllowedError"
+            ? "Permissão de câmera negada. Permita o acesso para capturar conteúdo."
+            : "Não foi possível acessar a câmera."
+        );
+      });
+  };
+
+  useEffect(() => {
+    startCamera();
+    return () => {
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     const t = setTimeout(() => setPanelOpen(true), 700);
@@ -30,17 +67,21 @@ export default function CameraScreen({ onCapture, onLibraryNav, previewPhoto }) 
   }, [panelOpen]);
 
   const handleCapture = () => {
-    if (capturing) return;
+    if (capturing || !cameraReady) return;
+    const dataUrl = captureFrame(videoRef.current);
+    if (!dataUrl) return;
     setCapturing(true);
     setFlashWhite(true);
     setTimeout(() => setFlashWhite(false), 180);
-    setTimeout(() => onCapture(), 350);
+    setTimeout(() => onCapture(dataUrl), 350);
   };
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100%", background: "#000", overflow: "hidden" }}>
-      {/* Viewfinder bg — simulates the camera pointed at a real page of notes */}
-      <div style={{ position: "absolute", inset: 0, backgroundImage: `url(${previewPhoto ?? exemploFoto1})`, backgroundSize: "cover", backgroundPosition: "center" }}>
+      {/* Viewfinder — stream real da câmera do dispositivo */}
+      <div style={{ position: "absolute", inset: 0, background: "#000" }}>
+        <video ref={videoRef} autoPlay playsInline muted
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
         {/* Dim overlay so the top/bottom controls stay legible over the photo */}
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(8,15,34,0.55) 0%, rgba(8,15,34,0.1) 22%, rgba(8,15,34,0.1) 65%, rgba(8,15,34,0.6) 100%)" }} />
         {/* Grid */}
@@ -57,6 +98,18 @@ export default function CameraScreen({ onCapture, onLibraryNav, previewPhoto }) 
           ))}
         </div>
       </div>
+
+      {/* Erro de câmera — permissão negada / indisponível */}
+      {cameraError && (
+        <div style={{ position: "absolute", inset: 0, zIndex: 40, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, padding: 32, textAlign: "center", background: "rgba(3,7,18,0.92)" }}>
+          <CameraOff size={40} color="rgba(255,255,255,0.7)" />
+          <p style={{ fontFamily: "Inter,sans-serif", fontSize: 15, fontWeight: 600, color: "white", margin: 0 }}>{cameraError}</p>
+          <button onClick={startCamera}
+            style={{ marginTop: 4, padding: "10px 22px", borderRadius: 30, background: "#2563EB", border: "none", color: "white", fontFamily: "Inter,sans-serif", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+            Tentar novamente
+          </button>
+        </div>
+      )}
 
       {/* Flash white overlay */}
       <AnimatePresence>
@@ -136,8 +189,8 @@ export default function CameraScreen({ onCapture, onLibraryNav, previewPhoto }) 
           </button>
 
           {/* Shutter */}
-          <motion.button whileTap={{ scale: 0.9 }} onClick={handleCapture} disabled={capturing}
-            style={{ width: 76, height: 76, borderRadius: "50%", background: capturing ? "#14B8A6" : "#FFFFFF", border: "4px solid rgba(255,255,255,0.85)", cursor: "pointer", boxShadow: "0 0 0 2px rgba(255,255,255,0.15)", transition: "background 0.2s" }} />
+          <motion.button whileTap={{ scale: 0.9 }} onClick={handleCapture} disabled={capturing || !cameraReady || !!cameraError}
+            style={{ width: 76, height: 76, borderRadius: "50%", background: capturing ? "#14B8A6" : "#FFFFFF", border: "4px solid rgba(255,255,255,0.85)", cursor: cameraReady && !cameraError ? "pointer" : "not-allowed", opacity: cameraReady && !cameraError ? 1 : 0.5, boxShadow: "0 0 0 2px rgba(255,255,255,0.15)", transition: "background 0.2s" }} />
 
           {/* Flip */}
           <button style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(255,255,255,0.12)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(8px)" }}>

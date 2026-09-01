@@ -8,7 +8,6 @@ import ExportSection from "../components/study/ExportSection";
 import PlanningSection from "../components/study/PlanningSection";
 import { saveItem } from "../services/storage";
 import { buildReviewSchedule } from "../services/reviewEngine";
-import { SAMPLE_ITEMS } from "../data/sampleContent";
 import { fadeUp } from "../styles/motion";
 
 export default function SummaryScreen({ capturedItem, onSave, onLibrary, onToast }) {
@@ -18,8 +17,9 @@ export default function SummaryScreen({ capturedItem, onSave, onLibrary, onToast
   // setCalendarEvent) would mint a new id/schedule and split the item in two.
   const [itemId] = useState(() => `u_${Date.now()}`);
   const [reviewSchedule] = useState(() => buildReviewSchedule(Date.now()));
-  const template = capturedItem || SAMPLE_ITEMS[0];
-  const item = { ...template, id: itemId, time: "Agora", reviewSchedule };
+
+  if (!capturedItem) return null;
+  const item = { ...capturedItem, id: itemId, time: "Agora", reviewSchedule };
 
   const handlePlanned = (event) => {
     setCalendarEvent(event);
@@ -30,7 +30,12 @@ export default function SummaryScreen({ capturedItem, onSave, onLibrary, onToast
     if (saving) return;
     setSaving(true);
     const toSave = calendarEvent ? { ...item, calendarEvent } : item;
-    setTimeout(() => { saveItem(toSave); onSave(); }, 900);
+    const result = saveItem(toSave);
+    setSaving(false);
+    if (!result.ok) {
+      onToast?.("Não foi possível salvar a foto — conteúdo salvo sem a imagem.");
+    }
+    onSave();
   };
 
   return (

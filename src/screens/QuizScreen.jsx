@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { ChevronLeft, ListChecks, Sparkles } from "lucide-react";
-import QuizQuestion from "../components/study/QuizQuestion";
+import QuizQuestion, { isCorrectOption } from "../components/study/QuizQuestion";
 import { SAMPLE_ITEMS } from "../data/sampleContent";
 
 // Randomly generated V/F question — the affirmation is sometimes true (a real
@@ -32,12 +32,12 @@ export default function QuizScreen({ item, onBack, isPlus = false, onVisionPlus 
   const [score, setScore] = useState(0);
   const done = index >= questions.length;
   const q = questions[index];
-  const isCorrect = (opt) => opt === q?.answer;
+  const options = q?.type === "vf" ? [true, false] : q?.options || [];
 
-  const choose = (opt) => {
+  const choose = (optionIndex) => {
     if (selected !== null) return;
-    setSelected(opt);
-    if (isCorrect(opt)) setScore(s => s + 1);
+    setSelected(optionIndex);
+    if (isCorrectOption(q, optionIndex, options)) setScore(s => s + 1);
   };
 
   const next = () => { setSelected(null); setIndex(i => i + 1); };

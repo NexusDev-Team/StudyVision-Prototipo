@@ -1,10 +1,16 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { LayoutGrid, Calculator, Landmark, FlaskConical, Atom, BookA, Code2, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  LayoutGrid, Calculator, Landmark, FlaskConical, Atom, BookA, Code2, ChevronLeft, ChevronRight,
+  Leaf, Globe2, BrainCircuit, Users, Languages, Palette, PenLine, BookOpen,
+} from "lucide-react";
 import { motion } from "framer-motion";
-import { SUBJECT_META } from "../../constants";
+import { getSubjectMeta } from "../../constants";
 import styles from "./SubjectFolderGrid.module.css";
 
-const ICONS = { LayoutGrid, Calculator, Landmark, FlaskConical, Atom, BookA, Code2 };
+const ICONS = {
+  LayoutGrid, Calculator, Landmark, FlaskConical, Atom, BookA, Code2,
+  Leaf, Globe2, BrainCircuit, Users, Languages, Palette, PenLine, BookOpen,
+};
 const SCROLL_EDGE_SLACK = 4;
 
 export default function SubjectFolderGrid({ options, active, onSelect }) {
@@ -47,8 +53,8 @@ export default function SubjectFolderGrid({ options, active, onSelect }) {
 
       <div ref={scrollRef} className={styles.row}>
         {options.map(opt => {
-          const meta = SUBJECT_META[opt] || SUBJECT_META.Todos;
-          const Icon = ICONS[meta.icon];
+          const meta = getSubjectMeta(opt);
+          const Icon = ICONS[meta.icon] || BookOpen;
           const isActive = active === opt;
           return (
             <motion.button key={opt} className={styles.folder} whileTap={{ scale: 0.95 }} onClick={() => onSelect(opt)}

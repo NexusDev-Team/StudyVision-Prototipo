@@ -5,12 +5,15 @@ import LogoSVG from "../components/brand/LogoSVG";
 import ContentCard from "../components/study/ContentCard";
 import SubjectFolderGrid from "../components/ui/SubjectFolderGrid";
 import { useStudyItems } from "../hooks/useStudyItems";
-import { SUBJECT_FILTERS } from "../constants";
 
 export default function LibraryScreen({ onOpenItem, onVisionPlus }) {
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("Todos");
   const { items } = useStudyItems();
+
+  // Matérias derivadas do conteúdo real na biblioteca — com a IA, novas matérias
+  // (Biologia, Filosofia, ...) aparecem sem precisar de uma lista fixa.
+  const subjectFilters = ["Todos", ...new Set(items.map(it => it.subject).filter(Boolean))];
 
   const filtered = items.filter(it => {
     const q = search.toLowerCase();
@@ -45,7 +48,7 @@ export default function LibraryScreen({ onOpenItem, onVisionPlus }) {
         </div>
 
         {/* Filters */}
-        <SubjectFolderGrid options={SUBJECT_FILTERS} active={activeFilter} onSelect={setActiveFilter} />
+        <SubjectFolderGrid options={subjectFilters} active={activeFilter} onSelect={setActiveFilter} />
       </div>
 
       {/* List */}

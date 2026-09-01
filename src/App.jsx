@@ -3,7 +3,7 @@ import { useStudyItems } from "./hooks/useStudyItems";
 import { useNavigation } from "./hooks/useNavigation";
 import { useToast } from "./hooks/useToast";
 import { useSubscription } from "./hooks/useSubscription";
-import { nextCaptureTemplate, peekCaptureTemplate } from "./data/sampleContent";
+import { useAnalysis } from "./hooks/useAnalysis";
 import { slideIn, fadeUp } from "./styles/motion";
 import StatusBar from "./components/layout/StatusBar";
 import BottomNav from "./components/layout/BottomNav";
@@ -24,8 +24,8 @@ import { useState } from "react";
 export default function App() {
   const { screen, setScreen, prevScreens, setPrevScreens, reviewMode, setReviewMode, go, goBack, goTo } = useNavigation("camera");
   const [selectedItem, setSelectedItem] = useState(null);
-  const [capturedItem, setCapturedItem] = useState(null);
   const { toast, showToast, clearToast } = useToast();
+  const analysis = useAnalysis();
   const { dueCount, reload: refreshDueCount, markDone } = useStudyItems();
   const { isPlus, daysRemaining, startTrial, resetToFree } = useSubscription();
 
@@ -60,17 +60,22 @@ export default function App() {
           style={{ position: "absolute", inset: 0, paddingBottom: showNav ? 80 : 0 }}>
           {screen === "camera" && (
             <CameraScreen
-              previewPhoto={peekCaptureTemplate().photo}
-              onCapture={() => { setCapturedItem(nextCaptureTemplate()); go("analysis"); }}
+              onCapture={(dataUrl) => { analysis.run(dataUrl); go("analysis"); }}
               onLibraryNav={() => goTo("library")}
             />
           )}
           {screen === "analysis" && (
-            <AnalysisScreen onDone={() => { setPrevScreens([]); setScreen("summary"); }} />
+            <AnalysisScreen
+              status={analysis.status}
+              error={analysis.error}
+              onRetry={analysis.retry}
+              onCancel={() => { analysis.reset(); goBack(); }}
+              onDone={() => { setPrevScreens([]); setScreen("summary"); }}
+            />
           )}
           {screen === "summary" && (
             <SummaryScreen
-              capturedItem={capturedItem}
+              capturedItem={analysis.item}
               onSave={() => { showToast("✓ Conteúdo salvo com sucesso"); refreshDueCount(); setTimeout(() => goTo("library"), 500); }}
               onLibrary={() => goTo("library")}
               onToast={showToast}
