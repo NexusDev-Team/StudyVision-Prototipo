@@ -1,6 +1,7 @@
 // Comunicação do frontend com o backend de análise (Gemini fica atrás de /api/analyze).
 // Nunca guarda nem conhece nenhuma chave de API — só fala com nosso próprio endpoint.
-import { getSubjectMeta, getSubjectEmoji } from "../constants";
+import { createContent } from "../data/models/content.js";
+import { validateContent } from "../data/models/validate.js";
 
 export class AnalysisError extends Error {}
 
@@ -44,33 +45,54 @@ export async function analyzeImage(imageDataUrl, opts = {}) {
 }
 
 /**
- * Converte o resultado da API no formato de item já usado pelo restante do app
- * (mesma forma de src/data/sampleContent.js), para reaproveitar todas as telas existentes.
+ * Converte o resultado bruto da API (`/api/analyze`, atrás dele o Gemini) num
+ * Content válido do modelo de dados interno — gera todos os IDs, aplica
+ * defaults para campos ausentes/parciais e nunca deixa a aplicação depender
+ * da estrutura bruta da resposta da IA.
+ *
+ * Não resolve/gera Subject nem grava nada no storage: subjectId fica null e
+ * subjectName carrega o nome cru vindo da IA — quem persiste (contentService
+ * + subjectService) decide como resolver a matéria.
+ *
+ * @param {object} geminiResponse - body retornado por analyzeImage()
+ * @param {string} [thumbnailDataUrl] - versão reduzida da foto, já pronta p/ persistir
+ * @returns {{ content: object, validation: { valid: boolean, errors: string[] } }}
  */
-export function toStudyItem(result, thumbnailDataUrl) {
-  const meta = getSubjectMeta(result.subject);
-  return {
-    subject: result.subject,
-    subjectIcon: getSubjectEmoji(result.subject),
-    subjectColor: meta.color,
-    subjectBg: meta.bg,
-    topic: result.topic,
-    concept: result.title || result.topic,
-    time: "Agora",
-    photo: thumbnailDataUrl,
+export function normalizeAnalysisResult(geminiResponse, thumbnailDataUrl) {
+  const result = geminiResponse && typeof geminiResponse === "object" ? geminiResponse : {};
+
+  const content = createContent({
+    subjectId: null,
+    subjectName: result.subject || "",
+    topic: result.topic || "",
+    title: result.title || result.topic || "Conteúdo sem título",
     extractedText: result.extractedText || "",
-    summary: result.summary,
-    concepts: result.keyConcepts || [],
-    keywords: result.keywords || [],
-    flashcards: (result.flashcards || []).map(f => ({ front: f.question, back: f.answer })),
-    questions: result.openQuestions || [],
-    quiz: (result.quiz || []).map(q => ({
-      type: "mc",
-      question: q.question,
-      options: q.options,
-      answer: q.answer,
-      explanation: q.explanation,
-    })),
-    difficulty: result.difficulty,
-  };
+    summary: result.summary || "",
+    keyConcepts: Array.isArray(result.keyConcepts) ? result.keyConcepts : [],
+    keywords: Array.isArray(result.keywords) ? result.keywords : [],
+    difficulty: result.difficulty || null,
+    images: thumbnailDataUrl ? [{ dataUrl: thumbnailDataUrl, order: 0 }] : [],
+    flashcards: Array.isArray(result.flashcards)
+      ? result.flashcards.map((f) => ({ front: f.question || "", back: f.answer || "", source: "ai" }))
+      : [],
+    quizzes:
+      Array.isArray(result.quiz) && result.quiz.length > 0
+        ? [
+            {
+              source: "ai",
+              questions: result.quiz.map((q) => ({
+                type: q.type === "vf" ? "vf" : "mc",
+                question: q.question || "",
+                options: Array.isArray(q.options) ? q.options : [],
+                correctAnswer: q.answer,
+                explanation: q.explanation || "",
+              })),
+            },
+          ]
+        : [],
+    openQuestions: Array.isArray(result.openQuestions) ? result.openQuestions : [],
+    isSample: false,
+  });
+
+  return { content, validation: validateContent(content) };
 }
