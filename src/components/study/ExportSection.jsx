@@ -14,10 +14,15 @@ export default function ExportSection({ content, onToast }) {
   const run = async (key, fn, successMsg) => {
     if (busy) return;
     setBusy(key);
-    await fn(content);
-    setBusy(null);
-    onToast(successMsg);
-    setOpen(false);
+    try {
+      await fn(content);
+      onToast(successMsg);
+      setOpen(false);
+    } catch {
+      onToast("Não foi possível concluir a exportação.");
+    } finally {
+      setBusy(null);
+    }
   };
 
   const options = [
