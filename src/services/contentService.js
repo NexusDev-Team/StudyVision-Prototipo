@@ -61,9 +61,12 @@ export function deleteContent(id) {
   return removed;
 }
 
+// Retorna { image, result } — result vem de writeDb() e sinaliza poda/falha
+// por cota estourada (fotos em base64 pesam), para o chamador avisar o usuário
+// em vez de a imagem sumir em silêncio.
 export function addImageToContent(contentId, { dataUrl } = {}) {
   let image = null;
-  withDb((db) => ({
+  const { result } = withDb((db) => ({
     ...db,
     contents: db.contents.map((c) => {
       if (c.id !== contentId) return c;
@@ -71,7 +74,7 @@ export function addImageToContent(contentId, { dataUrl } = {}) {
       return { ...c, images: [...c.images, image], updatedAt: nowIso() };
     }),
   }));
-  return image;
+  return { image, result };
 }
 
 export function removeImageFromContent(contentId, imageId) {

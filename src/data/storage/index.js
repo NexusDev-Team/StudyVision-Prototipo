@@ -2,7 +2,7 @@
 // (sv_items) seja migrado para sv_db uma única vez, preservando um backup, e
 // expõe os mesmos readDb/writeDb/withDb do db.js para o resto do app.
 
-import { readDb as readDbRaw, writeDb, withDb, DB_KEY } from "./db.js";
+import { readDb as readDbRaw, writeDb as writeDbRaw, withDb as withDbRaw, DB_KEY, SCHEMA_VERSION } from "./db.js";
 import { migrateItems } from "./migrations.js";
 
 export const LEGACY_KEY = "sv_items";
@@ -29,7 +29,7 @@ function ensureMigrated() {
   if (!Array.isArray(legacyItems) || legacyItems.length === 0) return;
 
   const migrated = migrateItems(legacyItems);
-  writeDb(migrated);
+  writeDbRaw(migrated);
 
   if (localStorage.getItem(LEGACY_BACKUP_KEY) === null) {
     localStorage.setItem(LEGACY_BACKUP_KEY, legacyRaw);
@@ -41,4 +41,17 @@ export function readDb() {
   return readDbRaw();
 }
 
-export { writeDb, withDb, DB_KEY, SCHEMA_VERSION } from "./db.js";
+// writeDb/withDb também precisam garantir a migração ANTES de escrever: se a
+// primeira operação da sessão for uma escrita (ex.: criar uma matéria), sem
+// isto o sv_items legado nunca seria migrado e sumiria da visão do app.
+export function writeDb(db) {
+  ensureMigrated();
+  return writeDbRaw(db);
+}
+
+export function withDb(mutator) {
+  ensureMigrated();
+  return withDbRaw(mutator);
+}
+
+export { DB_KEY, SCHEMA_VERSION };

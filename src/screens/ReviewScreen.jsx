@@ -8,6 +8,7 @@ import CalendarMonth from "../components/study/CalendarMonth";
 import DayEventsModal from "../components/study/DayEventsModal";
 import { useStudyItems } from "../hooks/useStudyItems";
 import { nextPendingReview, isDueForReview, endOfToday, DAY_MS } from "../services/reviewEngine";
+import { toDayKey } from "../utils/date";
 
 export default function ReviewScreen({ onReview }) {
   const { items } = useStudyItems();
@@ -35,7 +36,7 @@ export default function ReviewScreen({ onReview }) {
     // revisões pendentes da repetição espaçada aparecem sozinhas, sem precisar agendar
     for (const stage of item.reviewSchedule || []) {
       if (stage.done) continue;
-      const date = new Date(stage.dueAt).toISOString().slice(0, 10);
+      const date = toDayKey(stage.dueAt);
       if (item.calendarEvent?.date === date) continue; // já representada acima
       addEntry(date, { id: `${item.id}_review_${stage.stage}`, item, type: "Revisão", stageLabel: stage.label });
     }
