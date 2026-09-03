@@ -23,18 +23,21 @@ import { useState } from "react";
 
 export default function App() {
   const { screen, setScreen, prevScreens, setPrevScreens, reviewMode, setReviewMode, go, goBack, goTo } = useNavigation("camera");
-  const [selectedItem, setSelectedItem] = useState(null);
+  const [selectedContentId, setSelectedContentId] = useState(null);
   const { toast, showToast, clearToast } = useToast();
   const analysis = useAnalysis();
-  const { dueCount, reload: refreshDueCount, markDone } = useStudyItems();
+  const { items, dueCount, reload: refreshDueCount, markDone } = useStudyItems();
   const { isPlus, daysRemaining, startTrial, resetToFree } = useSubscription();
+
+  // Derivado do store, nunca um snapshot congelado — some a classe de bug em
+  // que a tela de detalhe mostrava o estado de antes de uma edição/revisão.
+  const selectedItem = items.find((it) => it.id === selectedContentId) || null;
 
   const handleStartTrial = () => { startTrial(); showToast("✓ Study Vision+ ativado"); };
   const handleResetToFree = () => { resetToFree(); showToast("Demonstração reiniciada"); };
 
   const handleReviewComplete = () => {
-    const updated = markDone(selectedItem);
-    setSelectedItem(updated);
+    if (selectedItem) markDone(selectedItem);
     setReviewMode(false);
     showToast("✓ Revisão registrada");
     setTimeout(() => goTo("review"), 400);
@@ -84,7 +87,7 @@ export default function App() {
           )}
           {screen === "library" && (
             <LibraryScreen
-              onOpenItem={(item) => { setSelectedItem(item); go("detail"); }}
+              onOpenItem={(item) => { setSelectedContentId(item.id); go("detail"); }}
               onVisionPlus={() => go("visionplus")}
             />
           )}
@@ -116,7 +119,7 @@ export default function App() {
             <QuizScreen item={selectedItem} onBack={goBack} isPlus={isPlus} onVisionPlus={() => go("visionplus")} />
           )}
           {screen === "review" && (
-            <ReviewScreen onReview={(item) => { setSelectedItem(item); setReviewMode(true); go("flashcards"); }} onToast={showToast} />
+            <ReviewScreen onReview={(item) => { setSelectedContentId(item.id); setReviewMode(true); go("flashcards"); }} onToast={showToast} />
           )}
           {screen === "visionplus" && (
             <VisionPlusScreen

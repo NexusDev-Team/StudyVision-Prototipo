@@ -1,19 +1,18 @@
-import { useState, useEffect, useCallback } from "react";
-import { getStoredItems, saveItem } from "../services/storage";
+import { useCallback } from "react";
+import { useContentStore } from "../context/ContentStoreContext.jsx";
+import { saveItem } from "../services/storage";
 import { isDueForReview, markReviewDone } from "../services/reviewEngine";
 
-// Loads items once on mount, like every screen already did independently.
-// Each caller gets its own instance/state — intentionally not a shared store.
+// Consumidor fino do store único (ContentStoreContext). Mantém a mesma API que
+// as telas legadas já usavam — mas agora todas compartilham o mesmo estado e
+// um save/markDone recarrega para todo mundo de uma vez.
 export function useStudyItems() {
-  const [items, setItems] = useState([]);
-
-  const reload = useCallback(() => setItems(getStoredItems()), []);
-  useEffect(() => { reload(); }, [reload]);
+  const { items, dueCount, reload, mutate } = useContentStore();
 
   const dueItems = items.filter(isDueForReview);
 
-  const save = useCallback((item) => { saveItem(item); reload(); }, [reload]);
-  const markDone = useCallback((item) => { const updated = markReviewDone(item); reload(); return updated; }, [reload]);
+  const save = useCallback((item) => mutate(() => saveItem(item)), [mutate]);
+  const markDone = useCallback((item) => mutate(() => markReviewDone(item)), [mutate]);
 
-  return { items, dueItems, dueCount: dueItems.length, reload, save, markDone };
+  return { items, dueItems, dueCount, reload, save, markDone };
 }
