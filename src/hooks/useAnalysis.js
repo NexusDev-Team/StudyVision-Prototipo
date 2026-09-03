@@ -1,12 +1,18 @@
 import { useCallback, useRef, useState } from "react";
-import { analyzeImage, toStudyItem, AnalysisError } from "../services/studyVisionService";
+import { analyzeImage, normalizeAnalysisResult, AnalysisError } from "../services/studyVisionService";
 import { makeThumbnail } from "../utils/image";
+import { toLegacyItem } from "../data/adapters/toLegacyItem";
 
 // Orquestra o fluxo real de captura -> IA: envia a foto para /api/analyze e expõe
 // o estado de progresso para a AnalysisScreen refletir a requisição de verdade
 // (nada de setTimeout fingindo processamento).
+//
+// `content` é o Content normalizado, ainda NÃO persistido — quem salva de
+// verdade é SummaryScreen, ao clicar em "Salvar". `item` é só a projeção
+// legada dele, usada para renderizar o preview com os componentes existentes.
 export function useAnalysis() {
   const [status, setStatus] = useState("idle"); // idle | uploading | analyzing | done | error
+  const [content, setContent] = useState(null);
   const [item, setItem] = useState(null);
   const [error, setError] = useState(null);
   const lastPhotoRef = useRef(null);
@@ -19,6 +25,7 @@ export function useAnalysis() {
     controllerRef.current = controller;
 
     setError(null);
+    setContent(null);
     setItem(null);
     setStatus("uploading");
 
@@ -29,7 +36,9 @@ export function useAnalysis() {
         makeThumbnail(photoDataUrl).catch(() => photoDataUrl),
       ]);
       if (controller.signal.aborted) return;
-      setItem(toStudyItem(result, thumbnail));
+      const { content: normalized } = normalizeAnalysisResult(result, thumbnail);
+      setContent(normalized);
+      setItem(toLegacyItem(normalized, { reviews: [], events: [] }));
       setStatus("done");
     } catch (err) {
       if (controller.signal.aborted) return;
@@ -46,10 +55,11 @@ export function useAnalysis() {
   const reset = useCallback(() => {
     controllerRef.current?.abort();
     setStatus("idle");
+    setContent(null);
     setItem(null);
     setError(null);
     lastPhotoRef.current = null;
   }, []);
 
-  return { status, item, error, run, retry, reset };
+  return { status, item, content, error, run, retry, reset };
 }

@@ -13,10 +13,13 @@ export function getContent(id) {
   return readDb().contents.find((c) => c.id === id) || null;
 }
 
+// Retorna { content, result } — result vem de writeDb() e sinaliza se a
+// escrita precisou podar dados por causa de cota do localStorage estourada
+// (fotos em base64 pesam), para quem chama poder avisar o usuário.
 export function createContentEntry(input) {
   const content = createContent(input);
-  withDb((db) => ({ ...db, contents: [...db.contents, content] }));
-  return content;
+  const { result } = withDb((db) => ({ ...db, contents: [...db.contents, content] }));
+  return { content, result };
 }
 
 // Nunca altera `id`. Mescla apenas os campos passados em `patch`; arrays não

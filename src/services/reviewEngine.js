@@ -1,4 +1,4 @@
-import { saveItem } from "./storage";
+import { saveItem } from "./storage.js";
 
 // ─── SPACED REPETITION ────────────────────────────────────────────────────────
 export const DAY_MS = 24 * 60 * 60 * 1000;

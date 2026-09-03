@@ -1,49 +1,46 @@
-import { SAMPLE_ITEMS } from "../data/sampleContent";
-import { isDueForReview } from "./reviewEngine";
+// Ponte de compatibilidade: as telas legadas (ContentDetailScreen, ReviewScreen,
+// FlashcardsScreen, QuizScreen, QuestionsScreen, LibraryScreen, reviewEngine.js)
+// continuam chamando getStoredItems()/saveItem()/getDueItems() exatamente como
+// antes — mas agora tudo é lido/escrito através da camada de dados real
+// (contentService/reviewService/eventService sobre sv_db), via o adaptador
+// toLegacyItem. Nenhuma tela precisou mudar por causa disso.
+import { getContents, getContent } from "./contentService.js";
+import { getReviewsForContent, markReviewDone as markReviewEntityDone } from "./reviewService.js";
+import { getEventsForContent } from "./eventService.js";
+import { toLegacyItem } from "../data/adapters/toLegacyItem.js";
+import { applyLegacyCalendarEvent } from "../data/adapters/applyLegacyCalendarEvent.js";
+import { isDueForReview } from "./reviewEngine.js";
 
 export function getStoredItems() {
-  try {
-    const stored = JSON.parse(localStorage.getItem("sv_items") || "[]");
-    // Only drop a seed item once a real save with the same concept exists —
-    // real captures are deduplicated by id (below), never by concept, so two
-    // distinct AI results that happen to share a concept both stay visible.
-    const savedConcepts = new Set(stored.map(s => s.concept));
-    const seeds = SAMPLE_ITEMS.filter(s => !savedConcepts.has(s.concept));
-    return [...stored, ...seeds];
-  } catch { return SAMPLE_ITEMS; }
+  return getContents().map((content) =>
+    toLegacyItem(content, {
+      reviews: getReviewsForContent(content.id),
+      events: getEventsForContent(content.id),
+    })
+  );
 }
 
-function writeItems(items) {
-  localStorage.setItem("sv_items", JSON.stringify(items));
-}
-
+// Só é chamada para ATUALIZAR um conteúdo já existente (a criação de um
+// conteúdo novo passa por contentService.createContentEntry diretamente, em
+// SummaryScreen.jsx). Sincroniza dois pedaços possíveis de mudança que a UI
+// legada ainda produz nesse shape antigo:
+//   1. reviewEngine.markReviewDone() mutando um estágio de reviewSchedule;
+//   2. ContentDetailScreen agendando/atualizando um calendarEvent.
 export function saveItem(item) {
-  try {
-    const stored = JSON.parse(localStorage.getItem("sv_items") || "[]");
-    const filtered = stored.filter(s => s.id !== item.id);
-    const next = [item, ...filtered];
-    try {
-      writeItems(next);
-      return { ok: true };
-    } catch (err) {
-      if (err?.name !== "QuotaExceededError") throw err;
-      // Cota estourada (fotos reais em base64 pesam) — poda os itens salvos mais
-      // antigos e tenta de novo; em último caso, salva sem a foto.
-      let pruned = next;
-      while (pruned.length > 1) {
-        pruned = pruned.slice(0, -1);
-        try { writeItems(pruned); return { ok: true, reason: "pruned" }; } catch { /* segue podando */ }
-      }
-      try {
-        writeItems([{ ...item, photo: undefined }]);
-        return { ok: true, reason: "no-photo" };
-      } catch {
-        return { ok: false, reason: "quota" };
-      }
-    }
-  } catch {
-    return { ok: false, reason: "unknown" };
+  const content = getContent(item.id);
+  if (!content) return { ok: false, reason: "unknown" };
+
+  for (const stage of item.reviewSchedule || []) {
+    if (!stage.id || !stage.done) continue;
+    const current = getReviewsForContent(content.id).find((r) => r.id === stage.id);
+    if (current && current.status === "pending") markReviewEntityDone(stage.id);
   }
+
+  if (item.calendarEvent) {
+    applyLegacyCalendarEvent(content.id, content.title, item.calendarEvent);
+  }
+
+  return { ok: true };
 }
 
 export function getDueItems() {

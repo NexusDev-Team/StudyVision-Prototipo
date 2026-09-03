@@ -10,14 +10,7 @@ import { createContent } from "../models/content.js";
 import { createSubject } from "../models/subject.js";
 import { createReview } from "../models/review.js";
 import { createEvent } from "../models/event.js";
-
-// PLANNING_TYPES legado (src/constants.js) → tipos canônicos de AcademicEvent.
-// "Revisão" nunca vira evento acadêmico — revisões têm entidade própria.
-const LEGACY_EVENT_TYPE_MAP = {
-  Prova: "exam",
-  Trabalho: "assignment",
-  Apresentação: "class",
-};
+import { LEGACY_TO_CANONICAL_EVENT_TYPE } from "../adapters/legacyEventType.js";
 
 function resolveSubjectId(subjectName, subjectsByName) {
   const name = (subjectName || "").trim() || "Sem matéria";
@@ -94,7 +87,7 @@ function migrateItem(item, subjectsByName) {
 
   let event = null;
   if (item.calendarEvent && item.calendarEvent.type !== "Revisão") {
-    const type = LEGACY_EVENT_TYPE_MAP[item.calendarEvent.type] || "other";
+    const type = LEGACY_TO_CANONICAL_EVENT_TYPE[item.calendarEvent.type] || "other";
     event = createEvent({
       type,
       title: content.title,

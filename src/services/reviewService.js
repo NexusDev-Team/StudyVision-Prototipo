@@ -33,6 +33,16 @@ export function getReviewsForContent(contentId) {
   return readDb().reviews.filter((r) => r.contentId === contentId);
 }
 
+// Revisão avulsa, fora do ciclo D+1..D+30 — usada pela ponte de compatibilidade
+// quando o usuário agenda manualmente um compromisso do tipo "Revisão" na UI
+// legada (ver src/data/adapters/applyLegacyCalendarEvent.js).
+export function scheduleManualReview(contentId, scheduledForIso) {
+  const stage = getReviewsForContent(contentId).length + 1;
+  const review = createReview({ contentId, stage, scheduledFor: scheduledForIso, status: "pending", reason: "manual" });
+  withDb((db) => ({ ...db, reviews: [...db.reviews, review] }));
+  return review;
+}
+
 export function nextPendingReview(contentId) {
   return getReviewsForContent(contentId)
     .filter((r) => r.status === "pending")

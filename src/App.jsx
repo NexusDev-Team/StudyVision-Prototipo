@@ -76,6 +76,7 @@ export default function App() {
           {screen === "summary" && (
             <SummaryScreen
               capturedItem={analysis.item}
+              capturedContent={analysis.content}
               onSave={() => { showToast("✓ Conteúdo salvo com sucesso"); refreshDueCount(); setTimeout(() => goTo("library"), 500); }}
               onLibrary={() => goTo("library")}
               onToast={showToast}

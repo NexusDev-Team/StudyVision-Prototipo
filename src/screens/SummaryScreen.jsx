@@ -6,31 +6,43 @@ import CapturedPageVisual from "../components/brand/CapturedPageVisual";
 import ContentBlocks from "../components/study/ContentBlocks";
 import ExportSection from "../components/study/ExportSection";
 import PlanningSection from "../components/study/PlanningSection";
-import { saveItem } from "../services/storage";
-import { buildReviewSchedule } from "../services/reviewEngine";
+import { createContentEntry } from "../services/contentService";
+import { getSubjects, createSubjectEntry } from "../services/subjectService";
+import { scheduleReviewsForContent } from "../services/reviewService";
+import { applyLegacyCalendarEvent } from "../data/adapters/applyLegacyCalendarEvent";
 import { fadeUp } from "../styles/motion";
 
-export default function SummaryScreen({ capturedItem, onSave, onLibrary, onToast }) {
+// capturedItem: projeção legada (só para renderizar, vem de useAnalysis via toLegacyItem)
+// capturedContent: Content normalizado ainda não persistido (mesmo useAnalysis)
+export default function SummaryScreen({ capturedItem, capturedContent, onSave, onLibrary, onToast }) {
   const [saving, setSaving] = useState(false);
   const [calendarEvent, setCalendarEvent] = useState(null);
-  // Stable per screen instance — recomputing these on every render (e.g. after
-  // setCalendarEvent) would mint a new id/schedule and split the item in two.
-  const [itemId] = useState(() => `u_${Date.now()}`);
-  const [reviewSchedule] = useState(() => buildReviewSchedule(Date.now()));
 
-  if (!capturedItem) return null;
-  const item = { ...capturedItem, id: itemId, time: "Agora", reviewSchedule };
+  if (!capturedItem || !capturedContent) return null;
+  const item = capturedItem;
 
+  // O agendamento fica só em memória até o usuário confirmar "Salvar" — não
+  // persiste um conteúdo pela metade se ele fechar a tela sem salvar.
   const handlePlanned = (event) => {
     setCalendarEvent(event);
-    saveItem({ ...item, calendarEvent: event });
   };
 
   const handleSave = () => {
     if (saving) return;
     setSaving(true);
-    const toSave = calendarEvent ? { ...item, calendarEvent } : item;
-    const result = saveItem(toSave);
+
+    let subject = getSubjects().find((s) => s.name === capturedContent.subjectName);
+    if (!subject && capturedContent.subjectName) {
+      subject = createSubjectEntry(capturedContent.subjectName);
+    }
+
+    const { content: saved, result } = createContentEntry({
+      ...capturedContent,
+      subjectId: subject?.id || null,
+    });
+    scheduleReviewsForContent(saved.id, saved.createdAt);
+    if (calendarEvent) applyLegacyCalendarEvent(saved.id, saved.title, calendarEvent);
+
     setSaving(false);
     if (!result.ok) {
       onToast?.("Não foi possível salvar a foto — conteúdo salvo sem a imagem.");
