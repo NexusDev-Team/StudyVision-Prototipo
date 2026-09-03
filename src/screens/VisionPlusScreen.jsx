@@ -13,9 +13,16 @@ import AttentionCard from "../components/plus/AttentionCard";
 import InsightCard from "../components/plus/InsightCard";
 import PlanComparison from "../components/plus/PlanComparison";
 import PlusFinalCta from "../components/plus/PlusFinalCta";
+import { getPerformanceSummary, getSubjectsWithPerformance } from "../services/performanceService";
 
 export default function VisionPlusScreen({ onBack, isPlus, daysRemaining, onStartTrial, onResetToFree, onToast }) {
   const scrollRef = useRef(null);
+
+  // Só números medidos — nada de mock. Recalculado a cada visita à tela.
+  const summary = getPerformanceSummary();
+  const subjects = getSubjectsWithPerformance();
+  const strengths = subjects.filter((s) => s.accuracyRate != null && s.accuracyRate >= 80);
+  const attention = subjects.filter((s) => s.accuracyRate != null && s.accuracyRate < 60);
 
   const handleStartTrial = () => {
     onStartTrial();
@@ -33,12 +40,12 @@ export default function VisionPlusScreen({ onBack, isPlus, daysRemaining, onStar
       <ScrollArea ref={scrollRef} padding="18px 20px 30px" flexColumn>
         <PlusHeader onResetToFree={onResetToFree} />
         {isPlus ? <PlusActiveStatus daysRemaining={daysRemaining} /> : <PlusHero onStartTrial={handleStartTrial} />}
-        <MetricCards />
-        <SubjectProgress locked={!isPlus} onStartTrial={handleStartTrial} />
-        <PerformanceChart locked={!isPlus} onStartTrial={handleStartTrial} />
-        <StrengthsCard />
-        <AttentionCard hideNames={!isPlus} />
-        <InsightCard locked={!isPlus} onStartTrial={handleStartTrial} />
+        <MetricCards summary={summary} />
+        <SubjectProgress subjects={subjects} locked={!isPlus} onStartTrial={handleStartTrial} />
+        <PerformanceChart breakdown={summary.masteryBreakdown} hasActivity={summary.hasActivity} locked={!isPlus} onStartTrial={handleStartTrial} />
+        <StrengthsCard subjects={strengths} />
+        <AttentionCard subjects={attention} hideNames={!isPlus} />
+        <InsightCard summary={summary} locked={!isPlus} onStartTrial={handleStartTrial} />
         {!isPlus && <PlanComparison />}
         {!isPlus && <PlusFinalCta onStartTrial={handleStartTrial} />}
         {isPlus && (

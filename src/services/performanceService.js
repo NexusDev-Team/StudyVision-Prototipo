@@ -1,9 +1,16 @@
 // Métricas de desempenho derivadas SOMENTE de ações reais do usuário —
-// nenhum número aqui pode ser inventado. Construído nesta fase para uso
-// futuro; a Fase 2 troca a fonte do dashboard Vision+ (hoje plusMetrics.js
-// mock) por este serviço.
+// nenhum número aqui pode ser inventado. É a fonte do dashboard Vision+.
 
 import { readDb } from "../data/storage/index.js";
+
+// Domínio médio: média do content.mastery.score entre os conteúdos que já
+// têm alguma tentativa (level != not_started). null quando ainda não há nenhum.
+function averageMasteryScore(contents) {
+  const scored = contents.filter((c) => (c.mastery?.level || "not_started") !== "not_started");
+  if (scored.length === 0) return null;
+  const total = scored.reduce((sum, c) => sum + (c.mastery?.score || 0), 0);
+  return Math.round(total / scored.length);
+}
 
 export function getPerformanceSummary() {
   const db = readDb();
@@ -34,7 +41,22 @@ export function getPerformanceSummary() {
     flashcardsCorrect,
     flashcardAccuracyRate,
     masteryBreakdown,
+    averageMasteryScore: averageMasteryScore(db.contents),
+    hasActivity: db.quizAttempts.length > 0 || db.flashcardAttempts.length > 0,
   };
+}
+
+// Uma linha por matéria com conteúdo, ordenada por taxa de acerto (as com
+// dados primeiro). accuracyRate é null quando a matéria ainda não tem quiz.
+export function getSubjectsWithPerformance() {
+  const db = readDb();
+  return db.subjects
+    .map((subject) => {
+      const perf = getPerformanceForSubject(subject.id);
+      return { id: subject.id, name: subject.name, ...perf };
+    })
+    .filter((s) => s.contentsCount > 0)
+    .sort((a, b) => (b.accuracyRate ?? -1) - (a.accuracyRate ?? -1));
 }
 
 export function getPerformanceForSubject(subjectId) {

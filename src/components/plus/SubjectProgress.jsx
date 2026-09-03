@@ -2,21 +2,23 @@ import Card from "../ui/Card";
 import SectionLabel from "../ui/SectionLabel";
 import ProgressBar from "../ui/ProgressBar";
 import PlusPaywall from "./PlusPaywall";
-import { PLUS_METRICS } from "../../data/plusMetrics";
 import { SUBJECT_META } from "../../constants";
 
 function SubjectRows({ subjects }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      {subjects.map(s => {
+      {subjects.map((s) => {
         const color = SUBJECT_META[s.name]?.color || "#2563EB";
+        const value = s.accuracyRate;
         return (
-          <div key={s.name}>
+          <div key={s.id}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
               <span style={{ fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, color: "#111827" }}>{s.name}</span>
-              <span style={{ fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, color: "#111827" }}>{s.value}%</span>
+              <span style={{ fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, color: value != null ? "#111827" : "#94A3B8" }}>
+                {value != null ? `${value}%` : "sem quiz"}
+              </span>
             </div>
-            <ProgressBar value={s.value} color={color} />
+            <ProgressBar value={value ?? 0} color={color} />
           </div>
         );
       })}
@@ -24,11 +26,24 @@ function SubjectRows({ subjects }) {
   );
 }
 
-// Free shows the first `visibleCount` subjects; the rest stay blurred behind
-// a "ver evolução por tópico" unlock, in the same card — no separate blank state.
-export default function SubjectProgress({ locked, visibleCount = 2, onStartTrial }) {
-  const visible = locked ? PLUS_METRICS.subjects.slice(0, visibleCount) : PLUS_METRICS.subjects;
-  const rest = locked ? PLUS_METRICS.subjects.slice(visibleCount) : [];
+// Taxa de acerto real por matéria. Sem matéria ainda: estado vazio, não um card
+// em branco.
+export default function SubjectProgress({ subjects = [], locked, visibleCount = 2, onStartTrial }) {
+  if (subjects.length === 0) {
+    return (
+      <div style={{ marginBottom: 20 }}>
+        <SectionLabel>Evolução por matéria</SectionLabel>
+        <Card style={{ padding: "22px 20px", margin: 0, textAlign: "center" }}>
+          <p style={{ fontFamily: "Inter,sans-serif", fontSize: 13, color: "#64748B", margin: 0 }}>
+            Capture um conteúdo e responda um quiz para ver sua evolução por matéria.
+          </p>
+        </Card>
+      </div>
+    );
+  }
+
+  const visible = locked ? subjects.slice(0, visibleCount) : subjects;
+  const rest = locked ? subjects.slice(visibleCount) : [];
 
   return (
     <div style={{ marginBottom: 20 }}>
