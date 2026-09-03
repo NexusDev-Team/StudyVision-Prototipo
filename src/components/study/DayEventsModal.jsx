@@ -25,19 +25,27 @@ export default function DayEventsModal({ date, entries, onClose }) {
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {entries.map(({ id, item, type, time, stageLabel }) => (
-          <div key={id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 14, background: "#F8FAFC", border: "1px solid #E2E8F0" }}>
-            <div style={{ width: 10, height: 10, borderRadius: "50%", background: item.subjectColor, flexShrink: 0 }} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontSize: 13, fontWeight: 700, color: "#111827", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.concept}</p>
-              <p style={{ fontSize: 11, color: "#94A3B8", margin: "1px 0 0" }}>{item.subject}</p>
+        {entries.map(({ id, item, type, time, stageLabel, kind }) => {
+          const isReview = kind === "review";
+          const dot = isReview ? "#0F766E" : item.subjectColor;
+          const pillColor = isReview ? "#0F766E" : item.subjectColor;
+          const pillBg = isReview ? "rgba(15,118,110,0.12)" : item.subjectBg;
+          return (
+            <div key={id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 14, background: "#F8FAFC", border: "1px solid #E2E8F0" }}>
+              <div style={{ width: 10, height: 10, borderRadius: isReview ? 3 : "50%", background: dot, flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: 13, fontWeight: 700, color: "#111827", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.concept}</p>
+                <p style={{ fontSize: 11, color: "#94A3B8", margin: "1px 0 0" }}>{item.subject}</p>
+              </div>
+              <div style={{ textAlign: "right", flexShrink: 0 }}>
+                <span style={{ display: "block", fontSize: 10, fontWeight: 700, color: pillColor, background: pillBg, borderRadius: 8, padding: "2px 7px", marginBottom: 3 }}>
+                  {isReview ? "Revisão" : type}
+                </span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: "#64748B" }}>{time || stageLabel}</span>
+              </div>
             </div>
-            <div style={{ textAlign: "right", flexShrink: 0 }}>
-              <span style={{ display: "block", fontSize: 10, fontWeight: 700, color: item.subjectColor, background: item.subjectBg, borderRadius: 8, padding: "2px 7px", marginBottom: 3 }}>{type}</span>
-              <span style={{ fontSize: 11, fontWeight: 600, color: "#64748B" }}>{time || stageLabel}</span>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </Modal>
   );

@@ -13,7 +13,7 @@ import {
   formatDue,
 } from "../services/reviewService";
 import { getEventsForContent } from "../services/eventService";
-import { applyLegacyCalendarEvent } from "../data/adapters/applyLegacyCalendarEvent";
+import { scheduleCommitment } from "../services/calendarService";
 import { CANONICAL_TO_LEGACY_EVENT_TYPE } from "../data/adapters/legacyEventType";
 import { getSubjectVisual, getMasteryMeta } from "../constants";
 
@@ -32,13 +32,16 @@ export default function ContentDetailScreen({ content, onBack, onFlashcards, onQ
   const masteryScore = content.mastery?.score ?? 0;
   const hasMastery = (content.mastery?.level || "not_started") !== "not_started";
 
-  const event = getEventsForContent(content.id)[0] || null;
-  const legacyCalendarEvent = event
-    ? { type: CANONICAL_TO_LEGACY_EVENT_TYPE[event.type] || "Trabalho", date: event.date, time: event.time }
+  // Um conteúdo pode ter N eventos; a seção de planejamento confirma o mais
+  // recente e cada "Salvar Compromisso" agenda um novo, sem sobrescrever.
+  const events = getEventsForContent(content.id);
+  const latestEvent = events[events.length - 1] || null;
+  const latestCommitment = latestEvent
+    ? { type: CANONICAL_TO_LEGACY_EVENT_TYPE[latestEvent.type] || "Trabalho", date: latestEvent.date, time: latestEvent.time }
     : null;
 
-  const handlePlanned = (legacyEvent) => {
-    mutate(() => applyLegacyCalendarEvent(content.id, content.title, legacyEvent));
+  const handlePlanned = (form) => {
+    mutate(() => scheduleCommitment({ contentId: content.id, title: content.title, ...form }));
   };
 
   return (
@@ -97,7 +100,7 @@ export default function ContentDetailScreen({ content, onBack, onFlashcards, onQ
         <ContentBlocks content={content} variant="detail" />
 
         <ExportSection content={content} onToast={onToast} />
-        <PlanningSection calendarEvent={legacyCalendarEvent} onPlanned={handlePlanned} onToast={onToast} />
+        <PlanningSection calendarEvent={latestCommitment} onPlanned={handlePlanned} onToast={onToast} />
 
         {/* Action buttons */}
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }}

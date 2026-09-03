@@ -14,6 +14,7 @@ function toDateStr(year, month, day) {
 function subjectColorsForDay(entries) {
   const seen = [];
   for (const entry of entries) {
+    if (entry.kind === "review") continue; // revisões não pintam o dia — ganham marcador próprio
     if (!seen.includes(entry.item.subjectColor)) seen.push(entry.item.subjectColor);
   }
   return seen;
@@ -72,31 +73,37 @@ export default function CalendarMonth({ commitmentsByDate, onSelectDate }) {
           if (day === null) return <div key={i} />;
           const dateStr = toDateStr(cursor.year, cursor.month, day);
           const dayEntries = commitmentsByDate[dateStr] || [];
-          const hasEvents = dayEntries.length > 0;
+          const hasAny = dayEntries.length > 0;
           const isToday = dateStr === todayStr;
           const isPast = dateStr < todayStr;
           const colors = subjectColorsForDay(dayEntries);
+          const hasEventFill = colors.length > 0;
+          const hasReview = dayEntries.some((e) => e.kind === "review");
 
           return (
             <button
               key={i}
-              onClick={hasEvents ? () => onSelectDate(dateStr) : undefined}
-              disabled={!hasEvents}
+              onClick={hasAny ? () => onSelectDate(dateStr) : undefined}
+              disabled={!hasAny}
               style={{
+                position: "relative",
                 aspectRatio: "1",
                 borderRadius: "50%",
-                cursor: hasEvents ? "pointer" : "default",
-                border: isToday ? "1.5px solid #2563EB" : "1.5px solid transparent",
+                cursor: hasAny ? "pointer" : "default",
+                border: isToday ? "1.5px solid #2563EB" : hasReview && !hasEventFill ? "1.5px solid #0F766E" : "1.5px solid transparent",
                 fontFamily: "Inter,sans-serif",
                 fontSize: 12,
-                fontWeight: isToday || hasEvents ? 800 : 600,
-                color: hasEvents ? "white" : isToday ? "#2563EB" : "#111827",
+                fontWeight: isToday || hasAny ? 800 : 600,
+                color: hasEventFill ? "white" : isToday ? "#2563EB" : hasReview ? "#0F766E" : "#111827",
                 boxSizing: "border-box",
                 opacity: isPast ? 0.4 : 1,
-                ...(hasEvents ? fillStyle(colors) : { background: "white" }),
+                ...(hasEventFill ? fillStyle(colors) : { background: "white" }),
               }}
             >
               {day}
+              {hasReview && (
+                <span style={{ position: "absolute", bottom: 3, left: "50%", transform: "translateX(-50%)", width: 4, height: 4, borderRadius: 1, background: hasEventFill ? "white" : "#0F766E" }} />
+              )}
             </button>
           );
         })}

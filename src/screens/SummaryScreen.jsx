@@ -9,7 +9,7 @@ import PlanningSection from "../components/study/PlanningSection";
 import { createContentEntry } from "../services/contentService";
 import { getSubjects, createSubjectEntry } from "../services/subjectService";
 import { scheduleReviewsForContent } from "../services/reviewService";
-import { applyLegacyCalendarEvent } from "../data/adapters/applyLegacyCalendarEvent";
+import { scheduleCommitment } from "../services/calendarService";
 import { getSubjectVisual } from "../constants";
 import { fadeUp } from "../styles/motion";
 
@@ -42,7 +42,9 @@ export default function SummaryScreen({ capturedContent, onSave, onLibrary, onTo
       subjectId: subject?.id || null,
     });
     scheduleReviewsForContent(saved.id, saved.createdAt);
-    if (calendarEvent) applyLegacyCalendarEvent(saved.id, saved.title, calendarEvent);
+    if (calendarEvent) {
+      scheduleCommitment({ contentId: saved.id, title: saved.title, ...calendarEvent });
+    }
 
     setSaving(false);
     if (!result.ok) {
