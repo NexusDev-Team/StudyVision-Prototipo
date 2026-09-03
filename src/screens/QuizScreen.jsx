@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ChevronLeft, ListChecks, Sparkles } from "lucide-react";
 import QuizQuestion, { isCorrectOption } from "../components/study/QuizQuestion";
+import { recordQuizAttempt, updateMastery } from "../services/studyService";
+import { useContentStore } from "../context/ContentStoreContext.jsx";
 import { newId } from "../utils/id";
 
 // Questão V/F gerada aleatoriamente para o "gerar mais" do Vision+: metade das
@@ -18,6 +20,7 @@ function generateQuizQuestion(content) {
 }
 
 export default function QuizScreen({ content, onBack, isPlus = false, onVisionPlus }) {
+  const { mutate } = useContentStore();
   const quiz = content?.quizzes?.[0] || null;
   const baseQuestions = quiz?.questions || [];
   const [extraQuestions, setExtraQuestions] = useState([]);
@@ -29,13 +32,31 @@ export default function QuizScreen({ content, onBack, isPlus = false, onVisionPl
   const q = questions[index];
   const options = q?.type === "vf" ? [true, false] : q?.options || [];
 
+  // Respostas acumuladas com valor semântico (índice em mc, booleano em vf) —
+  // nunca o índice visual da opção. Persistidas em UMA tentativa ao terminar.
+  const answersRef = useRef([]);
+  const recordedRef = useRef(false);
+
   const choose = (optionIndex) => {
     if (selected !== null) return;
     setSelected(optionIndex);
-    if (isCorrectOption(q, optionIndex, options)) setScore((s) => s + 1);
+    const correct = isCorrectOption(q, optionIndex, options);
+    if (correct) setScore((s) => s + 1);
+    const selectedAnswer = q.type === "vf" ? options[optionIndex] : optionIndex;
+    answersRef.current.push({ questionId: q.id, selectedAnswer, correct });
   };
 
   const next = () => { setSelected(null); setIndex((i) => i + 1); };
+
+  useEffect(() => {
+    if (!done || recordedRef.current) return;
+    if (!quiz?.id || !content?.id || answersRef.current.length === 0) return;
+    recordedRef.current = true;
+    mutate(() => {
+      recordQuizAttempt({ quizId: quiz.id, contentId: content.id, answers: answersRef.current });
+      updateMastery(content.id);
+    });
+  }, [done, quiz?.id, content?.id, mutate]);
 
   const generateMore = () => {
     setExtraQuestions((prev) => [...prev, generateQuizQuestion(content)]);

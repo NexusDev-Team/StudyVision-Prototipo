@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { ChevronLeft, CreditCard, ThumbsUp, ThumbsDown, CheckCircle, Lock, Sparkles } from "lucide-react";
 import Flashcard from "../components/study/Flashcard";
 import { FREE_FLASHCARD_LIMIT } from "../constants";
 import { shuffle } from "../services/reviewService";
+import { recordFlashcardAttempt, updateMastery } from "../services/studyService";
+import { useContentStore } from "../context/ContentStoreContext.jsx";
 import { newId } from "../utils/id";
 
 function generateFlashcard(content, n) {
@@ -17,6 +19,8 @@ function generateFlashcard(content, n) {
 }
 
 export default function FlashcardsScreen({ content, onBack, onVisionPlus, isPlus = false, reviewMode = false, onReviewComplete }) {
+  const { mutate } = useContentStore();
+  const contentId = content?.id;
   const allCards = content?.flashcards || [];
   const [extraCards, setExtraCards] = useState([]);
   // Order shuffled once per screen entry — repeated review sessions don't always start with the same card.
@@ -29,13 +33,38 @@ export default function FlashcardsScreen({ content, onBack, onVisionPlus, isPlus
   const [grades, setGrades] = useState([]); // true = lembrei, false = não lembrei
   const done = index >= cards.length;
 
+  // Cronômetro do card atual: começa quando a carta é virada para ver a resposta.
+  const shownAtRef = useRef(null);
+  const recordedRef = useRef(false);
+
+  const flip = () => {
+    setFlipped((f) => {
+      const nextFlipped = !f;
+      if (nextFlipped && shownAtRef.current === null) shownAtRef.current = Date.now();
+      return nextFlipped;
+    });
+  };
+
   const generateMore = () => {
     setExtraCards(prev => [...prev, generateFlashcard(content, allCards.length + prev.length)]);
   };
 
   const grade = (remembered) => {
+    const card = cards[index];
+    const responseTimeMs = shownAtRef.current ? Date.now() - shownAtRef.current : null;
+    if (card?.id && contentId) {
+      mutate(() => {
+        recordFlashcardAttempt({ flashcardId: card.id, contentId, correct: remembered, responseTimeMs });
+        // Ao terminar o deck, recalcula o domínio uma única vez.
+        if (index + 1 >= cards.length && !recordedRef.current) {
+          recordedRef.current = true;
+          updateMastery(contentId);
+        }
+      });
+    }
     setGrades(g => [...g, remembered]);
     setFlipped(false);
+    shownAtRef.current = null;
     setIndex(i => i + 1);
   };
 
@@ -66,7 +95,7 @@ export default function FlashcardsScreen({ content, onBack, onVisionPlus, isPlus
       <div style={{ flex: 1, overflowY: "auto", padding: "18px 20px 24px", display: "flex", flexDirection: "column" }}>
         {!done && cards.length > 0 && (
           <>
-            <Flashcard card={cards[index]} index={index} flipped={flipped} onFlip={() => setFlipped(f => !f)} />
+            <Flashcard card={cards[index]} index={index} flipped={flipped} onFlip={flip} />
 
             {flipped ? (
               <div style={{ display: "flex", gap: 10 }}>
