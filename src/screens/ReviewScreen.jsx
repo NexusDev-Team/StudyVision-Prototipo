@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { AnimatePresence } from "framer-motion";
 import { CheckCircle } from "lucide-react";
 import LogoSVG from "../components/brand/LogoSVG";
@@ -6,42 +6,86 @@ import ReviewCard from "../components/study/ReviewCard";
 import UpcomingReviewRow from "../components/study/UpcomingReviewRow";
 import CalendarMonth from "../components/study/CalendarMonth";
 import DayEventsModal from "../components/study/DayEventsModal";
-import { useStudyItems } from "../hooks/useStudyItems";
-import { nextPendingReview, isDueForReview, endOfToday, DAY_MS } from "../services/reviewEngine";
-import { toDayKey } from "../utils/date";
+import { useContentStore } from "../context/ContentStoreContext.jsx";
+import { REVIEW_OFFSETS } from "../services/reviewService";
+import { toDayKey, endOfTodayIso, DAY_MS } from "../utils/date";
+import { getSubjectVisual } from "../constants";
+import { CANONICAL_TO_LEGACY_EVENT_TYPE } from "../data/adapters/legacyEventType";
+
+const STAGE_LABEL = Object.fromEntries(REVIEW_OFFSETS.map((o) => [o.stage, o.label]));
 
 export default function ReviewScreen({ onReview }) {
-  const { items } = useStudyItems();
+  const { contents, reviews, events } = useContentStore();
   const [selectedDate, setSelectedDate] = useState(null);
 
-  const due = items.filter(isDueForReview);
-  const next3DaysEnd = endOfToday() + 3 * DAY_MS;
-  const upcoming = items
-    .filter(it => !isDueForReview(it) && nextPendingReview(it))
-    .filter(it => nextPendingReview(it).dueAt <= next3DaysEnd)
-    .sort((a, b) => nextPendingReview(a).dueAt - nextPendingReview(b).dueAt);
+  const contentById = useMemo(() => new Map(contents.map((c) => [c.id, c])), [contents]);
 
-  const commitmentsByDate = {};
-  const addEntry = (date, entry) => (commitmentsByDate[date] ||= []).push(entry);
-  for (const item of items) {
-    // manually saved commitment (prova, trabalho, apresentação ou revisão agendada)
-    if (item.calendarEvent?.date) {
-      addEntry(item.calendarEvent.date, {
-        id: `${item.id}_event`,
-        item,
-        type: item.calendarEvent.type,
-        time: item.calendarEvent.time,
+  const { due, upcoming, commitmentsByDate } = useMemo(() => {
+    const endOfToday = new Date(endOfTodayIso()).getTime();
+    const next3DaysEnd = endOfToday + 3 * DAY_MS;
+
+    // Próxima revisão pendente de cada conteúdo.
+    const nextByContent = new Map();
+    for (const r of reviews) {
+      if (r.status !== "pending") continue;
+      const current = nextByContent.get(r.contentId);
+      if (!current || new Date(r.scheduledFor) < new Date(current.scheduledFor)) {
+        nextByContent.set(r.contentId, r);
+      }
+    }
+
+    const due = [];
+    const upcoming = [];
+    for (const [contentId, nextReview] of nextByContent) {
+      const content = contentById.get(contentId);
+      if (!content) continue;
+      const when = new Date(nextReview.scheduledFor).getTime();
+      if (when <= endOfToday) due.push({ content, nextReview });
+      else if (when <= next3DaysEnd) upcoming.push({ content, nextReview });
+    }
+    upcoming.sort((a, b) => new Date(a.nextReview.scheduledFor) - new Date(b.nextReview.scheduledFor));
+
+    // Calendário: eventos acadêmicos e revisões pendentes, cada um no seu dia
+    // (horário local), sem entradas sintéticas montadas item a item.
+    const commitmentsByDate = {};
+    const addEntry = (date, entry) => {
+      if (!date) return;
+      (commitmentsByDate[date] ||= []).push(entry);
+    };
+
+    for (const event of events) {
+      for (const contentId of event.contentIds) {
+        const content = contentById.get(contentId);
+        if (!content) continue;
+        const visual = getSubjectVisual(content.subjectName);
+        addEntry(event.date, {
+          id: `${event.id}_${contentId}`,
+          kind: "event",
+          item: { concept: content.title, subject: content.subjectName, subjectColor: visual.color, subjectBg: visual.bg },
+          type: CANONICAL_TO_LEGACY_EVENT_TYPE[event.type] || event.type,
+          time: event.time,
+        });
+      }
+    }
+
+    for (const r of reviews) {
+      if (r.status !== "pending") continue;
+      const content = contentById.get(r.contentId);
+      if (!content) continue;
+      const visual = getSubjectVisual(content.subjectName);
+      addEntry(toDayKey(r.scheduledFor), {
+        id: `${r.id}`,
+        kind: "review",
+        item: { concept: content.title, subject: content.subjectName, subjectColor: visual.color, subjectBg: visual.bg },
+        type: "Revisão",
+        stageLabel: STAGE_LABEL[r.stage],
       });
     }
-    // revisões pendentes da repetição espaçada aparecem sozinhas, sem precisar agendar
-    for (const stage of item.reviewSchedule || []) {
-      if (stage.done) continue;
-      const date = toDayKey(stage.dueAt);
-      if (item.calendarEvent?.date === date) continue; // já representada acima
-      addEntry(date, { id: `${item.id}_review_${stage.stage}`, item, type: "Revisão", stageLabel: stage.label });
-    }
-  }
-  const selectedEntries = selectedDate ? (commitmentsByDate[selectedDate] || []) : [];
+
+    return { due, upcoming, commitmentsByDate };
+  }, [contentById, reviews, events]);
+
+  const selectedEntries = selectedDate ? commitmentsByDate[selectedDate] || [] : [];
 
   return (
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#F8FAFC", fontFamily: "Inter,sans-serif", overflow: "hidden" }}>
@@ -63,16 +107,16 @@ export default function ReviewScreen({ onReview }) {
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 }}>
-            {due.map((item, i) => (
-              <ReviewCard key={item.id} item={item} index={i} onReview={onReview} />
+            {due.map(({ content, nextReview }, i) => (
+              <ReviewCard key={content.id} content={content} nextReview={nextReview} index={i} onReview={onReview} />
             ))}
           </div>
         )}
 
         <p style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: 1.2, marginBottom: 10 }}>PRÓXIMAS REVISÕES</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
-          {upcoming.map(item => (
-            <UpcomingReviewRow key={item.id} item={item} />
+          {upcoming.map(({ content, nextReview }) => (
+            <UpcomingReviewRow key={content.id} content={content} nextReview={nextReview} />
           ))}
         </div>
 
