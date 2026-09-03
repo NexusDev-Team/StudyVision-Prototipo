@@ -1,20 +1,25 @@
 # Mocks e dados sintéticos restantes
 
-Inventário do que ainda **não** é medido/persistido de verdade no Study Vision,
-quem consome e qual tarefa da Fase 2 (`PLANO-FASE-2-INTEGRACAO.md`) o substitui.
-Atualizado ao fim de cada tarefa que elimina um item.
+Inventário do que ainda **não** é medido/persistido de verdade no Study Vision.
+Após a Fase 2, sobra apenas a exportação para o Notion.
 
-| Mock | Arquivo | Quem consome | O que é hoje | Substituto | Status |
-|---|---|---|---|---|---|
-| Métricas do Vision+ | `src/data/plusMetrics.js` | `src/components/plus/*` (6 componentes importam `PLUS_METRICS` direto) | Objeto estático: 78% domínio, 1122 min estudados, série de 4 semanas, deltas, pontos fortes/atenção, insight textual | `performanceService.getPerformanceSummary()` / `getPerformanceForSubject()` — só o que é medível; `studyMinutes`, `weeks`, `strengths`, `attention`, `insight` viram estado vazio | **T5** — pendente |
-| Agendamento no calendário | `src/services/calendarService.js` | `src/components/study/PlanningSection.jsx` | `createEvent` / `scheduleReviews` são `setTimeout` que resolvem um objeto e **não persistem nada** | `eventService.createEventEntry` + `reviewService.scheduleManualReview` | **T6** — pendente |
-| Exportação de documento | `src/services/exportService.js` → `exportDocument()` | `src/components/study/ExportSection.jsx` | `setTimeout(900)` que resolve `{ fileName }` sem gerar arquivo | Geração real de PDF (resumo + conceitos + perguntas abertas; sem quiz/flashcards) | **T7** — pendente |
-| Cópia p/ área de transferência | `src/services/exportService.js` → `copyContent()` | `src/components/study/ExportSection.jsx` | Parcialmente real (`navigator.clipboard.writeText`), mas engole erro com `.catch(() => {})` e resolve mesmo em falha | Mesmo fluxo, propagando erro; texto montado do `Content` canônico | **T7** — pendente |
-| Exportar para o Notion | `src/services/notionService.js` | `src/components/study/ExportSection.jsx` | `setTimeout(900)` resolvendo `https://notion.so/mock-<id>` | **Nenhum** — permanece demo por decisão do usuário (precisa de OAuth + backend) | **demo permanente** |
-| Seeds de conteúdo | `src/data/sampleContent.js` → `SAMPLE_ITEMS` | `src/screens/QuizScreen.jsx` (só como pool de questões extras de preenchimento) | 5 conteúdos fixos de demonstração; `reviewSchedule` com `done` forjado; `CAPTURE_POOL` / `nextCaptureTemplate` código morto | Conteúdo real capturado pela câmera → Gemini. Seeds ficam apenas como material de pitch, sem histórico falso | **T8** — pendente (remover código morto, reduzir arquivo) |
+| Mock | Arquivo | Quem consome | O que é | Substituto futuro |
+|---|---|---|---|---|
+| Exportar para o Notion | `src/services/notionService.js` | `src/components/study/ExportSection.jsx` | `setTimeout(900)` que resolve `https://notion.so/mock-<id>` | Integração real (OAuth + `pages.create`) — precisa de backend; **fica como demo por decisão do usuário** |
 
-## Camadas que JÁ são reais
+## O que passou a ser real na Fase 2
+
+| Antes (mock) | Agora |
+|---|---|
+| `src/data/plusMetrics.js` — dashboard Vision+ 100% fixo | **Removido.** Vision+ lê `performanceService` (domínio médio, taxa de acerto, distribuição de domínio, pontos fortes/atenção por matéria). Cada card tem estado vazio desenhado. |
+| `src/services/calendarService.js` — `setTimeout` que não persistia nada | `scheduleCommitment` grava `AcademicEvent` / `Review` avulsa em `sv_db` via `eventService` / `reviewService`. |
+| `src/services/exportService.js` → `exportDocument` — `setTimeout` sem arquivo | Gera um **PDF real** (jsPDF, carregado sob demanda): resumo, itens relacionados e lista de perguntas. Sem quiz nem flashcards. |
+| `exportService.copyContent` — engolia erro com `.catch(() => {})` | Propaga a falha; `ExportSection` avisa o usuário. |
+| `src/data/sampleContent.js` — 5 seeds com histórico forjado | **Removido.** O app começa vazio; conteúdo vem da câmera → Gemini. |
+| `FlashcardsScreen` / `QuizScreen` — acertos só em `useState` | `recordFlashcardAttempt` / `recordQuizAttempt` (append-only) + `updateMastery`. |
+
+## Camadas reais desde a Fase 1
 
 - Captura de câmera (`getUserMedia`) → `api/analyze.js` → Gemini → `normalizeAnalysisResult`.
-- Persistência versionada `sv_db` (`src/data/storage/`), com migração `v1 → v2` e poda por cota.
-- `contentService` / `subjectService` / `studyService` / `reviewService` / `eventService` / `performanceService` — CRUD e derivações medidas, cobertos por `npm run test:data`.
+- Persistência versionada `sv_db` (`src/data/storage/`), migração `v1 → v2`, poda por cota.
+- `contentService` / `subjectService` / `studyService` / `reviewService` / `eventService` / `performanceService` — cobertos por `npm run test:data` (26 cenários).

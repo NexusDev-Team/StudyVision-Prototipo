@@ -21,8 +21,6 @@ export const REMINDER_OPTIONS = [
   { days: 0, label: "No dia" },
 ];
 
-export const SUBJECT_FILTERS = ["Todos", "Matemática", "História", "Química", "Física", "Português"];
-
 export const SUBJECT_META = {
   Todos: { icon: "LayoutGrid", color: "#64748B", bg: "#F1F5F9" },
   Matemática: { icon: "Calculator", color: "#2563EB", bg: "#EFF6FF" },
