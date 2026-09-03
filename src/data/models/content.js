@@ -21,7 +21,7 @@ export function createOpenQuestion({ contentId, question } = {}) {
   };
 }
 
-// mastery.level: not_started | learning | developing | mastered | needs_review
+// mastery.level: not_started | needs_review | developing | mastered
 export function createMastery({ score, level, updatedAt } = {}) {
   return {
     score: typeof score === "number" ? score : 0,

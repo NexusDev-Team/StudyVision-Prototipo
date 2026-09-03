@@ -19,7 +19,7 @@ export function getPerformanceSummary() {
   const flashcardAccuracyRate =
     flashcardsReviewed > 0 ? Math.round((flashcardsCorrect / flashcardsReviewed) * 100) : null;
 
-  const masteryBreakdown = { not_started: 0, learning: 0, developing: 0, mastered: 0, needs_review: 0 };
+  const masteryBreakdown = { not_started: 0, needs_review: 0, developing: 0, mastered: 0 };
   for (const content of db.contents) {
     const level = content.mastery?.level || "not_started";
     if (level in masteryBreakdown) masteryBreakdown[level] += 1;

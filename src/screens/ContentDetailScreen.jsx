@@ -15,7 +15,7 @@ import {
 import { getEventsForContent } from "../services/eventService";
 import { applyLegacyCalendarEvent } from "../data/adapters/applyLegacyCalendarEvent";
 import { CANONICAL_TO_LEGACY_EVENT_TYPE } from "../data/adapters/legacyEventType";
-import { getSubjectVisual } from "../constants";
+import { getSubjectVisual, getMasteryMeta } from "../constants";
 
 const STAGE_LABEL = Object.fromEntries(REVIEW_OFFSETS.map((o) => [o.stage, o.label]));
 
@@ -27,6 +27,10 @@ export default function ContentDetailScreen({ content, onBack, onFlashcards, onQ
   const next = nextPendingReview(content.id);
   const due = isContentDueForReview(content.id);
   const doneCount = reviews.filter((r) => r.status !== "pending").length;
+
+  const mastery = getMasteryMeta(content.mastery?.level);
+  const masteryScore = content.mastery?.score ?? 0;
+  const hasMastery = (content.mastery?.level || "not_started") !== "not_started";
 
   const event = getEventsForContent(content.id)[0] || null;
   const legacyCalendarEvent = event
@@ -62,6 +66,18 @@ export default function ContentDetailScreen({ content, onBack, onFlashcards, onQ
         {/* Captured image */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 12 }}>
           <CapturedPageVisual content={content} height={120} />
+        </motion.div>
+
+        {/* Domínio */}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+          style={{ background: "white", borderRadius: 20, padding: "12px 16px", marginBottom: 12, boxShadow: "0 1px 8px rgba(0,0,0,0.05)", border: "1px solid #E2E8F0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div>
+            <p style={{ fontSize: 10, fontWeight: 700, color: "#94A3B8", letterSpacing: 1.2, margin: 0 }}>DOMÍNIO</p>
+            <p style={{ fontSize: 13, fontWeight: 700, color: "#111827", margin: "3px 0 0", fontFamily: "Inter,sans-serif" }}>
+              {hasMastery ? `${masteryScore}% · ${mastery.label}` : "Ainda sem tentativas"}
+            </p>
+          </div>
+          <span style={{ fontSize: 11, fontWeight: 700, color: mastery.color, background: mastery.bg, borderRadius: 8, padding: "4px 10px" }}>{mastery.label}</span>
         </motion.div>
 
         {/* Review status */}

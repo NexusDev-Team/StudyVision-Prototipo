@@ -376,6 +376,51 @@ test("B3. addImageToContent propaga falha de cota em vez de engolir", () => {
   assert.equal(result.reason, "quota");
 });
 
+// ─── T4: transições de domínio (mastery) ────────────────────────────────────
+
+test("T4. not_started sem tentativa; updateMastery persiste content.mastery", () => {
+  const { content } = seedContent();
+  assert.equal(studyService.updateMastery(content.id).level, "not_started");
+  assert.equal(contentService.getContent(content.id).mastery.level, "not_started");
+});
+
+test("T4. quiz 100% -> mastered", () => {
+  const { content } = seedContent();
+  const quiz = contentService.getContent(content.id).quizzes[0];
+  studyService.recordQuizAttempt({
+    quizId: quiz.id,
+    contentId: content.id,
+    answers: [
+      { questionId: quiz.questions[0].id, selectedAnswer: 1, correct: true },
+      { questionId: quiz.questions[1].id, selectedAnswer: true, correct: true },
+    ],
+  });
+  assert.equal(studyService.updateMastery(content.id).level, "mastered");
+  assert.equal(contentService.getContent(content.id).mastery.level, "mastered");
+});
+
+test("T4. quiz 40% -> needs_review", () => {
+  const { content } = seedContent();
+  const quiz = contentService.getContent(content.id).quizzes[0];
+  studyService.recordQuizAttempt({
+    quizId: quiz.id,
+    contentId: content.id,
+    answers: [
+      { questionId: "q1", selectedAnswer: 0, correct: true },
+      { questionId: "q2", selectedAnswer: 0, correct: true },
+      { questionId: "q3", selectedAnswer: 0, correct: false },
+      { questionId: "q4", selectedAnswer: 0, correct: false },
+      { questionId: "q5", selectedAnswer: 0, correct: false },
+    ],
+  });
+  assert.equal(studyService.updateMastery(content.id).level, "needs_review");
+});
+
+test("T4b. masteryBreakdown não tem mais o nível morto 'learning'", () => {
+  const summary = performanceService.getPerformanceSummary();
+  assert.deepEqual(Object.keys(summary.masteryBreakdown).sort(), ["developing", "mastered", "needs_review", "not_started"]);
+});
+
 // ─── relatório ───────────────────────────────────────────────────────────────
 console.log(`\n${passed} passaram, ${failed} falharam`);
 if (failed > 0) {

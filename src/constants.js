@@ -1,5 +1,17 @@
 export const FREE_FLASHCARD_LIMIT = 5;
 
+// Nível de domínio (content.mastery.level) → rótulo e cores para os selos.
+export const MASTERY_META = {
+  not_started: { label: "Não iniciado", color: "#64748B", bg: "rgba(100,116,139,0.12)" },
+  needs_review: { label: "Rever", color: "#DC2626", bg: "rgba(220,38,38,0.1)" },
+  developing: { label: "Em progresso", color: "#D97706", bg: "rgba(217,119,6,0.12)" },
+  mastered: { label: "Dominado", color: "#16A34A", bg: "rgba(22,163,74,0.12)" },
+};
+
+export function getMasteryMeta(level) {
+  return MASTERY_META[level] || MASTERY_META.not_started;
+}
+
 export const PLANNING_TYPES = ["Prova", "Trabalho", "Apresentação", "Revisão"];
 
 export const REMINDER_OPTIONS = [
