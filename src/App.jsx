@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useStudyItems } from "./hooks/useStudyItems";
+import { useContentStore } from "./context/ContentStoreContext.jsx";
 import { useNavigation } from "./hooks/useNavigation";
 import { useToast } from "./hooks/useToast";
 import { useSubscription } from "./hooks/useSubscription";
@@ -27,11 +28,13 @@ export default function App() {
   const { toast, showToast, clearToast } = useToast();
   const analysis = useAnalysis();
   const { items, dueCount, reload: refreshDueCount, markDone } = useStudyItems();
+  const { contents } = useContentStore();
   const { isPlus, daysRemaining, startTrial, resetToFree } = useSubscription();
 
   // Derivado do store, nunca um snapshot congelado — some a classe de bug em
   // que a tela de detalhe mostrava o estado de antes de uma edição/revisão.
   const selectedItem = items.find((it) => it.id === selectedContentId) || null;
+  const selectedContent = contents.find((c) => c.id === selectedContentId) || null;
 
   const handleStartTrial = () => { startTrial(); showToast("✓ Study Vision+ ativado"); };
   const handleResetToFree = () => { resetToFree(); showToast("Demonstração reiniciada"); };
@@ -78,7 +81,6 @@ export default function App() {
           )}
           {screen === "summary" && (
             <SummaryScreen
-              capturedItem={analysis.item}
               capturedContent={analysis.content}
               onSave={() => { showToast("✓ Conteúdo salvo com sucesso"); refreshDueCount(); setTimeout(() => goTo("library"), 500); }}
               onLibrary={() => goTo("library")}
@@ -91,9 +93,9 @@ export default function App() {
               onVisionPlus={() => go("visionplus")}
             />
           )}
-          {screen === "detail" && selectedItem && (
+          {screen === "detail" && selectedContent && (
             <ContentDetailScreen
-              item={selectedItem}
+              content={selectedContent}
               onBack={goBack}
               onFlashcards={() => go("flashcards")}
               onQuestions={() => go("questions")}
@@ -112,10 +114,10 @@ export default function App() {
               onReviewComplete={handleReviewComplete}
             />
           )}
-          {screen === "questions" && (
+          {screen === "questions" && selectedItem && (
             <QuestionsScreen item={selectedItem} onBack={goBack} isPlus={isPlus} onVisionPlus={() => go("visionplus")} />
           )}
-          {screen === "quiz" && (
+          {screen === "quiz" && selectedItem && (
             <QuizScreen item={selectedItem} onBack={goBack} isPlus={isPlus} onVisionPlus={() => go("visionplus")} />
           )}
           {screen === "review" && (

@@ -7,14 +7,14 @@ import Button from "../ui/Button";
 import { exportToNotion } from "../../services/notionService";
 import { exportDocument, copyContent } from "../../services/exportService";
 
-export default function ExportSection({ item, onToast }) {
+export default function ExportSection({ content, onToast }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(null); // "notion" | "doc" | "copy" | null
 
   const run = async (key, fn, successMsg) => {
     if (busy) return;
     setBusy(key);
-    await fn(item);
+    await fn(content);
     setBusy(null);
     onToast(successMsg);
     setOpen(false);

@@ -63,3 +63,12 @@ export function getSubjectMeta(subjectName) {
   const color = FALLBACK_COLORS[hashString(subjectName || "") % FALLBACK_COLORS.length];
   return { icon: "BookOpen", color, bg: `${color}14` };
 }
+
+// Trio visual (emoji + cor + fundo) resolvido a partir do nome da matéria —
+// as telas leem o Content canônico (que só guarda subjectName) e derivam o
+// resto daqui, no lugar dos antigos campos subjectIcon/subjectColor/subjectBg
+// que o adaptador legado injetava.
+export function getSubjectVisual(subjectName) {
+  const meta = getSubjectMeta(subjectName);
+  return { emoji: getSubjectEmoji(subjectName), color: meta.color, bg: meta.bg };
+}

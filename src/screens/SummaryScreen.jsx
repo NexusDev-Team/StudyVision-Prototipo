@@ -10,16 +10,17 @@ import { createContentEntry } from "../services/contentService";
 import { getSubjects, createSubjectEntry } from "../services/subjectService";
 import { scheduleReviewsForContent } from "../services/reviewService";
 import { applyLegacyCalendarEvent } from "../data/adapters/applyLegacyCalendarEvent";
+import { getSubjectVisual } from "../constants";
 import { fadeUp } from "../styles/motion";
 
-// capturedItem: projeção legada (só para renderizar, vem de useAnalysis via toLegacyItem)
-// capturedContent: Content normalizado ainda não persistido (mesmo useAnalysis)
-export default function SummaryScreen({ capturedItem, capturedContent, onSave, onLibrary, onToast }) {
+// capturedContent: Content normalizado ainda não persistido (vem de useAnalysis).
+// Quem salva de verdade é handleSave aqui, ao clicar em "Salvar".
+export default function SummaryScreen({ capturedContent, onSave, onLibrary, onToast }) {
   const [saving, setSaving] = useState(false);
   const [calendarEvent, setCalendarEvent] = useState(null);
 
-  if (!capturedItem || !capturedContent) return null;
-  const item = capturedItem;
+  if (!capturedContent) return null;
+  const visual = getSubjectVisual(capturedContent.subjectName);
 
   // O agendamento fica só em memória até o usuário confirmar "Salvar" — não
   // persiste um conteúdo pela metade se ele fechar a tela sem salvar.
@@ -68,15 +69,15 @@ export default function SummaryScreen({ capturedItem, capturedContent, onSave, o
           style={{ background: "white", borderRadius: 20, padding: "16px 18px", marginBottom: 12, boxShadow: "0 1px 8px rgba(0,0,0,0.05)", border: "1px solid #E2E8F0" }}>
           <p style={{ fontSize: 10, fontWeight: 700, color: "#94A3B8", letterSpacing: 1.2, marginBottom: 12 }}>CONTEÚDO IDENTIFICADO</p>
           <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            <span style={{ fontSize: 36, lineHeight: 1 }}>{item.subjectIcon}</span>
+            <span style={{ fontSize: 36, lineHeight: 1 }}>{visual.emoji}</span>
             <div>
-              <p style={{ fontSize: 18, fontWeight: 800, color: "#111827", margin: 0 }}>{item.subject}</p>
+              <p style={{ fontSize: 18, fontWeight: 800, color: "#111827", margin: 0 }}>{capturedContent.subjectName}</p>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
-                <span style={{ fontSize: 11, color: "#64748B" }}>📍 {item.topic}</span>
+                <span style={{ fontSize: 11, color: "#64748B" }}>📍 {capturedContent.topic}</span>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
                 <GraduationCap size={12} color="#2563EB" />
-                <span style={{ fontSize: 12, color: "#2563EB", fontWeight: 700 }}>{item.concept}</span>
+                <span style={{ fontSize: 12, color: "#2563EB", fontWeight: 700 }}>{capturedContent.title}</span>
               </div>
             </div>
           </div>
@@ -84,14 +85,14 @@ export default function SummaryScreen({ capturedItem, capturedContent, onSave, o
 
         {/* Captured image */}
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }} style={{ marginBottom: 12 }}>
-          <CapturedPageVisual item={item} />
+          <CapturedPageVisual content={capturedContent} />
         </motion.div>
 
         {/* Content blocks */}
-        <ContentBlocks item={item} variant="summary" />
+        <ContentBlocks content={capturedContent} variant="summary" />
 
         {/* Export content */}
-        <ExportSection item={item} onToast={onToast} />
+        <ExportSection content={capturedContent} onToast={onToast} />
 
         {/* Planning */}
         <PlanningSection calendarEvent={calendarEvent} onPlanned={handlePlanned} onToast={onToast} />

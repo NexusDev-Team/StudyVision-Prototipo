@@ -1,34 +1,33 @@
-// Mock document export / copy-to-clipboard — no real PDF/DOCX generation yet.
-// TODO: replace with real PDF/DOCX generation (e.g. jsPDF/docx) + Android share sheet.
-function buildExportText(item) {
+import { relativeLabel } from "../utils/date";
+
+// Copy-to-clipboard é real (navigator.clipboard). A geração de PDF ainda é
+// mock — vira real no T7 do PLANO-FASE-2-INTEGRACAO.
+function buildExportText(content) {
   return [
-    item.concept,
-    item.time,
+    content.title,
+    relativeLabel(content.createdAt),
     "",
     "Resumo:",
-    item.summary,
+    content.summary,
     "",
     "Conceitos-chave:",
-    ...(item.concepts || []).map(c => `- ${c}`),
+    ...(content.keyConcepts || []).map((c) => `- ${c}`),
     "",
-    "Flashcards:",
-    ...(item.flashcards || []).map(f => `- ${f.front} -> ${f.back}`),
-    "",
-    "Perguntas:",
-    ...(item.questions || []).map(q => `- ${q}`),
+    "Perguntas para estudar:",
+    ...(content.openQuestions || []).map((q, i) => `${i + 1}. ${q.question}`),
   ].join("\n");
 }
 
-export function exportDocument(item) {
+export function exportDocument(content) {
   return new Promise((resolve) => {
     setTimeout(() => {
-      resolve({ fileName: `${item.concept}.pdf`, exportedAt: Date.now() });
+      resolve({ fileName: `${content.title}.pdf`, exportedAt: Date.now() });
     }, 900);
   });
 }
 
-export function copyContent(item) {
-  const text = buildExportText(item);
+export function copyContent(content) {
+  const text = buildExportText(content);
   return new Promise((resolve) => {
     if (navigator.clipboard?.writeText) {
       navigator.clipboard.writeText(text).catch(() => {});

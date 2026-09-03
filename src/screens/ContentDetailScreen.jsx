@@ -1,21 +1,42 @@
-import { useState } from "react";
 import { motion } from "framer-motion";
 import { ChevronLeft, CalendarClock, CreditCard, ListChecks, HelpCircle } from "lucide-react";
 import CapturedPageVisual from "../components/brand/CapturedPageVisual";
 import ContentBlocks from "../components/study/ContentBlocks";
 import ExportSection from "../components/study/ExportSection";
 import PlanningSection from "../components/study/PlanningSection";
-import { saveItem } from "../services/storage";
-import { nextPendingReview, isDueForReview, formatDue, completedReviews } from "../services/reviewEngine";
+import { useContentStore } from "../context/ContentStoreContext.jsx";
+import {
+  REVIEW_OFFSETS,
+  getReviewsForContent,
+  nextPendingReview,
+  isContentDueForReview,
+  formatDue,
+} from "../services/reviewService";
+import { getEventsForContent } from "../services/eventService";
+import { applyLegacyCalendarEvent } from "../data/adapters/applyLegacyCalendarEvent";
+import { CANONICAL_TO_LEGACY_EVENT_TYPE } from "../data/adapters/legacyEventType";
+import { getSubjectVisual } from "../constants";
 
-export default function ContentDetailScreen({ item, onBack, onFlashcards, onQuestions, onQuiz, onVisionPlus, onToast }) {
-  const next = nextPendingReview(item);
-  const due = isDueForReview(item);
-  const [calendarEvent, setCalendarEvent] = useState(item.calendarEvent || null);
-  const handlePlanned = (event) => {
-    setCalendarEvent(event);
-    saveItem({ ...item, calendarEvent: event });
+const STAGE_LABEL = Object.fromEntries(REVIEW_OFFSETS.map((o) => [o.stage, o.label]));
+
+export default function ContentDetailScreen({ content, onBack, onFlashcards, onQuestions, onQuiz, onVisionPlus, onToast }) {
+  const { mutate } = useContentStore();
+  const visual = getSubjectVisual(content.subjectName);
+
+  const reviews = getReviewsForContent(content.id);
+  const next = nextPendingReview(content.id);
+  const due = isContentDueForReview(content.id);
+  const doneCount = reviews.filter((r) => r.status !== "pending").length;
+
+  const event = getEventsForContent(content.id)[0] || null;
+  const legacyCalendarEvent = event
+    ? { type: CANONICAL_TO_LEGACY_EVENT_TYPE[event.type] || "Trabalho", date: event.date, time: event.time }
+    : null;
+
+  const handlePlanned = (legacyEvent) => {
+    mutate(() => applyLegacyCalendarEvent(content.id, content.title, legacyEvent));
   };
+
   return (
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#F8FAFC", fontFamily: "Inter,sans-serif", overflow: "hidden" }}>
       {/* Header */}
@@ -26,12 +47,12 @@ export default function ContentDetailScreen({ item, onBack, onFlashcards, onQues
           <span style={{ fontSize: 14, fontWeight: 600, color: "#2563EB", fontFamily: "Inter,sans-serif" }}>Biblioteca</span>
         </button>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 52, height: 52, borderRadius: 16, background: item.subjectBg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, flexShrink: 0 }}>
-            {item.subjectIcon}
+          <div style={{ width: 52, height: 52, borderRadius: 16, background: visual.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, flexShrink: 0 }}>
+            {visual.emoji}
           </div>
           <div>
-            <p style={{ fontSize: 20, fontWeight: 800, color: "#111827", margin: 0 }}>{item.concept}</p>
-            <p style={{ fontSize: 13, color: "#64748B", margin: "2px 0 0" }}>{item.subject} · {item.topic}</p>
+            <p style={{ fontSize: 20, fontWeight: 800, color: "#111827", margin: 0 }}>{content.title}</p>
+            <p style={{ fontSize: 13, color: "#64748B", margin: "2px 0 0" }}>{content.subjectName} · {content.topic}</p>
           </div>
         </div>
       </div>
@@ -40,7 +61,7 @@ export default function ContentDetailScreen({ item, onBack, onFlashcards, onQues
       <div style={{ flex: 1, overflowY: "auto", padding: "14px 20px 20px" }}>
         {/* Captured image */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 12 }}>
-          <CapturedPageVisual item={item} height={120} />
+          <CapturedPageVisual content={content} height={120} />
         </motion.div>
 
         {/* Review status */}
@@ -50,17 +71,17 @@ export default function ContentDetailScreen({ item, onBack, onFlashcards, onQues
             <CalendarClock size={18} color={due ? "#DC2626" : "#64748B"} />
             <div>
               <p style={{ fontSize: 13, fontWeight: 700, color: due ? "#DC2626" : "#111827", margin: 0, fontFamily: "Inter,sans-serif" }}>
-                {due ? "Revisão pendente hoje" : `Próxima revisão: ${next.label} · ${formatDue(next.dueAt)}`}
+                {due ? "Revisão pendente hoje" : `Próxima revisão: ${STAGE_LABEL[next.stage] || ""} · ${formatDue(next.scheduledFor)}`}
               </p>
-              <p style={{ fontSize: 11, color: "#94A3B8", margin: "2px 0 0", fontFamily: "Inter,sans-serif" }}>{completedReviews(item)}/5 revisões concluídas</p>
+              <p style={{ fontSize: 11, color: "#94A3B8", margin: "2px 0 0", fontFamily: "Inter,sans-serif" }}>{doneCount}/{REVIEW_OFFSETS.length} revisões concluídas</p>
             </div>
           </motion.div>
         )}
 
-        <ContentBlocks item={item} variant="detail" />
+        <ContentBlocks content={content} variant="detail" />
 
-        <ExportSection item={item} onToast={onToast} />
-        <PlanningSection calendarEvent={calendarEvent} onPlanned={handlePlanned} onToast={onToast} />
+        <ExportSection content={content} onToast={onToast} />
+        <PlanningSection calendarEvent={legacyCalendarEvent} onPlanned={handlePlanned} onToast={onToast} />
 
         {/* Action buttons */}
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }}

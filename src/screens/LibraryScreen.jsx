@@ -1,24 +1,45 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Star, Search, BookOpen } from "lucide-react";
 import LogoSVG from "../components/brand/LogoSVG";
 import ContentCard from "../components/study/ContentCard";
 import SubjectFolderGrid from "../components/ui/SubjectFolderGrid";
-import { useStudyItems } from "../hooks/useStudyItems";
+import { useContentStore } from "../context/ContentStoreContext.jsx";
+import { endOfTodayIso } from "../utils/date";
 
 export default function LibraryScreen({ onOpenItem, onVisionPlus }) {
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("Todos");
-  const { items } = useStudyItems();
+  const { contents, reviews, events } = useContentStore();
 
-  // Matérias derivadas do conteúdo real na biblioteca — com a IA, novas matérias
-  // (Biologia, Filosofia, ...) aparecem sem precisar de uma lista fixa.
-  const subjectFilters = ["Todos", ...new Set(items.map(it => it.subject).filter(Boolean))];
+  // Revisão pendente (para o selo "Revisar hoje") e próximo evento, indexados
+  // por conteúdo — derivados uma vez do estado do store.
+  const { dueByContent, eventByContent } = useMemo(() => {
+    const endOfToday = new Date(endOfTodayIso()).getTime();
+    const due = new Set(
+      reviews
+        .filter((r) => r.status === "pending" && new Date(r.scheduledFor).getTime() <= endOfToday)
+        .map((r) => r.contentId)
+    );
+    const evt = new Map();
+    for (const e of events) {
+      for (const cid of e.contentIds) {
+        if (!evt.has(cid)) evt.set(cid, e);
+      }
+    }
+    return { dueByContent: due, eventByContent: evt };
+  }, [reviews, events]);
 
-  const filtered = items.filter(it => {
-    const q = search.toLowerCase();
-    const matchSearch = !q || it.concept.toLowerCase().includes(q) || it.subject.toLowerCase().includes(q);
-    const matchFilter = activeFilter === "Todos" || it.subject === activeFilter;
+  // Matérias derivadas do conteúdo real na biblioteca — com a IA, novas
+  // matérias (Biologia, Filosofia, ...) aparecem sem lista fixa.
+  const subjectFilters = ["Todos", ...new Set(contents.map((c) => c.subjectName).filter(Boolean))];
+
+  const filtered = contents.filter((c) => {
+    const q = search.trim().toLowerCase();
+    const title = (c.title || "").toLowerCase();
+    const subject = (c.subjectName || "").toLowerCase();
+    const matchSearch = !q || title.includes(q) || subject.includes(q);
+    const matchFilter = activeFilter === "Todos" || c.subjectName === activeFilter;
     return matchSearch && matchFilter;
   });
 
@@ -60,8 +81,15 @@ export default function LibraryScreen({ onOpenItem, onVisionPlus }) {
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {filtered.map((item, i) => (
-              <ContentCard key={item.id} item={item} index={i} onClick={() => onOpenItem(item)} />
+            {filtered.map((content, i) => (
+              <ContentCard
+                key={content.id}
+                content={content}
+                index={i}
+                isDue={dueByContent.has(content.id)}
+                nextEvent={eventByContent.get(content.id) || null}
+                onClick={() => onOpenItem(content)}
+              />
             ))}
           </div>
         )}
