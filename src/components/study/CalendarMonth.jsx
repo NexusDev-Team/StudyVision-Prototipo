@@ -79,6 +79,14 @@ export default function CalendarMonth({ commitmentsByDate, onSelectDate }) {
           const colors = subjectColorsForDay(dayEntries);
           const hasEventFill = colors.length > 0;
           const hasReview = dayEntries.some((e) => e.kind === "review");
+          // Prova = círculo cheio (fill); Trabalho = círculo pontilhado.
+          const hasAssignment = dayEntries.some((e) => e.kind === "event" && e.type === "Trabalho");
+
+          // Só o dia atual usa borda azul sólida — a revisão não ganha círculo,
+          // para não se confundir com "hoje". Trabalho ganha borda pontilhada.
+          let border = "1.5px solid transparent";
+          if (isToday) border = "1.5px solid #2563EB";
+          else if (hasAssignment) border = `1.5px dotted ${hasEventFill ? "#FFFFFF" : colors[0] || "#94A3B8"}`;
 
           return (
             <button
@@ -90,7 +98,7 @@ export default function CalendarMonth({ commitmentsByDate, onSelectDate }) {
                 aspectRatio: "1",
                 borderRadius: "50%",
                 cursor: hasAny ? "pointer" : "default",
-                border: isToday ? "1.5px solid #2563EB" : hasReview && !hasEventFill ? "1.5px solid #0F766E" : "1.5px solid transparent",
+                border,
                 fontFamily: "Inter,sans-serif",
                 fontSize: 12,
                 fontWeight: isToday || hasAny ? 800 : 600,
