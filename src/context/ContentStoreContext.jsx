@@ -7,7 +7,6 @@
 import { createContext, useContext, useState, useCallback, useMemo, useEffect } from "react";
 import { readDb } from "../data/storage/index.js";
 import { endOfTodayIso } from "../utils/date.js";
-import { toLegacyItem } from "../data/adapters/toLegacyItem.js";
 
 const ContentStoreContext = createContext(null);
 
@@ -19,17 +18,6 @@ function readSnapshot() {
     reviews: db.reviews,
     events: db.events,
   };
-}
-
-function groupBy(list, keyFn) {
-  const map = new Map();
-  for (const entry of list) {
-    for (const key of keyFn(entry)) {
-      if (!map.has(key)) map.set(key, []);
-      map.get(key).push(entry);
-    }
-  }
-  return map;
 }
 
 export function ContentStoreProvider({ children }) {
@@ -48,18 +36,6 @@ export function ContentStoreProvider({ children }) {
   const value = useMemo(() => {
     const { contents, subjects, reviews, events } = snapshot;
 
-    const reviewsByContent = groupBy(reviews, (r) => [r.contentId]);
-    const eventsByContent = groupBy(events, (e) => e.contentIds);
-
-    // Projeção legada — transitória, some quando as telas passarem a ler o
-    // Content canônico direto (T2 do plano da Fase 2).
-    const items = contents.map((c) =>
-      toLegacyItem(c, {
-        reviews: reviewsByContent.get(c.id) || [],
-        events: eventsByContent.get(c.id) || [],
-      })
-    );
-
     const endOfToday = new Date(endOfTodayIso()).getTime();
     const dueContentIds = new Set(
       reviews
@@ -72,7 +48,6 @@ export function ContentStoreProvider({ children }) {
       subjects,
       reviews,
       events,
-      items,
       dueCount: dueContentIds.size,
       reload,
       mutate,

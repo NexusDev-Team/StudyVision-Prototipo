@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { useStudyItems } from "./hooks/useStudyItems";
 import { useContentStore } from "./context/ContentStoreContext.jsx";
+import { nextPendingReview, markReviewDone } from "./services/reviewService";
 import { useNavigation } from "./hooks/useNavigation";
 import { useToast } from "./hooks/useToast";
 import { useSubscription } from "./hooks/useSubscription";
@@ -27,20 +27,23 @@ export default function App() {
   const [selectedContentId, setSelectedContentId] = useState(null);
   const { toast, showToast, clearToast } = useToast();
   const analysis = useAnalysis();
-  const { items, dueCount, reload: refreshDueCount, markDone } = useStudyItems();
-  const { contents } = useContentStore();
+  const { contents, dueCount, reload: refreshDueCount, mutate } = useContentStore();
   const { isPlus, daysRemaining, startTrial, resetToFree } = useSubscription();
 
   // Derivado do store, nunca um snapshot congelado — some a classe de bug em
   // que a tela de detalhe mostrava o estado de antes de uma edição/revisão.
-  const selectedItem = items.find((it) => it.id === selectedContentId) || null;
   const selectedContent = contents.find((c) => c.id === selectedContentId) || null;
 
   const handleStartTrial = () => { startTrial(); showToast("✓ Study Vision+ ativado"); };
   const handleResetToFree = () => { resetToFree(); showToast("Demonstração reiniciada"); };
 
   const handleReviewComplete = () => {
-    if (selectedItem) markDone(selectedItem);
+    if (selectedContentId) {
+      mutate(() => {
+        const next = nextPendingReview(selectedContentId);
+        if (next) markReviewDone(next.id);
+      });
+    }
     setReviewMode(false);
     showToast("✓ Revisão registrada");
     setTimeout(() => goTo("review"), 400);
