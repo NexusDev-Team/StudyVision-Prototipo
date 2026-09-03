@@ -104,9 +104,9 @@ export default function App() {
               onToast={showToast}
             />
           )}
-          {screen === "flashcards" && selectedItem && (
+          {screen === "flashcards" && selectedContent && (
             <FlashcardsScreen
-              item={selectedItem}
+              content={selectedContent}
               onBack={goBack}
               onVisionPlus={() => go("visionplus")}
               isPlus={isPlus}
@@ -114,11 +114,11 @@ export default function App() {
               onReviewComplete={handleReviewComplete}
             />
           )}
-          {screen === "questions" && selectedItem && (
-            <QuestionsScreen item={selectedItem} onBack={goBack} isPlus={isPlus} onVisionPlus={() => go("visionplus")} />
+          {screen === "questions" && selectedContent && (
+            <QuestionsScreen content={selectedContent} onBack={goBack} isPlus={isPlus} onVisionPlus={() => go("visionplus")} />
           )}
-          {screen === "quiz" && selectedItem && (
-            <QuizScreen item={selectedItem} onBack={goBack} isPlus={isPlus} onVisionPlus={() => go("visionplus")} />
+          {screen === "quiz" && selectedContent && (
+            <QuizScreen content={selectedContent} onBack={goBack} isPlus={isPlus} onVisionPlus={() => go("visionplus")} />
           )}
           {screen === "review" && (
             <ReviewScreen onReview={(item) => { setSelectedContentId(item.id); setReviewMode(true); go("flashcards"); }} onToast={showToast} />

@@ -2,29 +2,24 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { ChevronLeft, ListChecks, Sparkles } from "lucide-react";
 import QuizQuestion, { isCorrectOption } from "../components/study/QuizQuestion";
-import { SAMPLE_ITEMS } from "../data/sampleContent";
+import { newId } from "../utils/id";
 
-// Randomly generated V/F question — the affirmation is sometimes true (a real
-// concept from this item) and sometimes false (a concept borrowed from another
-// subject), so "gerar mais" doesn't always answer to the same pattern.
-function generateQuizQuestion(item) {
-  const concepts = item?.concepts?.length ? item.concepts : [item?.concept || "este conteúdo"];
+// Questão V/F gerada aleatoriamente para o "gerar mais" do Vision+: metade das
+// vezes a afirmação é verdadeira (um conceito real do conteúdo), metade falsa
+// (o conceito trocado por um genérico), para não cair sempre no mesmo padrão.
+function generateQuizQuestion(content) {
+  const concepts = content?.keyConcepts?.length ? content.keyConcepts : [content?.title || "este conteúdo"];
   const isTrue = Math.random() < 0.5;
-  let concept = concepts[Math.floor(Math.random() * concepts.length)];
-
-  if (!isTrue) {
-    const others = SAMPLE_ITEMS.filter(s => s.id !== item?.id && s.concepts?.length);
-    if (others.length) {
-      const other = others[Math.floor(Math.random() * others.length)];
-      concept = other.concepts[Math.floor(Math.random() * other.concepts.length)];
-    }
-  }
-
-  return { type: "vf", question: `${concept} é um dos pontos centrais de "${item?.concept}".`, answer: isTrue };
+  const concept = concepts[Math.floor(Math.random() * concepts.length)];
+  const affirmation = isTrue
+    ? `${concept} é um dos pontos centrais de "${content?.title}".`
+    : `${concept} não tem nenhuma relação com "${content?.title}".`;
+  return { id: newId("qs"), type: "vf", question: affirmation, correctAnswer: isTrue };
 }
 
-export default function QuizScreen({ item, onBack, isPlus = false, onVisionPlus }) {
-  const baseQuestions = item?.quiz || [];
+export default function QuizScreen({ content, onBack, isPlus = false, onVisionPlus }) {
+  const quiz = content?.quizzes?.[0] || null;
+  const baseQuestions = quiz?.questions || [];
   const [extraQuestions, setExtraQuestions] = useState([]);
   const questions = [...baseQuestions, ...extraQuestions];
   const [index, setIndex] = useState(0);
@@ -37,13 +32,13 @@ export default function QuizScreen({ item, onBack, isPlus = false, onVisionPlus 
   const choose = (optionIndex) => {
     if (selected !== null) return;
     setSelected(optionIndex);
-    if (isCorrectOption(q, optionIndex, options)) setScore(s => s + 1);
+    if (isCorrectOption(q, optionIndex, options)) setScore((s) => s + 1);
   };
 
-  const next = () => { setSelected(null); setIndex(i => i + 1); };
+  const next = () => { setSelected(null); setIndex((i) => i + 1); };
 
   const generateMore = () => {
-    setExtraQuestions(prev => [...prev, generateQuizQuestion(item)]);
+    setExtraQuestions((prev) => [...prev, generateQuizQuestion(content)]);
   };
 
   return (
@@ -57,7 +52,7 @@ export default function QuizScreen({ item, onBack, isPlus = false, onVisionPlus 
           <ListChecks size={22} color="#EA580C" />
           <h1 style={{ fontSize: 22, fontWeight: 800, color: "#111827", margin: 0 }}>Mini Quiz</h1>
         </div>
-        <p style={{ fontSize: 13, color: "#64748B", margin: "4px 0 0" }}>Baseado em: {item?.concept}</p>
+        <p style={{ fontSize: 13, color: "#64748B", margin: "4px 0 0" }}>Baseado em: {content?.title}</p>
         {!done && questions.length > 0 && (
           <p style={{ fontSize: 12, color: "#94A3B8", margin: "6px 0 0" }}>Pergunta {index + 1} de {questions.length}</p>
         )}

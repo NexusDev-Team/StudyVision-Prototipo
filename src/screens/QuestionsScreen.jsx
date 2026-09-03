@@ -2,17 +2,18 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { ChevronLeft, HelpCircle, Sparkles } from "lucide-react";
 
-function generateQuestion(item, n) {
-  const concept = item?.concepts?.[n % (item.concepts?.length || 1)] || item?.concept || "este conteúdo";
-  return `Como você explicaria ${concept} com suas próprias palavras?`;
+function generateQuestion(content, n) {
+  const concepts = content?.keyConcepts?.length ? content.keyConcepts : [content?.title || "este conteúdo"];
+  const concept = concepts[n % concepts.length];
+  return { question: `Como você explicaria ${concept} com suas próprias palavras?` };
 }
 
-export default function QuestionsScreen({ item, onBack, isPlus = false, onVisionPlus }) {
-  const baseQs = item?.questions || [];
+export default function QuestionsScreen({ content, onBack, isPlus = false, onVisionPlus }) {
+  const baseQs = content?.openQuestions || [];
   const [extraQs, setExtraQs] = useState([]);
   const qs = [...baseQs, ...extraQs];
 
-  const generateMore = () => setExtraQs(prev => [...prev, generateQuestion(item, baseQs.length + prev.length)]);
+  const generateMore = () => setExtraQs((prev) => [...prev, generateQuestion(content, baseQs.length + prev.length)]);
 
   return (
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#F8FAFC", fontFamily: "Inter,sans-serif", overflow: "hidden" }}>
@@ -25,15 +26,15 @@ export default function QuestionsScreen({ item, onBack, isPlus = false, onVision
           <HelpCircle size={22} color="#2563EB" />
           <h1 style={{ fontSize: 22, fontWeight: 800, color: "#111827", margin: 0 }}>Perguntas</h1>
         </div>
-        <p style={{ fontSize: 13, color: "#64748B", margin: "4px 0 0" }}>Baseadas em: {item?.concept}</p>
+        <p style={{ fontSize: 13, color: "#64748B", margin: "4px 0 0" }}>Baseadas em: {content?.title}</p>
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "14px 20px 20px" }}>
         {qs.map((q, i) => (
-          <motion.div key={i} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
+          <motion.div key={q.id || i} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
             style={{ background: "white", borderRadius: 20, padding: "16px 18px", marginBottom: 10, boxShadow: "0 1px 8px rgba(0,0,0,0.06)", border: "1px solid #E2E8F0" }}>
             <p style={{ fontSize: 10, fontWeight: 700, color: "#2563EB", letterSpacing: 1.2, marginBottom: 6 }}>PERGUNTA {i + 1}</p>
-            <p style={{ fontSize: 14, color: "#374151", lineHeight: 1.55, margin: 0 }}>{q}</p>
+            <p style={{ fontSize: 14, color: "#374151", lineHeight: 1.55, margin: 0 }}>{q.question}</p>
           </motion.div>
         ))}
 

@@ -3,15 +3,21 @@ import { motion } from "framer-motion";
 import { ChevronLeft, CreditCard, ThumbsUp, ThumbsDown, CheckCircle, Lock, Sparkles } from "lucide-react";
 import Flashcard from "../components/study/Flashcard";
 import { FREE_FLASHCARD_LIMIT } from "../constants";
-import { shuffle } from "../services/reviewEngine";
+import { shuffle } from "../services/reviewService";
+import { newId } from "../utils/id";
 
-function generateFlashcard(item, n) {
-  const concept = item?.concepts?.[n % (item.concepts?.length || 1)] || item?.concept || "este conteúdo";
-  return { front: `O que você lembra sobre ${concept}?`, back: `Revise o material de "${item?.concept}" para aprofundar em ${concept}.` };
+function generateFlashcard(content, n) {
+  const concepts = content?.keyConcepts?.length ? content.keyConcepts : [content?.title || "este conteúdo"];
+  const concept = concepts[n % concepts.length];
+  return {
+    id: newId("fc"),
+    front: `O que você lembra sobre ${concept}?`,
+    back: `Revise o material de "${content?.title}" para aprofundar em ${concept}.`,
+  };
 }
 
-export default function FlashcardsScreen({ item, onBack, onVisionPlus, isPlus = false, reviewMode = false, onReviewComplete }) {
-  const allCards = item?.flashcards || [];
+export default function FlashcardsScreen({ content, onBack, onVisionPlus, isPlus = false, reviewMode = false, onReviewComplete }) {
+  const allCards = content?.flashcards || [];
   const [extraCards, setExtraCards] = useState([]);
   // Order shuffled once per screen entry — repeated review sessions don't always start with the same card.
   const [shuffledCards] = useState(() => shuffle(allCards));
@@ -24,7 +30,7 @@ export default function FlashcardsScreen({ item, onBack, onVisionPlus, isPlus = 
   const done = index >= cards.length;
 
   const generateMore = () => {
-    setExtraCards(prev => [...prev, generateFlashcard(item, allCards.length + prev.length)]);
+    setExtraCards(prev => [...prev, generateFlashcard(content, allCards.length + prev.length)]);
   };
 
   const grade = (remembered) => {
@@ -51,7 +57,7 @@ export default function FlashcardsScreen({ item, onBack, onVisionPlus, isPlus = 
           <CreditCard size={22} color="#7C3AED" />
           <h1 style={{ fontSize: 22, fontWeight: 800, color: "#111827", margin: 0 }}>{reviewMode ? "Revisão" : "Flashcards"}</h1>
         </div>
-        <p style={{ fontSize: 13, color: "#64748B", margin: "4px 0 0" }}>Baseados em: {item?.concept}</p>
+        <p style={{ fontSize: 13, color: "#64748B", margin: "4px 0 0" }}>Baseados em: {content?.title}</p>
         {!done && cards.length > 0 && (
           <p style={{ fontSize: 12, color: "#94A3B8", margin: "6px 0 0", fontFamily: "Inter,sans-serif" }}>Carta {index + 1} de {cards.length}</p>
         )}

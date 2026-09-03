@@ -1,10 +1,11 @@
 import { motion } from "framer-motion";
 import { CheckCircle, XCircle } from "lucide-react";
 
-// Índice da alternativa correta: em "mc" o índice é comparado diretamente com
-// q.answer; em "vf" o valor booleano da opção é comparado com q.answer.
+// correctAnswer é sempre valor semântico (nunca inferido da posição visual):
+// em "mc" o índice da opção é comparado com q.correctAnswer; em "vf" o valor
+// booleano da opção é comparado com q.correctAnswer.
 export function isCorrectOption(q, optionIndex, options) {
-  return q?.type === "vf" ? options[optionIndex] === q.answer : optionIndex === q?.answer;
+  return q?.type === "vf" ? options[optionIndex] === q.correctAnswer : optionIndex === q?.correctAnswer;
 }
 
 export default function QuizQuestion({ q, index, selected, onChoose, onNext, isLast }) {
