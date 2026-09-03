@@ -11,11 +11,23 @@ function toDateStr(year, month, day) {
   return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
-function subjectColorsForDay(entries) {
+// Cores dos eventos que "pintam" o dia (círculo cheio). Trabalho e revisão
+// ficam de fora — Trabalho vira contorno tracejado, revisão vira marcador.
+function fillColorsForDay(entries) {
   const seen = [];
   for (const entry of entries) {
-    if (entry.kind === "review") continue; // revisões não pintam o dia — ganham marcador próprio
+    if (entry.kind !== "event" || entry.type === "Trabalho") continue;
     if (!seen.includes(entry.item.subjectColor)) seen.push(entry.item.subjectColor);
+  }
+  return seen;
+}
+
+function assignmentColorsForDay(entries) {
+  const seen = [];
+  for (const entry of entries) {
+    if (entry.kind === "event" && entry.type === "Trabalho" && !seen.includes(entry.item.subjectColor)) {
+      seen.push(entry.item.subjectColor);
+    }
   }
   return seen;
 }
@@ -76,17 +88,19 @@ export default function CalendarMonth({ commitmentsByDate, onSelectDate }) {
           const hasAny = dayEntries.length > 0;
           const isToday = dateStr === todayStr;
           const isPast = dateStr < todayStr;
-          const colors = subjectColorsForDay(dayEntries);
+          const colors = fillColorsForDay(dayEntries);
           const hasEventFill = colors.length > 0;
           const hasReview = dayEntries.some((e) => e.kind === "review");
-          // Prova = círculo cheio (fill); Trabalho = círculo pontilhado.
-          const hasAssignment = dayEntries.some((e) => e.kind === "event" && e.type === "Trabalho");
+          // Prova = círculo cheio; Trabalho = só contorno tracejado, sem preenchimento.
+          const assignmentColors = assignmentColorsForDay(dayEntries);
+          const hasAssignment = assignmentColors.length > 0;
+          const assignmentColor = assignmentColors[0] || "#94A3B8";
 
           // Só o dia atual usa borda azul sólida — a revisão não ganha círculo,
-          // para não se confundir com "hoje". Trabalho ganha borda pontilhada.
+          // para não se confundir com "hoje". Trabalho ganha borda tracejada.
           let border = "1.5px solid transparent";
           if (isToday) border = "1.5px solid #2563EB";
-          else if (hasAssignment) border = `1.5px dotted ${hasEventFill ? "#FFFFFF" : colors[0] || "#94A3B8"}`;
+          else if (hasAssignment) border = `1.5px dashed ${hasEventFill ? "#FFFFFF" : assignmentColor}`;
 
           return (
             <button
@@ -102,7 +116,7 @@ export default function CalendarMonth({ commitmentsByDate, onSelectDate }) {
                 fontFamily: "Inter,sans-serif",
                 fontSize: 12,
                 fontWeight: isToday || hasAny ? 800 : 600,
-                color: hasEventFill ? "white" : isToday ? "#2563EB" : hasReview ? "#0F766E" : "#111827",
+                color: hasEventFill ? "white" : isToday ? "#2563EB" : hasAssignment ? assignmentColor : hasReview ? "#0F766E" : "#111827",
                 boxSizing: "border-box",
                 opacity: isPast ? 0.4 : 1,
                 ...(hasEventFill ? fillStyle(colors) : { background: "white" }),
