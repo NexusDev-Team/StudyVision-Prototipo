@@ -111,12 +111,14 @@ export default function EvolutionScreen({ isPremium, onOpenContent, onOpenLibrar
             ) : (
               <Card style={{ padding: "18px 20px", margin: "0 0 20px" }}>
                 {history.length >= 2 && (
-                  <SparkChart
-                    points={history.map((h) => h.accuracy ?? 0)}
-                    labels={history.map((h) => h.label)}
-                  />
+                  <div aria-hidden="true">
+                    <SparkChart
+                      points={history.map((h) => h.accuracy ?? 0)}
+                      labels={history.map((h) => h.label)}
+                    />
+                  </div>
                 )}
-                <ul style={{ listStyle: "none", margin: history.length >= 2 ? "14px 0 0" : 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+                <ul aria-label="Evolução semanal da taxa de acerto" style={{ listStyle: "none", margin: history.length >= 2 ? "14px 0 0" : 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
                   {history.map((h) => (
                     <li key={h.weekStart} style={{ fontFamily: "Inter,sans-serif", fontSize: 12, color: "#64748B" }}>
                       Semana {h.label} — {h.answered} {h.answered === 1 ? "questão" : "questões"}, {h.accuracy}% de acerto
