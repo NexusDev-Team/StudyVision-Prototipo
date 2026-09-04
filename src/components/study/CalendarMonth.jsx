@@ -78,7 +78,6 @@ export default function CalendarMonth({ eventsByDate, onSelectDate }) {
               style={{
                 position: "relative",
                 aspectRatio: "1",
-                minHeight: 40,
                 borderRadius: "50%",
                 cursor: hasAny ? "pointer" : "default",
                 border,
