@@ -692,6 +692,33 @@ test("F3-15. sweepOrphans remove tentativas/revisoes sem conteudo, preserva o re
   assert.equal(studyService.getAttemptsForContent(content.id).flashcardAttempts.length, 1);
 });
 
+test("F3-16. reload (nova leitura do localStorage) preserva todo o historico", () => {
+  const { content } = seedContent();
+  const quiz = contentService.getContent(content.id).quizzes[0];
+  studyService.recordQuizAttempt({
+    quizId: quiz.id,
+    contentId: content.id,
+    answers: [
+      { questionId: quiz.questions[0].id, selectedAnswer: 1, correct: true },
+      { questionId: quiz.questions[1].id, selectedAnswer: true, correct: true },
+    ],
+  });
+  const fc = contentService.getContent(content.id).flashcards[0];
+  for (let i = 0; i < 10; i++) {
+    studyService.recordFlashcardAttempt({ flashcardId: fc.id, contentId: content.id, correct: i < 8 });
+  }
+  studyService.registerActivity(content.id);
+
+  // Simula reload: relê exatamente como o app faria ao abrir de novo, direto
+  // do que está gravado em localStorage — sem depender de estado em memória.
+  const reloaded = JSON.parse(localStorage.getItem("sv_db"));
+  assert.equal(reloaded.quizAttempts.filter((a) => a.contentId === content.id).length, 1);
+  assert.equal(reloaded.flashcardAttempts.filter((a) => a.contentId === content.id).length, 10);
+  const reloadedContent = reloaded.contents.find((c) => c.id === content.id);
+  assert.equal(reloadedContent.mastery.level, "mastered");
+  assert.equal(reloaded.reviews.filter((r) => r.contentId === content.id && r.status === "pending").length, 1);
+});
+
 // ─── relatório ───────────────────────────────────────────────────────────────
 console.log(`\n${passed} passaram, ${failed} falharam`);
 if (failed > 0) {
