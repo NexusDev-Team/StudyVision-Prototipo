@@ -4,7 +4,7 @@ import { ChevronLeft, CalendarClock, CreditCard, ListChecks, HelpCircle, Chevron
 import CapturedPageVisual from "../components/brand/CapturedPageVisual";
 import ContentBlocks from "../components/study/ContentBlocks";
 import ExportSection from "../components/study/ExportSection";
-import PlanningSection from "../components/study/PlanningSection";
+import CommitmentsSection from "../components/study/CommitmentsSection";
 import SubjectPickerModal from "../components/study/SubjectPickerModal";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { useContentStore } from "../context/ContentStoreContext.jsx";
@@ -15,15 +15,13 @@ import {
   formatDue,
   reviewReasonLabel,
 } from "../services/reviewService";
-import { getEventsForContent } from "../services/eventService";
-import { scheduleCommitment } from "../services/calendarService";
+import { getEventsForContent, createEventEntry, updateEvent, unlinkContentFromEvent } from "../services/eventService";
 import { moveContentToSubject, deleteContent } from "../services/contentService";
 import { getContentPerformance } from "../services/performanceService";
-import { CANONICAL_TO_LEGACY_EVENT_TYPE } from "../data/adapters/legacyEventType";
 import { getSubjectVisual, getMasteryMeta, UNASSIGNED_SUBJECT_LABEL } from "../constants";
 
 export default function ContentDetailScreen({ content, onBack, onDeleted, onFlashcards, onQuestions, onQuiz, onVisionPlus, onToast }) {
-  const { mutate, subjects } = useContentStore();
+  const { mutate, subjects, contents } = useContentStore();
   const [subjectPickerOpen, setSubjectPickerOpen] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const visual = getSubjectVisual(content.subjectName);
@@ -38,16 +36,31 @@ export default function ContentDetailScreen({ content, onBack, onDeleted, onFlas
   const hasMastery = (content.mastery?.level || "not_started") !== "not_started";
   const performance = getContentPerformance(content.id);
 
-  // Um conteúdo pode ter N eventos; a seção de planejamento confirma o mais
-  // recente e cada "Salvar Compromisso" agenda um novo, sem sobrescrever.
+  // Um conteúdo pode ter N eventos; a seção de compromissos lista todos, não
+  // só o mais recente.
   const events = getEventsForContent(content.id);
-  const latestEvent = events[events.length - 1] || null;
-  const latestCommitment = latestEvent
-    ? { type: CANONICAL_TO_LEGACY_EVENT_TYPE[latestEvent.type] || "Trabalho", date: latestEvent.date, time: latestEvent.time }
-    : null;
 
-  const handlePlanned = (form) => {
-    mutate(() => scheduleCommitment({ contentId: content.id, title: content.title, ...form }));
+  const handleCreateEvent = async (payload) => {
+    try {
+      mutate(() => createEventEntry(payload));
+      onToast?.("✓ Compromisso criado");
+    } catch (err) {
+      onToast?.(err.message || "Não foi possível criar o compromisso.");
+    }
+  };
+
+  const handleEditEvent = async (eventId, payload) => {
+    try {
+      mutate(() => updateEvent(eventId, payload));
+      onToast?.("✓ Compromisso atualizado");
+    } catch (err) {
+      onToast?.(err.message || "Não foi possível salvar as alterações.");
+    }
+  };
+
+  const handleUnlinkEvent = (event) => {
+    mutate(() => unlinkContentFromEvent(event.id, content.id));
+    onToast?.("✓ Compromisso desvinculado");
   };
 
   const handleSubjectSelect = (subjectId, subjectName) => {
@@ -147,7 +160,14 @@ export default function ContentDetailScreen({ content, onBack, onDeleted, onFlas
         <ContentBlocks content={content} variant="detail" />
 
         <ExportSection content={content} onToast={onToast} />
-        <PlanningSection calendarEvent={latestCommitment} onPlanned={handlePlanned} onToast={onToast} />
+        <CommitmentsSection
+          content={content}
+          events={events}
+          contents={contents}
+          onCreate={handleCreateEvent}
+          onEdit={handleEditEvent}
+          onUnlink={handleUnlinkEvent}
+        />
 
         {/* Action buttons */}
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }}
