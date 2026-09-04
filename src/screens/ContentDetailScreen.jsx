@@ -1,9 +1,11 @@
-import { motion } from "framer-motion";
-import { ChevronLeft, CalendarClock, CreditCard, ListChecks, HelpCircle } from "lucide-react";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ChevronLeft, CalendarClock, CreditCard, ListChecks, HelpCircle, ChevronRight } from "lucide-react";
 import CapturedPageVisual from "../components/brand/CapturedPageVisual";
 import ContentBlocks from "../components/study/ContentBlocks";
 import ExportSection from "../components/study/ExportSection";
 import PlanningSection from "../components/study/PlanningSection";
+import SubjectPickerModal from "../components/study/SubjectPickerModal";
 import { useContentStore } from "../context/ContentStoreContext.jsx";
 import {
   getReviewsForContent,
@@ -14,12 +16,14 @@ import {
 } from "../services/reviewService";
 import { getEventsForContent } from "../services/eventService";
 import { scheduleCommitment } from "../services/calendarService";
+import { moveContentToSubject } from "../services/contentService";
 import { getContentPerformance } from "../services/performanceService";
 import { CANONICAL_TO_LEGACY_EVENT_TYPE } from "../data/adapters/legacyEventType";
-import { getSubjectVisual, getMasteryMeta } from "../constants";
+import { getSubjectVisual, getMasteryMeta, UNASSIGNED_SUBJECT_LABEL } from "../constants";
 
 export default function ContentDetailScreen({ content, onBack, onFlashcards, onQuestions, onQuiz, onVisionPlus, onToast }) {
-  const { mutate } = useContentStore();
+  const { mutate, subjects } = useContentStore();
+  const [subjectPickerOpen, setSubjectPickerOpen] = useState(false);
   const visual = getSubjectVisual(content.subjectName);
 
   const reviews = getReviewsForContent(content.id);
@@ -44,6 +48,12 @@ export default function ContentDetailScreen({ content, onBack, onFlashcards, onQ
     mutate(() => scheduleCommitment({ contentId: content.id, title: content.title, ...form }));
   };
 
+  const handleSubjectSelect = (subjectId, subjectName) => {
+    mutate(() => moveContentToSubject(content.id, subjectId, subjectName));
+    setSubjectPickerOpen(false);
+    onToast?.("✓ Matéria atualizada");
+  };
+
   return (
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#F8FAFC", fontFamily: "Inter,sans-serif", overflow: "hidden" }}>
       {/* Header */}
@@ -57,9 +67,13 @@ export default function ContentDetailScreen({ content, onBack, onFlashcards, onQ
           <div style={{ width: 52, height: 52, borderRadius: 16, background: visual.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, flexShrink: 0 }}>
             {visual.emoji}
           </div>
-          <div>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ fontSize: 20, fontWeight: 800, color: "#111827", margin: 0 }}>{content.title}</p>
-            <p style={{ fontSize: 13, color: "#64748B", margin: "2px 0 0" }}>{content.subjectName} · {content.topic}</p>
+            <button onClick={() => setSubjectPickerOpen(true)}
+              style={{ display: "flex", alignItems: "center", gap: 2, background: "none", border: "none", cursor: "pointer", padding: 0, marginTop: 2 }}>
+              <span style={{ fontSize: 13, color: "#64748B" }}>{content.subjectName || UNASSIGNED_SUBJECT_LABEL} · {content.topic}</span>
+              <ChevronRight size={13} color="#94A3B8" />
+            </button>
           </div>
         </div>
       </div>
@@ -146,6 +160,18 @@ export default function ContentDetailScreen({ content, onBack, onFlashcards, onQ
           </motion.button>
         </motion.div>
       </div>
+
+      <AnimatePresence>
+        {subjectPickerOpen && (
+          <SubjectPickerModal
+            subjects={subjects}
+            currentSubjectId={content.subjectId}
+            onSelect={handleSubjectSelect}
+            onClose={() => setSubjectPickerOpen(false)}
+            mutate={mutate}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

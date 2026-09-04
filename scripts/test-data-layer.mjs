@@ -789,6 +789,33 @@ test("F4-11. createEventEntry rejeita evento invalido", () => {
   assert.throws(() => eventService.createEventEntry({ type: "exam", title: "Prova", date: "" }), eventService.EventValidationError);
 });
 
+// ─── Fase 4 — mover conteudo entre materias preserva tudo ─────────────────────
+
+test("F4-18. mover conteudo preserva id, fotos, flashcards, quizzes, notas, tentativas, reviews e eventos", () => {
+  const { content } = seedContent();
+  contentService.addImageToContent(content.id, { dataUrl: "data:image/jpeg;base64,AAA" });
+  contentService.updateNotes(content.id, "minha anotação");
+  reviewService.scheduleInitialReview(content.id);
+  const fc = contentService.getContent(content.id).flashcards[0];
+  studyService.recordFlashcardAttempt({ flashcardId: fc.id, contentId: content.id, correct: true });
+  const event = eventService.createEventEntry({ type: "exam", title: "Prova", date: "2026-03-10", contentIds: [content.id] });
+
+  const before = contentService.getContent(content.id);
+  const outra = subjectService.createSubjectEntry("Cálculo");
+  const moved = contentService.moveContentToSubject(content.id, outra.id, outra.name);
+
+  assert.equal(moved.id, before.id);
+  assert.equal(moved.subjectId, outra.id);
+  assert.equal(moved.subjectName, "Cálculo");
+  assert.deepEqual(moved.images, before.images);
+  assert.deepEqual(moved.flashcards, before.flashcards);
+  assert.deepEqual(moved.quizzes, before.quizzes);
+  assert.equal(moved.notes, before.notes);
+  assert.deepEqual(reviewService.getReviewsForContent(content.id).map((r) => r.id), reviewService.getReviewsForContent(before.id).map((r) => r.id));
+  assert.equal(studyService.getAttemptsForContent(content.id).flashcardAttempts.length, 1);
+  assert.deepEqual(eventService.getEventsForContent(content.id).map((e) => e.id), [event.id]);
+});
+
 // ─── Fase 4 — gerenciar materias (criar/renomear/excluir) ─────────────────────
 
 test("F4-15. deleteSubject com unassign deixa conteudo sem materia", () => {
