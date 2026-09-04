@@ -31,6 +31,7 @@ export function createQuizAttempt({ quizId, contentId, answers, answeredAt } = {
   const normalizedAnswers = (Array.isArray(answers) ? answers : []).map((a) => ({
     questionId: a.questionId || null,
     selectedAnswer: a.selectedAnswer,
+    correctAnswer: a.correctAnswer,
     correct: Boolean(a.correct),
   }));
   const totalQuestions = normalizedAnswers.length;

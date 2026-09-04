@@ -17,6 +17,9 @@ export function validateContent(content) {
   if (!content.subjectId && !content.subjectName) {
     errors.push("matéria ausente (subjectId ou subjectName)");
   }
+  if (content.recommendedDifficulty != null && !["easy", "medium", "hard"].includes(content.recommendedDifficulty)) {
+    errors.push("recommendedDifficulty inválido");
+  }
   for (const field of ["images", "flashcards", "quizzes", "openQuestions", "keyConcepts", "keywords"]) {
     if (!Array.isArray(content[field])) {
       errors.push(`${field} deveria ser um array`);

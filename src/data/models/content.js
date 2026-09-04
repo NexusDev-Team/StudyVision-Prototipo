@@ -69,6 +69,12 @@ export function createContent(input = {}) {
     keyConcepts: Array.isArray(input.keyConcepts) ? input.keyConcepts : [],
     keywords: Array.isArray(input.keywords) ? input.keywords : [],
     difficulty: ["easy", "medium", "hard"].includes(input.difficulty) ? input.difficulty : null,
+    // Sinal derivado do desempenho real (studyService.updateRecommendedDifficulty),
+    // usado futuramente para a IA adaptar a dificuldade de novas questões.
+    // Não confundir com `difficulty`, que descreve o material analisado.
+    recommendedDifficulty: ["easy", "medium", "hard"].includes(input.recommendedDifficulty)
+      ? input.recommendedDifficulty
+      : null,
     images,
     flashcards,
     quizzes,

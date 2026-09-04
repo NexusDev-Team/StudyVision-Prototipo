@@ -74,6 +74,7 @@ const reviewService = await import("../src/services/reviewService.js");
 const eventService = await import("../src/services/eventService.js");
 const performanceService = await import("../src/services/performanceService.js");
 const { readDb } = await import("../src/data/storage/index.js");
+const validate = await import("../src/data/models/validate.js");
 
 // helper: cria um conteúdo mínimo já com matéria
 function seedContent(overrides = {}) {
@@ -419,6 +420,40 @@ test("T4. quiz 40% -> needs_review", () => {
 test("T4b. masteryBreakdown não tem mais o nível morto 'learning'", () => {
   const summary = performanceService.getPerformanceSummary();
   assert.deepEqual(Object.keys(summary.masteryBreakdown).sort(), ["developing", "mastered", "needs_review", "not_started"]);
+});
+
+// ─── FASE 3: aprendizado, desempenho e revisões ─────────────────────────────
+
+test("F3-1. round-trip preserva campos novos (review/content/quizAttempt)", () => {
+  const { content } = seedContent();
+  const review = reviewService.scheduleManualReview(content.id, "2026-01-01T12:00:00.000Z");
+  assert.ok("updatedAt" in review);
+  assert.ok("skippedAt" in review);
+
+  const updated = contentService.updateContent(content.id, { recommendedDifficulty: "hard" });
+  assert.equal(updated.recommendedDifficulty, "hard");
+
+  const quiz = contentService.getContent(content.id).quizzes[0];
+  const attempt = studyService.recordQuizAttempt({
+    quizId: quiz.id,
+    contentId: content.id,
+    answers: [{ questionId: quiz.questions[0].id, selectedAnswer: 1, correctAnswer: 1, correct: true }],
+  });
+  assert.equal(attempt.answers[0].correctAnswer, 1);
+
+  const db = readDb();
+  const roundTripped = JSON.parse(localStorage.getItem("sv_db"));
+  assert.deepEqual(roundTripped, db);
+  assert.equal(roundTripped.reviews.find((r) => r.id === review.id).skippedAt, null);
+  assert.equal(roundTripped.contents.find((c) => c.id === content.id).recommendedDifficulty, "hard");
+});
+
+test("F3-1b. validateContent rejeita recommendedDifficulty inválido", () => {
+  const { content } = seedContent();
+  const bad = { ...content, recommendedDifficulty: "impossível" };
+  const { valid, errors } = validate.validateContent(bad);
+  assert.equal(valid, false);
+  assert.ok(errors.includes("recommendedDifficulty inválido"));
 });
 
 // ─── relatório ───────────────────────────────────────────────────────────────
