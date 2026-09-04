@@ -1,9 +1,34 @@
+import { TrendingUp } from "lucide-react";
 import LogoSVG from "../components/brand/LogoSVG";
 import SectionLabel from "../components/ui/SectionLabel";
+import Card from "../components/ui/Card";
+import ProgressRing from "../components/ui/ProgressRing";
+import EmptyState from "../components/ui/EmptyState";
+import PerformanceChart from "../components/plus/PerformanceChart";
+import { getEvolutionSummary } from "../services/evolutionService";
 
-// Esqueleto da tela de evolução (Fase 5, T10) — header e seções vazias;
-// cada seção ganha dados reais nas tarefas seguintes (T11-T16).
+function StatCard({ value, label, delay = 0 }) {
+  return (
+    <Card initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay }} style={{ padding: "16px", margin: 0 }}>
+      <p style={{ fontFamily: "Inter,sans-serif", fontSize: 18, fontWeight: 800, color: "#111827", margin: "0 0 2px" }}>{value}</p>
+      <p style={{ fontFamily: "Inter,sans-serif", fontSize: 12, color: "#64748B", margin: 0 }}>{label}</p>
+    </Card>
+  );
+}
+
+// Tela de evolução (Fase 5) — todo valor vem de evolutionService, nunca
+// calculado aqui. RESUMO e DESEMPENHO (T11); demais seções nas próximas
+// tarefas.
 export default function EvolutionScreen({ isPremium, onOpenContent, onOpenLibrary, onOpenReview, onVisionPlus }) {
+  const summary = getEvolutionSummary();
+
+  const breakdown = {
+    not_started: summary.notStartedContents,
+    needs_review: summary.needsReviewContents,
+    developing: summary.developingContents,
+    mastered: summary.masteredContents,
+  };
+
   return (
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#F8FAFC", fontFamily: "Inter,sans-serif", overflow: "hidden" }}>
       <div style={{ background: "white", padding: "52px 20px 16px", borderBottom: "1px solid #F1F5F9", flexShrink: 0 }}>
@@ -16,14 +41,43 @@ export default function EvolutionScreen({ isPremium, onOpenContent, onOpenLibrar
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px 24px" }}>
-        <SectionLabel>Resumo</SectionLabel>
-        <SectionLabel style={{ marginTop: 24 }}>Desempenho</SectionLabel>
-        <SectionLabel style={{ marginTop: 24 }}>Matérias</SectionLabel>
-        <SectionLabel style={{ marginTop: 24 }}>Evolução</SectionLabel>
-        <SectionLabel style={{ marginTop: 24 }}>Precisa de reforço</SectionLabel>
-        <SectionLabel style={{ marginTop: 24 }}>Reviews</SectionLabel>
-        <SectionLabel style={{ marginTop: 24 }}>Pontos fortes</SectionLabel>
-        <SectionLabel style={{ marginTop: 24 }}>Insights</SectionLabel>
+        {summary.totalContents === 0 ? (
+          <EmptyState
+            icon={<TrendingUp size={32} color="#94A3B8" style={{ margin: "0 auto 12px" }} />}
+            title="Você ainda não tem dados de evolução"
+            description="Capture seu primeiro conteúdo e comece a estudar para acompanhar seu progresso."
+          />
+        ) : (
+          <>
+            <SectionLabel>Resumo</SectionLabel>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
+              <StatCard value={summary.contentsStudied} label="conteúdos estudados" />
+              <StatCard value={summary.questionsAnswered} label="questões respondidas" delay={0.05} />
+              <StatCard
+                value={summary.overallAccuracy != null ? `${summary.overallAccuracy}%` : "Sem dados ainda"}
+                label="taxa de acerto"
+                delay={0.1}
+              />
+              <StatCard value={summary.reviewsCompleted} label="reviews concluídas" delay={0.15} />
+            </div>
+
+            <SectionLabel>Desempenho</SectionLabel>
+            <Card style={{ padding: "18px 20px", margin: "0 0 20px", display: "flex", alignItems: "center", gap: 16 }}>
+              <ProgressRing value={summary.overallAccuracy ?? 0} size={72} stroke={8} color="#2563EB">
+                <span style={{ fontFamily: "Inter,sans-serif", fontSize: 18, fontWeight: 800, color: "#111827" }}>
+                  {summary.overallAccuracy != null ? `${summary.overallAccuracy}%` : "—"}
+                </span>
+              </ProgressRing>
+              <div>
+                <p style={{ fontFamily: "Inter,sans-serif", fontSize: 13, color: "#64748B", margin: "0 0 4px", fontWeight: 600 }}>Desempenho geral</p>
+                <p style={{ fontFamily: "Inter,sans-serif", fontSize: 12, color: "#94A3B8", margin: 0 }}>
+                  {summary.overallAccuracy != null ? "quiz e flashcards combinados" : "responda um quiz ou revise flashcards"}
+                </p>
+              </div>
+            </Card>
+            <PerformanceChart breakdown={breakdown} hasActivity={summary.hasActivity} locked={false} />
+          </>
+        )}
       </div>
     </div>
   );
