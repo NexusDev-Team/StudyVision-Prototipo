@@ -59,6 +59,84 @@ export function getSubjectsWithPerformance() {
     .sort((a, b) => (b.accuracyRate ?? -1) - (a.accuracyRate ?? -1));
 }
 
+// Desempenho de quiz de UM conteúdo, com histórico completo (base para a
+// evolução da Fase 5). null quando não há tentativa nenhuma.
+export function getQuizPerformance(contentId) {
+  const db = readDb();
+  const attempts = db.quizAttempts
+    .filter((a) => a.contentId === contentId)
+    .sort((a, b) => new Date(a.answeredAt) - new Date(b.answeredAt));
+
+  if (attempts.length === 0) {
+    return {
+      attempts: 0,
+      questionsAnswered: 0,
+      questionsCorrect: 0,
+      questionsWrong: 0,
+      accuracyRate: null,
+      averageScore: null,
+      bestScore: null,
+      lastScore: null,
+      history: [],
+    };
+  }
+
+  const questionsAnswered = attempts.reduce((sum, a) => sum + a.totalQuestions, 0);
+  const questionsCorrect = attempts.reduce((sum, a) => sum + a.correctAnswers, 0);
+
+  return {
+    attempts: attempts.length,
+    questionsAnswered,
+    questionsCorrect,
+    questionsWrong: questionsAnswered - questionsCorrect,
+    accuracyRate: Math.round((questionsCorrect / questionsAnswered) * 100),
+    averageScore: Math.round(attempts.reduce((sum, a) => sum + a.score, 0) / attempts.length),
+    bestScore: Math.max(...attempts.map((a) => a.score)),
+    lastScore: attempts[attempts.length - 1].score,
+    history: attempts.map((a) => ({ score: a.score, answeredAt: a.answeredAt })),
+  };
+}
+
+// Desempenho de flashcards de UM conteúdo. null quando não há tentativa.
+export function getFlashcardPerformance(contentId) {
+  const db = readDb();
+  const attempts = db.flashcardAttempts
+    .filter((a) => a.contentId === contentId)
+    .sort((a, b) => new Date(a.answeredAt) - new Date(b.answeredAt));
+
+  if (attempts.length === 0) {
+    return { reviewed: 0, correct: 0, wrong: 0, accuracyRate: null, lastAnsweredAt: null };
+  }
+
+  const correct = attempts.filter((a) => a.correct).length;
+  return {
+    reviewed: attempts.length,
+    correct,
+    wrong: attempts.length - correct,
+    accuracyRate: Math.round((correct / attempts.length) * 100),
+    lastAnsweredAt: attempts[attempts.length - 1].answeredAt,
+  };
+}
+
+// Desempenho geral do conteúdo: média entre quiz e flashcards quando ambos
+// existem; só a modalidade disponível quando só uma existe; null quando
+// nenhuma atividade foi feita — nunca 0 por falta de dados.
+export function getContentPerformance(contentId) {
+  const quiz = getQuizPerformance(contentId);
+  const flashcards = getFlashcardPerformance(contentId);
+
+  const parts = [quiz.accuracyRate, flashcards.accuracyRate].filter((v) => v !== null);
+  const overall = parts.length > 0 ? Math.round(parts.reduce((sum, v) => sum + v, 0) / parts.length) : null;
+
+  return {
+    quiz,
+    flashcards,
+    overall,
+    interactions: flashcards.reviewed + quiz.questionsAnswered,
+    hasActivity: quiz.attempts > 0 || flashcards.reviewed > 0,
+  };
+}
+
 export function getPerformanceForSubject(subjectId) {
   const db = readDb();
   const contentIds = new Set(db.contents.filter((c) => c.subjectId === subjectId).map((c) => c.id));

@@ -514,6 +514,90 @@ test("F3-6. dominio exige minimo de interacoes antes de 'mastered'", () => {
   assert.equal(threeInteractions.level, "mastered");
 });
 
+test("F3-7. quiz 4/5 -> desempenho geral do conteudo = 80", () => {
+  const { content } = seedContent({
+    quizzes: [
+      {
+        questions: [
+          { type: "mc", question: "1", options: ["a", "b"], correctAnswer: 0 },
+          { type: "mc", question: "2", options: ["a", "b"], correctAnswer: 0 },
+          { type: "mc", question: "3", options: ["a", "b"], correctAnswer: 0 },
+          { type: "mc", question: "4", options: ["a", "b"], correctAnswer: 0 },
+          { type: "mc", question: "5", options: ["a", "b"], correctAnswer: 0 },
+        ],
+      },
+    ],
+  });
+  const quiz = contentService.getContent(content.id).quizzes[0];
+  studyService.recordQuizAttempt({
+    quizId: quiz.id,
+    contentId: content.id,
+    answers: quiz.questions.map((q, i) => ({ questionId: q.id, selectedAnswer: 0, correct: i < 4 })),
+  });
+  const perf = performanceService.getContentPerformance(content.id);
+  assert.equal(perf.quiz.accuracyRate, 80);
+  assert.equal(perf.overall, 80);
+  assert.equal(perf.hasActivity, true);
+});
+
+test("F3-8. 10 flashcards com 8 acertos -> 80", () => {
+  const { content } = seedContent();
+  const fc = contentService.getContent(content.id).flashcards[0];
+  for (let i = 0; i < 10; i++) {
+    studyService.recordFlashcardAttempt({ flashcardId: fc.id, contentId: content.id, correct: i < 8 });
+  }
+  const perf = performanceService.getFlashcardPerformance(content.id);
+  assert.equal(perf.reviewed, 10);
+  assert.equal(perf.correct, 8);
+  assert.equal(perf.accuracyRate, 80);
+});
+
+test("F3-9. so quiz -> overall = quiz; sem atividade -> overall null", () => {
+  const { content } = seedContent();
+  const empty = performanceService.getContentPerformance(content.id);
+  assert.equal(empty.overall, null);
+  assert.equal(empty.hasActivity, false);
+
+  const quiz = contentService.getContent(content.id).quizzes[0];
+  studyService.recordQuizAttempt({
+    quizId: quiz.id,
+    contentId: content.id,
+    answers: [
+      { questionId: quiz.questions[0].id, selectedAnswer: 1, correct: true },
+      { questionId: quiz.questions[1].id, selectedAnswer: false, correct: false },
+    ],
+  });
+  const onlyQuiz = performanceService.getContentPerformance(content.id);
+  assert.equal(onlyQuiz.flashcards.accuracyRate, null);
+  assert.equal(onlyQuiz.overall, onlyQuiz.quiz.accuracyRate);
+});
+
+test("F3-10. historico de quiz preserva todas as tentativas, sem sobrescrever", () => {
+  const { content } = seedContent();
+  const quiz = contentService.getContent(content.id).quizzes[0];
+  studyService.recordQuizAttempt({
+    quizId: quiz.id,
+    contentId: content.id,
+    answers: [
+      { questionId: quiz.questions[0].id, selectedAnswer: 1, correct: true },
+      { questionId: quiz.questions[1].id, selectedAnswer: false, correct: false },
+    ],
+  });
+  studyService.recordQuizAttempt({
+    quizId: quiz.id,
+    contentId: content.id,
+    answers: [
+      { questionId: quiz.questions[0].id, selectedAnswer: 1, correct: true },
+      { questionId: quiz.questions[1].id, selectedAnswer: true, correct: true },
+    ],
+  });
+  const perf = performanceService.getQuizPerformance(content.id);
+  assert.equal(perf.history.length, 2);
+  assert.deepEqual(perf.history.map((h) => h.score), [50, 100]);
+  assert.equal(perf.bestScore, 100);
+  assert.equal(perf.lastScore, 100);
+});
+
 // ─── relatório ───────────────────────────────────────────────────────────────
 console.log(`\n${passed} passaram, ${failed} falharam`);
 if (failed > 0) {
