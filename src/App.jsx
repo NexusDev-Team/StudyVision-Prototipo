@@ -30,7 +30,7 @@ export default function App() {
   const { toast, showToast, clearToast } = useToast();
   const analysis = useAnalysis();
   const { contents, dueCount, reload: refreshDueCount, mutate } = useContentStore();
-  const { isPremium, daysRemaining, startTrial, resetToFree } = useSubscription();
+  const { isPremium, isTrialActive, daysRemaining, startTrial, resetToFree } = useSubscription();
 
   // Derivado do store, nunca um snapshot congelado — some a classe de bug em
   // que a tela de detalhe mostrava o estado de antes de uma edição/revisão.
@@ -156,10 +156,10 @@ export default function App() {
             <VisionPlusScreen
               onBack={goBack}
               isPremium={isPremium}
+              isTrialActive={isTrialActive}
               daysRemaining={daysRemaining}
               onStartTrial={handleStartTrial}
               onResetToFree={handleResetToFree}
-              onToast={showToast}
             />
           )}
         </motion.div>

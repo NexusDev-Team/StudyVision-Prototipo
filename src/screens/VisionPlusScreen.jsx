@@ -5,26 +5,14 @@ import ScrollArea from "../components/layout/ScrollArea";
 import PlusHeader from "../components/plus/PlusHeader";
 import PlusHero from "../components/plus/PlusHero";
 import PlusActiveStatus from "../components/plus/PlusActiveStatus";
-import MetricCards from "../components/plus/MetricCards";
-import SubjectProgress from "../components/plus/SubjectProgress";
-import PerformanceChart from "../components/plus/PerformanceChart";
-import StrengthsCard from "../components/plus/StrengthsCard";
-import AttentionCard from "../components/plus/AttentionCard";
-import InsightCard from "../components/plus/InsightCard";
 import PlanComparison from "../components/plus/PlanComparison";
 import PlusFinalCta from "../components/plus/PlusFinalCta";
-import { getPerformanceSummary, getSubjectsWithPerformance } from "../services/performanceService";
-import { getWeakContents } from "../services/evolutionService";
-import { PLUS_PRICE_FULL } from "../constants";
 
-export default function VisionPlusScreen({ onBack, isPremium, daysRemaining, onStartTrial, onResetToFree, onToast }) {
+// Tela de oferta do Study Vision+ (Fase 5) — vende profundidade e escala,
+// não bloqueia o aprendizado básico. O dashboard de evolução em si vive na
+// tela de Evolução (gratuita); esta tela só apresenta o plano e o CTA.
+export default function VisionPlusScreen({ onBack, isPremium, isTrialActive, daysRemaining, onStartTrial, onResetToFree }) {
   const scrollRef = useRef(null);
-
-  // Só números medidos — nada de mock. Recalculado a cada visita à tela.
-  const summary = getPerformanceSummary();
-  const subjects = getSubjectsWithPerformance();
-  const strengths = subjects.filter((s) => s.accuracyRate != null && s.accuracyRate >= 80);
-  const weakContents = getWeakContents({ limit: 5 });
 
   const handleStartTrial = () => {
     onStartTrial();
@@ -41,20 +29,15 @@ export default function VisionPlusScreen({ onBack, isPremium, daysRemaining, onS
       </div>
       <ScrollArea ref={scrollRef} padding="18px 20px 30px" flexColumn>
         <PlusHeader onResetToFree={onResetToFree} />
-        {isPremium ? <PlusActiveStatus daysRemaining={daysRemaining} /> : <PlusHero onStartTrial={handleStartTrial} />}
-        <MetricCards summary={summary} />
-        <SubjectProgress subjects={subjects} locked={!isPremium} onStartTrial={handleStartTrial} />
-        <PerformanceChart breakdown={summary.masteryBreakdown} hasActivity={summary.hasActivity} locked={!isPremium} onStartTrial={handleStartTrial} />
-        <StrengthsCard subjects={strengths} />
-        <AttentionCard items={weakContents} />
-        <InsightCard summary={summary} locked={!isPremium} onStartTrial={handleStartTrial} />
-        {!isPremium && <PlanComparison />}
-        {!isPremium && <PlusFinalCta onStartTrial={handleStartTrial} />}
-        {isPremium && (
-          <p style={{ fontFamily: "Inter,sans-serif", fontSize: 11, color: "#94A3B8", textAlign: "center", margin: "4px 0 0" }}>
-            Depois do teste, {PLUS_PRICE_FULL} · cancele quando quiser
-          </p>
+        {isPremium ? (
+          <PlusActiveStatus daysRemaining={daysRemaining} isTrialActive={isTrialActive} />
+        ) : (
+          <PlusHero onStartTrial={handleStartTrial} />
         )}
+
+        <PlanComparison />
+
+        {!isPremium && <PlusFinalCta onStartTrial={handleStartTrial} />}
       </ScrollArea>
     </Screen>
   );
