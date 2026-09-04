@@ -720,6 +720,47 @@ test("F3-16. reload (nova leitura do localStorage) preserva todo o historico", (
   assert.equal(reloaded.reviews.filter((r) => r.contentId === content.id && r.status === "pending").length, 1);
 });
 
+// ─── Fase 4 — eventService endurecido ──────────────────────────────────────────
+
+test("F4-7. updateEvent preserva eventId e createdAt, nao cria evento novo", () => {
+  const { content } = seedContent();
+  const event = eventService.createEventEntry({ type: "exam", title: "P1", date: "2026-03-10", contentIds: [content.id] });
+  const updated = eventService.updateEvent(event.id, { title: "P1 remarcada", date: "2026-03-15" });
+  assert.equal(updated.id, event.id);
+  assert.equal(updated.createdAt, event.createdAt);
+  assert.equal(updated.title, "P1 remarcada");
+  assert.ok(updated.updatedAt);
+  assert.equal(eventService.getEvents().length, 1);
+});
+
+test("F4-8. deleteEvent retorna false para id inexistente e true ao remover", () => {
+  const event = eventService.createEventEntry({ type: "class", title: "Aula", date: "2026-03-10" });
+  assert.equal(eventService.deleteEvent("evt_inexistente"), false);
+  assert.equal(eventService.deleteEvent(event.id), true);
+  assert.equal(eventService.getEvents().length, 0);
+});
+
+test("F4-9. evento sem conteudo (contentIds vazio) pode existir e ser lido", () => {
+  const event = eventService.createEventEntry({ type: "other", title: "Aula inaugural", date: "2026-03-01" });
+  assert.deepEqual(event.contentIds, []);
+  const read = eventService.getEvent(event.id);
+  assert.equal(read.title, "Aula inaugural");
+});
+
+test("F4-10. unlink nao apaga evento que fica sem nenhum conteudo", () => {
+  const { content } = seedContent();
+  const event = eventService.createEventEntry({ type: "exam", title: "Prova", date: "2026-03-10", contentIds: [content.id] });
+  eventService.unlinkContentFromEvent(event.id, content.id);
+  const stillThere = eventService.getEvent(event.id);
+  assert.ok(stillThere);
+  assert.deepEqual(stillThere.contentIds, []);
+});
+
+test("F4-11. createEventEntry rejeita evento invalido", () => {
+  assert.throws(() => eventService.createEventEntry({ type: "exam", title: "", date: "2026-03-10" }), eventService.EventValidationError);
+  assert.throws(() => eventService.createEventEntry({ type: "exam", title: "Prova", date: "" }), eventService.EventValidationError);
+});
+
 // ─── Fase 4 — subjectService à prova de duplicata ─────────────────────────────
 
 test("F4-4. nomes equivalentes de materia nao duplicam", () => {
