@@ -7,11 +7,11 @@ export const EVENT_TYPES = ["exam", "assignment", "class", "deadline", "other"];
 // distinguir tipos (acessibilidade). shape é usado como marcador textual
 // simples (legenda, badges) sem precisar de biblioteca de ícones.
 export const EVENT_TYPE_META = {
-  exam: { label: "Prova", shortLabel: "Prova", icon: "GraduationCap", shape: "●" },
-  assignment: { label: "Trabalho", shortLabel: "Trabalho", icon: "FileText", shape: "◆" },
-  class: { label: "Aula", shortLabel: "Aula", icon: "Presentation", shape: "▲" },
-  deadline: { label: "Entrega", shortLabel: "Entrega", icon: "Clock", shape: "■" },
-  other: { label: "Outro", shortLabel: "Outro", icon: "CalendarDays", shape: "○" },
+  exam: { label: "Prova", shortLabel: "Prova", icon: "GraduationCap", shape: "●", color: "#DC2626" },
+  assignment: { label: "Trabalho", shortLabel: "Trabalho", icon: "FileText", shape: "◆", color: "#D97706" },
+  class: { label: "Aula", shortLabel: "Aula", icon: "Presentation", shape: "▲", color: "#2563EB" },
+  deadline: { label: "Entrega", shortLabel: "Entrega", icon: "Clock", shape: "■", color: "#7C3AED" },
+  other: { label: "Outro", shortLabel: "Outro", icon: "CalendarDays", shape: "○", color: "#64748B" },
 };
 
 export function getEventTypeMeta(type) {

@@ -1,5 +1,6 @@
 import { X, Calendar } from "lucide-react";
 import Modal from "../ui/Modal";
+import { EVENT_TYPE_META } from "../../data/models/event.js";
 
 const MONTHS = [
   "janeiro", "fevereiro", "março", "abril", "maio", "junho",
@@ -11,7 +12,10 @@ function formatDate(dateStr) {
   return `${d} de ${MONTHS[m - 1]}`;
 }
 
-export default function DayEventsModal({ date, entries, onClose }) {
+// entries: [{ id, event }] — um AcademicEvent por linha. contentById resolve
+// os títulos vinculados; um contentId sem conteúdo correspondente aparece como
+// "Conteúdo não disponível" em vez de quebrar a interface.
+export default function DayEventsModal({ date, entries, contentById, onClose, onViewContent }) {
   return (
     <Modal center>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
@@ -19,30 +23,45 @@ export default function DayEventsModal({ date, entries, onClose }) {
           <Calendar size={18} color="#2563EB" />
           <span style={{ fontSize: 16, fontWeight: 800, color: "#111827" }}>{formatDate(date)}</span>
         </div>
-        <button onClick={onClose} style={{ background: "#F1F5F9", border: "none", borderRadius: "50%", width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+        <button onClick={onClose} aria-label="Fechar" style={{ background: "#F1F5F9", border: "none", borderRadius: "50%", width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
           <X size={16} color="#64748B" />
         </button>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {entries.map(({ id, item, type, time, stageLabel, kind }) => {
-          const isReview = kind === "review";
-          const dot = isReview ? "#0F766E" : item.subjectColor;
-          const pillColor = isReview ? "#0F766E" : item.subjectColor;
-          const pillBg = isReview ? "rgba(15,118,110,0.12)" : item.subjectBg;
+        {entries.map(({ id, event }) => {
+          const meta = EVENT_TYPE_META[event.type] || EVENT_TYPE_META.other;
+          const linkedContents = event.contentIds.map((cid) => contentById.get(cid) || null);
           return (
-            <div key={id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 14, background: "#F8FAFC", border: "1px solid #E2E8F0" }}>
-              <div style={{ width: 10, height: 10, borderRadius: isReview ? 3 : "50%", background: dot, flexShrink: 0 }} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 13, fontWeight: 700, color: "#111827", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.concept}</p>
-                <p style={{ fontSize: 11, color: "#94A3B8", margin: "1px 0 0" }}>{item.subject}</p>
+            <div key={id} style={{ padding: "12px 14px", borderRadius: 14, background: "#F8FAFC", border: "1px solid #E2E8F0" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: "50%", background: meta.color, flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: "#111827", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{event.title}</p>
+                  <p style={{ fontSize: 11, color: "#94A3B8", margin: "1px 0 0" }}>{meta.label}{event.time ? ` · ${event.time}` : ""}</p>
+                </div>
+                <span style={{ fontSize: 10, fontWeight: 700, color: meta.color, background: `${meta.color}1A`, borderRadius: 8, padding: "3px 8px", flexShrink: 0 }}>{meta.label}</span>
               </div>
-              <div style={{ textAlign: "right", flexShrink: 0 }}>
-                <span style={{ display: "block", fontSize: 10, fontWeight: 700, color: pillColor, background: pillBg, borderRadius: 8, padding: "2px 7px", marginBottom: 3 }}>
-                  {isReview ? "Revisão" : type}
-                </span>
-                <span style={{ fontSize: 11, fontWeight: 600, color: "#64748B" }}>{time || stageLabel}</span>
-              </div>
+
+              {event.notes && <p style={{ fontSize: 12, color: "#64748B", margin: "8px 0 0" }}>{event.notes}</p>}
+
+              {linkedContents.length > 0 && (
+                <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+                  {linkedContents.map((content, i) => (
+                    <div key={event.contentIds[i]} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                      <span style={{ fontSize: 12, color: content ? "#374151" : "#94A3B8", fontStyle: content ? "normal" : "italic" }}>
+                        {content ? content.title : "Conteúdo não disponível"}
+                      </span>
+                      {content && onViewContent && (
+                        <button onClick={() => onViewContent(content)}
+                          style={{ background: "none", border: "none", cursor: "pointer", color: "#2563EB", fontSize: 11.5, fontWeight: 700, padding: 0 }}>
+                          Ver conteúdo
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           );
         })}

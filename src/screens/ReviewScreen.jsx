@@ -1,24 +1,21 @@
 import { useState, useMemo } from "react";
 import { AnimatePresence } from "framer-motion";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, Plus } from "lucide-react";
 import LogoSVG from "../components/brand/LogoSVG";
 import ReviewCard from "../components/study/ReviewCard";
 import UpcomingReviewRow from "../components/study/UpcomingReviewRow";
 import CalendarMonth from "../components/study/CalendarMonth";
 import DayEventsModal from "../components/study/DayEventsModal";
 import { useContentStore } from "../context/ContentStoreContext.jsx";
-import { reviewReasonLabel } from "../services/reviewService";
-import { toDayKey, endOfTodayIso, DAY_MS } from "../utils/date";
-import { getSubjectVisual } from "../constants";
-import { CANONICAL_TO_LEGACY_EVENT_TYPE } from "../data/adapters/legacyEventType";
+import { endOfTodayIso, DAY_MS } from "../utils/date";
 
-export default function ReviewScreen({ onReview }) {
+export default function ReviewScreen({ onReview, onOpenContent }) {
   const { contents, reviews, events } = useContentStore();
   const [selectedDate, setSelectedDate] = useState(null);
 
   const contentById = useMemo(() => new Map(contents.map((c) => [c.id, c])), [contents]);
 
-  const { due, upcoming, commitmentsByDate } = useMemo(() => {
+  const { due, upcoming } = useMemo(() => {
     const endOfToday = new Date(endOfTodayIso()).getTime();
     const next3DaysEnd = endOfToday + 3 * DAY_MS;
 
@@ -43,47 +40,22 @@ export default function ReviewScreen({ onReview }) {
     }
     upcoming.sort((a, b) => new Date(a.nextReview.scheduledFor) - new Date(b.nextReview.scheduledFor));
 
-    // Calendário: eventos acadêmicos e revisões pendentes, cada um no seu dia
-    // (horário local), sem entradas sintéticas montadas item a item.
-    const commitmentsByDate = {};
-    const addEntry = (date, entry) => {
-      if (!date) return;
-      (commitmentsByDate[date] ||= []).push(entry);
-    };
+    return { due, upcoming };
+  }, [contentById, reviews]);
 
+  // Calendário acadêmico: só eventos (Prova/Trabalho/Aula/Entrega/Outro), um
+  // por dia — nunca revisões. Um evento sem contentIds ainda aparece: o
+  // agrupamento é por event.date, não por conteúdo vinculado.
+  const eventsByDate = useMemo(() => {
+    const byDate = {};
     for (const event of events) {
-      for (const contentId of event.contentIds) {
-        const content = contentById.get(contentId);
-        if (!content) continue;
-        const visual = getSubjectVisual(content.subjectName);
-        addEntry(event.date, {
-          id: `${event.id}_${contentId}`,
-          kind: "event",
-          item: { concept: content.title, subject: content.subjectName, subjectColor: visual.color, subjectBg: visual.bg },
-          type: CANONICAL_TO_LEGACY_EVENT_TYPE[event.type] || event.type,
-          time: event.time,
-        });
-      }
+      if (!event.date) continue;
+      (byDate[event.date] ||= []).push({ id: event.id, type: event.type, event });
     }
+    return byDate;
+  }, [events]);
 
-    for (const r of reviews) {
-      if (r.status !== "pending") continue;
-      const content = contentById.get(r.contentId);
-      if (!content) continue;
-      const visual = getSubjectVisual(content.subjectName);
-      addEntry(toDayKey(r.scheduledFor), {
-        id: `${r.id}`,
-        kind: "review",
-        item: { concept: content.title, subject: content.subjectName, subjectColor: visual.color, subjectBg: visual.bg },
-        type: "Revisão",
-        stageLabel: reviewReasonLabel(r.reason),
-      });
-    }
-
-    return { due, upcoming, commitmentsByDate };
-  }, [contentById, reviews, events]);
-
-  const selectedEntries = selectedDate ? commitmentsByDate[selectedDate] || [] : [];
+  const selectedEntries = selectedDate ? eventsByDate[selectedDate] || [] : [];
 
   return (
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#F8FAFC", fontFamily: "Inter,sans-serif", overflow: "hidden" }}>
@@ -118,13 +90,24 @@ export default function ReviewScreen({ onReview }) {
           ))}
         </div>
 
-        <p style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: 1.2, marginBottom: 10 }}>CALENDÁRIO</p>
-        <CalendarMonth commitmentsByDate={commitmentsByDate} onSelectDate={setSelectedDate} />
+        <p style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: 1.2, marginBottom: 10 }}>CALENDÁRIO ACADÊMICO</p>
+        <CalendarMonth eventsByDate={eventsByDate} onSelectDate={setSelectedDate} />
+        {Object.keys(eventsByDate).length === 0 && (
+          <p style={{ fontSize: 12, color: "#94A3B8", textAlign: "center", margin: "10px 0 0", fontFamily: "Inter,sans-serif" }}>
+            Nenhum compromisso acadêmico cadastrado ainda.
+          </p>
+        )}
       </div>
 
       <AnimatePresence>
         {selectedDate && (
-          <DayEventsModal date={selectedDate} entries={selectedEntries} onClose={() => setSelectedDate(null)} />
+          <DayEventsModal
+            date={selectedDate}
+            entries={selectedEntries}
+            contentById={contentById}
+            onViewContent={onOpenContent}
+            onClose={() => setSelectedDate(null)}
+          />
         )}
       </AnimatePresence>
     </div>
