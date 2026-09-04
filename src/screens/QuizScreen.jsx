@@ -25,7 +25,7 @@ function generateQuizQuestion(content) {
   return { id: newId("qs"), type: "vf", question: affirmation, correctAnswer: isTrue, ephemeral: true };
 }
 
-export default function QuizScreen({ content, onBack, isPlus = false, onVisionPlus }) {
+export default function QuizScreen({ content, onBack, isPremium = false, onVisionPlus }) {
   const { mutate } = useContentStore();
   const quiz = content?.quizzes?.[0] || null;
   const baseQuestions = quiz?.questions || [];
@@ -118,7 +118,7 @@ export default function QuizScreen({ content, onBack, isPlus = false, onVisionPl
           </motion.div>
         )}
 
-        {done && (isPlus ? (
+        {done && (isPremium ? (
           <motion.button whileTap={{ scale: 0.96 }} onClick={generateMore}
             style={{ width: "100%", padding: "13px 20px", borderRadius: 14, background: "#FFF7ED", border: "1.5px solid #FED7AA", color: "#EA580C", fontFamily: "Inter,sans-serif", fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 14 }}>
             <Sparkles size={16} />

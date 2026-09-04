@@ -28,7 +28,7 @@ export default function App() {
   const { toast, showToast, clearToast } = useToast();
   const analysis = useAnalysis();
   const { contents, dueCount, reload: refreshDueCount, mutate } = useContentStore();
-  const { isPlus, daysRemaining, startTrial, resetToFree } = useSubscription();
+  const { isPremium, daysRemaining, startTrial, resetToFree } = useSubscription();
 
   // Derivado do store, nunca um snapshot congelado — some a classe de bug em
   // que a tela de detalhe mostrava o estado de antes de uma edição/revisão.
@@ -118,16 +118,16 @@ export default function App() {
               content={selectedContent}
               onBack={goBack}
               onVisionPlus={() => go("visionplus")}
-              isPlus={isPlus}
+              isPremium={isPremium}
               reviewMode={reviewMode}
               onReviewComplete={handleReviewComplete}
             />
           )}
           {screen === "questions" && selectedContent && (
-            <QuestionsScreen content={selectedContent} onBack={goBack} isPlus={isPlus} onVisionPlus={() => go("visionplus")} />
+            <QuestionsScreen content={selectedContent} onBack={goBack} isPremium={isPremium} onVisionPlus={() => go("visionplus")} />
           )}
           {screen === "quiz" && selectedContent && (
-            <QuizScreen content={selectedContent} onBack={goBack} isPlus={isPlus} onVisionPlus={() => go("visionplus")} />
+            <QuizScreen content={selectedContent} onBack={goBack} isPremium={isPremium} onVisionPlus={() => go("visionplus")} />
           )}
           {screen === "review" && (
             <ReviewScreen
@@ -139,7 +139,7 @@ export default function App() {
           {screen === "visionplus" && (
             <VisionPlusScreen
               onBack={goBack}
-              isPlus={isPlus}
+              isPremium={isPremium}
               daysRemaining={daysRemaining}
               onStartTrial={handleStartTrial}
               onResetToFree={handleResetToFree}

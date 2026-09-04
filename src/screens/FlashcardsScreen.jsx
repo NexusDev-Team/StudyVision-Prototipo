@@ -22,15 +22,15 @@ function generateFlashcard(content, n) {
   };
 }
 
-export default function FlashcardsScreen({ content, onBack, onVisionPlus, isPlus = false, reviewMode = false, onReviewComplete }) {
+export default function FlashcardsScreen({ content, onBack, onVisionPlus, isPremium = false, reviewMode = false, onReviewComplete }) {
   const { mutate } = useContentStore();
   const contentId = content?.id;
   const allCards = content?.flashcards || [];
   const [extraCards, setExtraCards] = useState([]);
   // Order shuffled once per screen entry — repeated review sessions don't always start with the same card.
   const [shuffledCards] = useState(() => shuffle(allCards));
-  const cards = isPlus ? [...shuffledCards, ...extraCards] : shuffledCards.slice(0, FREE_FLASHCARD_LIMIT);
-  const lockedCount = isPlus ? 0 : Math.max(0, allCards.length - FREE_FLASHCARD_LIMIT);
+  const cards = isPremium ? [...shuffledCards, ...extraCards] : shuffledCards.slice(0, FREE_FLASHCARD_LIMIT);
+  const lockedCount = isPremium ? 0 : Math.max(0, allCards.length - FREE_FLASHCARD_LIMIT);
 
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
@@ -155,7 +155,7 @@ export default function FlashcardsScreen({ content, onBack, onVisionPlus, isPlus
         )}
 
         {/* Unlock CTA for cards beyond the free limit — appears after the value already delivered */}
-        {done && !isPlus && lockedCount > 0 && (
+        {done && !isPremium && lockedCount > 0 && (
           <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
             style={{ background: "linear-gradient(135deg,#EDE9FE,#DDD6FE)", borderRadius: 20, padding: "22px 20px", textAlign: "center", border: "1px solid #C4B5FD", marginTop: 14 }}>
             <Lock size={24} color="#7C3AED" style={{ margin: "0 auto 10px" }} />
@@ -169,7 +169,7 @@ export default function FlashcardsScreen({ content, onBack, onVisionPlus, isPlus
         )}
 
         {/* Plus: generate more cards instead of hitting a limit */}
-        {done && isPlus && (
+        {done && isPremium && (
           <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} style={{ marginTop: 14 }}>
             <motion.button whileTap={{ scale: 0.96 }} onClick={generateMore}
               style={{ width: "100%", padding: "13px 20px", borderRadius: 14, background: "#EDE9FE", border: "1.5px solid #C4B5FD", color: "#7C3AED", fontFamily: "Inter,sans-serif", fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>

@@ -16,7 +16,7 @@ import PlusFinalCta from "../components/plus/PlusFinalCta";
 import { getPerformanceSummary, getSubjectsWithPerformance } from "../services/performanceService";
 import { PLUS_PRICE_FULL } from "../constants";
 
-export default function VisionPlusScreen({ onBack, isPlus, daysRemaining, onStartTrial, onResetToFree, onToast }) {
+export default function VisionPlusScreen({ onBack, isPremium, daysRemaining, onStartTrial, onResetToFree, onToast }) {
   const scrollRef = useRef(null);
 
   // Só números medidos — nada de mock. Recalculado a cada visita à tela.
@@ -40,16 +40,16 @@ export default function VisionPlusScreen({ onBack, isPlus, daysRemaining, onStar
       </div>
       <ScrollArea ref={scrollRef} padding="18px 20px 30px" flexColumn>
         <PlusHeader onResetToFree={onResetToFree} />
-        {isPlus ? <PlusActiveStatus daysRemaining={daysRemaining} /> : <PlusHero onStartTrial={handleStartTrial} />}
+        {isPremium ? <PlusActiveStatus daysRemaining={daysRemaining} /> : <PlusHero onStartTrial={handleStartTrial} />}
         <MetricCards summary={summary} />
-        <SubjectProgress subjects={subjects} locked={!isPlus} onStartTrial={handleStartTrial} />
-        <PerformanceChart breakdown={summary.masteryBreakdown} hasActivity={summary.hasActivity} locked={!isPlus} onStartTrial={handleStartTrial} />
+        <SubjectProgress subjects={subjects} locked={!isPremium} onStartTrial={handleStartTrial} />
+        <PerformanceChart breakdown={summary.masteryBreakdown} hasActivity={summary.hasActivity} locked={!isPremium} onStartTrial={handleStartTrial} />
         <StrengthsCard subjects={strengths} />
-        <AttentionCard subjects={attention} hideNames={!isPlus} />
-        <InsightCard summary={summary} locked={!isPlus} onStartTrial={handleStartTrial} />
-        {!isPlus && <PlanComparison />}
-        {!isPlus && <PlusFinalCta onStartTrial={handleStartTrial} />}
-        {isPlus && (
+        <AttentionCard subjects={attention} hideNames={!isPremium} />
+        <InsightCard summary={summary} locked={!isPremium} onStartTrial={handleStartTrial} />
+        {!isPremium && <PlanComparison />}
+        {!isPremium && <PlusFinalCta onStartTrial={handleStartTrial} />}
+        {isPremium && (
           <p style={{ fontFamily: "Inter,sans-serif", fontSize: 11, color: "#94A3B8", textAlign: "center", margin: "4px 0 0" }}>
             Depois do teste, {PLUS_PRICE_FULL} · cancele quando quiser
           </p>

@@ -8,7 +8,7 @@ function generateQuestion(content, n) {
   return { question: `Como você explicaria ${concept} com suas próprias palavras?` };
 }
 
-export default function QuestionsScreen({ content, onBack, isPlus = false, onVisionPlus }) {
+export default function QuestionsScreen({ content, onBack, isPremium = false, onVisionPlus }) {
   const baseQs = content?.openQuestions || [];
   const [extraQs, setExtraQs] = useState([]);
   const qs = [...baseQs, ...extraQs];
@@ -38,7 +38,7 @@ export default function QuestionsScreen({ content, onBack, isPlus = false, onVis
           </motion.div>
         ))}
 
-        {isPlus ? (
+        {isPremium ? (
           <motion.button whileTap={{ scale: 0.96 }} onClick={generateMore}
             style={{ width: "100%", padding: "13px 20px", borderRadius: 14, background: "#EFF6FF", border: "1.5px solid #BFDBFE", color: "#2563EB", fontFamily: "Inter,sans-serif", fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 4 }}>
             <Sparkles size={16} />
