@@ -78,6 +78,7 @@ const validate = await import("../src/data/models/validate.js");
 const integrityService = await import("../src/services/integrityService.js");
 const { nowIso } = await import("../src/utils/date.js");
 const { createEvent } = await import("../src/data/models/event.js");
+const { matchesQuery } = await import("../src/utils/search.js");
 
 // helper: cria um conteúdo mínimo já com matéria
 function seedContent(overrides = {}) {
@@ -786,6 +787,26 @@ test("F4-10. unlink nao apaga evento que fica sem nenhum conteudo", () => {
 test("F4-11. createEventEntry rejeita evento invalido", () => {
   assert.throws(() => eventService.createEventEntry({ type: "exam", title: "", date: "2026-03-10" }), eventService.EventValidationError);
   assert.throws(() => eventService.createEventEntry({ type: "exam", title: "Prova", date: "" }), eventService.EventValidationError);
+});
+
+// ─── Fase 4 — busca real multi-campo ──────────────────────────────────────────
+
+test("F4-14. matchesQuery encontra por titulo, materia, topico, conceitos e keywords", () => {
+  const content = {
+    title: "Introdução às Derivadas",
+    subjectName: "Matemática",
+    topic: "Cálculo Diferencial",
+    keyConcepts: ["taxa de variação instantânea"],
+    keywords: ["limite"],
+    extractedText: "f(x) = x^2, derivada aponta inclinação da reta tangente",
+  };
+  assert.equal(matchesQuery(content, "derivada"), true); // no título e no texto extraído
+  assert.equal(matchesQuery(content, "MATEMATICA"), true); // acento/caixa insensível
+  assert.equal(matchesQuery(content, "cálculo"), true); // no tópico
+  assert.equal(matchesQuery(content, "variação"), true); // só nos conceitos
+  assert.equal(matchesQuery(content, "limite"), true); // só nas keywords
+  assert.equal(matchesQuery(content, "biologia"), false);
+  assert.equal(matchesQuery(content, ""), true); // sem query, tudo passa
 });
 
 // ─── Fase 4 — subjectService à prova de duplicata ─────────────────────────────

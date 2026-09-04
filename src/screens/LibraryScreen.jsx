@@ -6,6 +6,7 @@ import ContentCard from "../components/study/ContentCard";
 import SubjectFolderGrid from "../components/ui/SubjectFolderGrid";
 import { useContentStore } from "../context/ContentStoreContext.jsx";
 import { endOfTodayIso } from "../utils/date";
+import { matchesQuery } from "../utils/search";
 import { UNASSIGNED_SUBJECT_LABEL } from "../constants";
 
 const ALL_FILTER_ID = "all";
@@ -53,15 +54,13 @@ export default function LibraryScreen({ onOpenItem, onVisionPlus }) {
   }, [contents, subjects]);
 
   const filtered = contents.filter((c) => {
-    const q = search.trim().toLowerCase();
-    const title = (c.title || "").toLowerCase();
-    const subject = (c.subjectName || "").toLowerCase();
-    const matchSearch = !q || title.includes(q) || subject.includes(q);
+    const matchSearch = matchesQuery(c, search);
     const matchFilter =
       activeFilter === ALL_FILTER_ID ||
       (activeFilter === UNASSIGNED_FILTER_ID ? !c.subjectId : c.subjectId === activeFilter);
     return matchSearch && matchFilter;
   });
+  const hasQuery = search.trim().length > 0;
 
   return (
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#F8FAFC", fontFamily: "Inter,sans-serif", overflow: "hidden" }}>
@@ -97,7 +96,16 @@ export default function LibraryScreen({ onOpenItem, onVisionPlus }) {
         {filtered.length === 0 ? (
           <div style={{ textAlign: "center", paddingTop: 60, color: "#94A3B8" }}>
             <BookOpen size={40} style={{ margin: "0 auto 12px", display: "block" }} />
-            <p style={{ fontSize: 14, fontFamily: "Inter,sans-serif" }}>Nenhum conteúdo encontrado</p>
+            {hasQuery ? (
+              <p style={{ fontSize: 14, fontFamily: "Inter,sans-serif" }}>Nada encontrado para "{search.trim()}"</p>
+            ) : contents.length === 0 ? (
+              <>
+                <p style={{ fontSize: 14, fontWeight: 700, color: "#475569", fontFamily: "Inter,sans-serif", margin: "0 0 4px" }}>Você ainda não possui conteúdos</p>
+                <p style={{ fontSize: 13, fontFamily: "Inter,sans-serif" }}>Capture uma matéria ou adicione seu primeiro conteúdo para começar.</p>
+              </>
+            ) : (
+              <p style={{ fontSize: 14, fontFamily: "Inter,sans-serif" }}>Nenhum conteúdo nesta matéria ainda</p>
+            )}
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
