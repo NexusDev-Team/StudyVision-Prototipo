@@ -789,6 +789,31 @@ test("F4-11. createEventEntry rejeita evento invalido", () => {
   assert.throws(() => eventService.createEventEntry({ type: "exam", title: "Prova", date: "" }), eventService.EventValidationError);
 });
 
+// ─── Fase 4 — gerenciar materias (criar/renomear/excluir) ─────────────────────
+
+test("F4-15. deleteSubject com unassign deixa conteudo sem materia", () => {
+  const { subject, content } = seedContent();
+  const { movedContentIds } = subjectService.deleteSubject(subject.id, { unassign: true });
+  assert.deepEqual(movedContentIds, [content.id]);
+  const after = contentService.getContent(content.id);
+  assert.equal(after.subjectId, null);
+  assert.equal(after.subjectName, "");
+  assert.equal(subjectService.getSubject(subject.id), null);
+});
+
+test("F4-16. deleteSubject sem reassignTo nem unassign exige decisao", () => {
+  const { subject } = seedContent();
+  assert.throws(() => subjectService.deleteSubject(subject.id), subjectService.SubjectDeletionError);
+  assert.equal(subjectService.getSubjects().length, 1); // nada foi excluído
+});
+
+test("F4-17. deleteSubject de materia vazia nao exige decisao", () => {
+  const subject = subjectService.createSubjectEntry("Filosofia");
+  const { movedContentIds } = subjectService.deleteSubject(subject.id);
+  assert.deepEqual(movedContentIds, []);
+  assert.equal(subjectService.getSubjects().length, 0);
+});
+
 // ─── Fase 4 — busca real multi-campo ──────────────────────────────────────────
 
 test("F4-14. matchesQuery encontra por titulo, materia, topico, conceitos e keywords", () => {

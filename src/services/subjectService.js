@@ -78,15 +78,16 @@ export class SubjectDeletionError extends Error {
   }
 }
 
-// deleteSubject exige `reassignTo` (id de outra matéria) sempre que houver
-// conteúdos vinculados — nunca decide sozinho o destino deles.
-export function deleteSubject(id, { reassignTo } = {}) {
+// deleteSubject exige uma decisão explícita sempre que houver conteúdos
+// vinculados — `reassignTo` (id de outra matéria) ou `unassign: true`
+// ("Deixar sem matéria") — nunca decide sozinho o destino deles.
+export function deleteSubject(id, { reassignTo, unassign = false } = {}) {
   const db = readDb();
   const affected = db.contents.filter((c) => c.subjectId === id).map((c) => c.id);
 
-  if (affected.length > 0 && !reassignTo) {
+  if (affected.length > 0 && !reassignTo && !unassign) {
     throw new SubjectDeletionError(
-      `Matéria possui ${affected.length} conteúdo(s) vinculado(s); informe reassignTo.`,
+      `Matéria possui ${affected.length} conteúdo(s) vinculado(s); informe reassignTo ou unassign.`,
       affected
     );
   }
@@ -101,7 +102,7 @@ export function deleteSubject(id, { reassignTo } = {}) {
     subjects: current.subjects.filter((s) => s.id !== id),
     contents: current.contents.map((c) =>
       c.subjectId === id
-        ? { ...c, subjectId: targetSubject.id, subjectName: targetSubject.name, updatedAt: nowIso() }
+        ? { ...c, subjectId: targetSubject?.id ?? null, subjectName: targetSubject?.name ?? "", updatedAt: nowIso() }
         : c
     ),
   }));

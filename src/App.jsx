@@ -94,6 +94,7 @@ export default function App() {
             <LibraryScreen
               onOpenItem={(item) => { setSelectedContentId(item.id); go("detail"); }}
               onVisionPlus={() => go("visionplus")}
+              onToast={showToast}
             />
           )}
           {screen === "detail" && selectedContent && (

@@ -1,10 +1,11 @@
 import { useState, useMemo } from "react";
-import { motion } from "framer-motion";
-import { Star, Search, BookOpen } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Star, Search, BookOpen, FolderCog } from "lucide-react";
 import LogoSVG from "../components/brand/LogoSVG";
 import ContentCard from "../components/study/ContentCard";
 import SubjectFolderGrid from "../components/ui/SubjectFolderGrid";
 import FilterPills from "../components/ui/FilterPills";
+import SubjectManagerModal from "../components/study/SubjectManagerModal";
 import { useContentStore } from "../context/ContentStoreContext.jsx";
 import { endOfTodayIso } from "../utils/date";
 import { matchesQuery } from "../utils/search";
@@ -25,12 +26,13 @@ const MASTERY_LABEL_TO_LEVEL = Object.fromEntries(
   Object.entries(MASTERY_META).map(([level, meta]) => [meta.label, level])
 );
 
-export default function LibraryScreen({ onOpenItem, onVisionPlus }) {
+export default function LibraryScreen({ onOpenItem, onVisionPlus, onToast }) {
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState(ALL_FILTER_ID);
   const [sortBy, setSortBy] = useState(SORT_OPTIONS[0]);
   const [masteryFilter, setMasteryFilter] = useState(MASTERY_FILTER_OPTIONS[0]);
-  const { contents, subjects, reviews, events } = useContentStore();
+  const [manageOpen, setManageOpen] = useState(false);
+  const { contents, subjects, reviews, events, mutate } = useContentStore();
 
   // Revisão pendente (para o selo "Revisar hoje") e próximo evento, indexados
   // por conteúdo — derivados uma vez do estado do store.
@@ -95,11 +97,17 @@ export default function LibraryScreen({ onOpenItem, onVisionPlus }) {
             <LogoSVG size={22} />
             <span style={{ fontSize: 11, fontWeight: 700, color: "#2563EB", letterSpacing: 0.5 }}>JOVI · STUDY VISION</span>
           </div>
-          <motion.button whileTap={{ scale: 0.94 }} onClick={onVisionPlus}
-            style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 20, background: "linear-gradient(135deg,#2563EB,#7C3AED)", border: "none", cursor: "pointer" }}>
-            <Star size={11} fill="white" color="white" />
-            <span style={{ fontFamily: "Inter,sans-serif", fontSize: 12, fontWeight: 700, color: "white" }}>Vision+</span>
-          </motion.button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button onClick={() => setManageOpen(true)} aria-label="Gerenciar matérias"
+              style={{ width: 30, height: 30, borderRadius: 10, background: "#F1F5F9", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <FolderCog size={15} color="#475569" />
+            </button>
+            <motion.button whileTap={{ scale: 0.94 }} onClick={onVisionPlus}
+              style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 20, background: "linear-gradient(135deg,#2563EB,#7C3AED)", border: "none", cursor: "pointer" }}>
+              <Star size={11} fill="white" color="white" />
+              <span style={{ fontFamily: "Inter,sans-serif", fontSize: 12, fontWeight: 700, color: "white" }}>Vision+</span>
+            </motion.button>
+          </div>
         </div>
         <h1 style={{ fontSize: 24, fontWeight: 800, color: "#111827", margin: 0 }}>Biblioteca</h1>
         <p style={{ fontSize: 13, color: "#64748B", margin: "2px 0 12px" }}>{sorted.length} conteúdo{sorted.length !== 1 ? "s" : ""} organizado{sorted.length !== 1 ? "s" : ""}</p>
@@ -157,6 +165,18 @@ export default function LibraryScreen({ onOpenItem, onVisionPlus }) {
           </div>
         )}
       </div>
+
+      <AnimatePresence>
+        {manageOpen && (
+          <SubjectManagerModal
+            subjects={subjects}
+            contents={contents}
+            mutate={mutate}
+            onClose={() => setManageOpen(false)}
+            onToast={onToast}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
