@@ -49,8 +49,12 @@ export default function App() {
     setTimeout(() => goTo("review"), 400);
   };
 
-  // Bottom nav active
+  // Bottom nav active — o detalhe de conteúdo pode ser aberto tanto pela
+  // Biblioteca quanto pelo Calendário (dentro de Revisão); o item destacado
+  // segue de onde a navegação veio.
+  const cameFromReview = prevScreens[prevScreens.length - 1] === "review";
   const navActive = (screen === "review" || (reviewMode && screen === "flashcards")) ? "review"
+    : screen === "detail" && cameFromReview ? "review"
     : ["library", "detail", "flashcards", "questions", "quiz"].includes(screen) ? "library"
     : screen === "visionplus" ? "visionplus" : "camera";
 
@@ -126,7 +130,11 @@ export default function App() {
             <QuizScreen content={selectedContent} onBack={goBack} isPlus={isPlus} onVisionPlus={() => go("visionplus")} />
           )}
           {screen === "review" && (
-            <ReviewScreen onReview={(item) => { setSelectedContentId(item.id); setReviewMode(true); go("flashcards"); }} onToast={showToast} />
+            <ReviewScreen
+              onReview={(item) => { setSelectedContentId(item.id); setReviewMode(true); go("flashcards"); }}
+              onOpenContent={(item) => { setSelectedContentId(item.id); go("detail"); }}
+              onToast={showToast}
+            />
           )}
           {screen === "visionplus" && (
             <VisionPlusScreen
