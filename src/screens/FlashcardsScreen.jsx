@@ -4,7 +4,7 @@ import { ChevronLeft, CreditCard, ThumbsUp, ThumbsDown, CheckCircle, Lock, Spark
 import Flashcard from "../components/study/Flashcard";
 import { FREE_FLASHCARD_LIMIT } from "../constants";
 import { shuffle } from "../services/reviewService";
-import { recordFlashcardAttempt, updateMastery } from "../services/studyService";
+import { recordFlashcardAttempt, registerActivity } from "../services/studyService";
 import { useContentStore } from "../context/ContentStoreContext.jsx";
 import { newId } from "../utils/id";
 
@@ -31,6 +31,7 @@ export default function FlashcardsScreen({ content, onBack, onVisionPlus, isPlus
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [grades, setGrades] = useState([]); // true = lembrei, false = não lembrei
+  const [contentPerformance, setContentPerformance] = useState(null);
   const done = index >= cards.length;
 
   // Cronômetro do card atual: começa quando a carta é virada para ver a resposta.
@@ -53,14 +54,16 @@ export default function FlashcardsScreen({ content, onBack, onVisionPlus, isPlus
     const card = cards[index];
     const responseTimeMs = shownAtRef.current ? Date.now() - shownAtRef.current : null;
     if (card?.id && contentId) {
-      mutate(() => {
+      const result = mutate(() => {
         recordFlashcardAttempt({ flashcardId: card.id, contentId, correct: remembered, responseTimeMs });
-        // Ao terminar o deck, recalcula o domínio uma única vez.
+        // Ao terminar o deck, recalcula domínio/dificuldade/revisão uma única vez.
         if (index + 1 >= cards.length && !recordedRef.current) {
           recordedRef.current = true;
-          updateMastery(contentId);
+          return registerActivity(contentId);
         }
+        return null;
       });
+      if (result) setContentPerformance(result.performance);
     }
     setGrades(g => [...g, remembered]);
     setFlipped(false);
@@ -69,6 +72,8 @@ export default function FlashcardsScreen({ content, onBack, onVisionPlus, isPlus
   };
 
   const rememberedCount = grades.filter(Boolean).length;
+  const wrongCount = grades.length - rememberedCount;
+  const sessionRate = grades.length > 0 ? Math.round((rememberedCount / grades.length) * 100) : null;
 
   const handleFinishReview = () => {
     if (reviewMode && onReviewComplete) onReviewComplete();
@@ -121,7 +126,17 @@ export default function FlashcardsScreen({ content, onBack, onVisionPlus, isPlus
             style={{ background: "white", borderRadius: 20, padding: "24px 20px", textAlign: "center", border: "1px solid #E2E8F0", boxShadow: "0 1px 8px rgba(0,0,0,0.05)" }}>
             <CheckCircle size={30} color="#14B8A6" style={{ margin: "0 auto 12px" }} />
             <p style={{ fontFamily: "Inter,sans-serif", fontSize: 17, fontWeight: 800, color: "#111827", margin: "0 0 4px" }}>Sessão concluída</p>
-            <p style={{ fontFamily: "Inter,sans-serif", fontSize: 13, color: "#64748B", margin: "0 0 18px" }}>Você lembrou {rememberedCount} de {cards.length} cartas</p>
+            {sessionRate != null && (
+              <p style={{ fontFamily: "Inter,sans-serif", fontSize: 24, fontWeight: 800, color: "#111827", margin: "0 0 2px" }}>{sessionRate}%</p>
+            )}
+            <p style={{ fontFamily: "Inter,sans-serif", fontSize: 13, color: "#374151", margin: "0 0 2px" }}>
+              {cards.length} revisados · <span style={{ color: "#16A34A", fontWeight: 700 }}>✓ {rememberedCount}</span> · <span style={{ color: "#DC2626", fontWeight: 700 }}>✕ {wrongCount}</span>
+            </p>
+            {contentPerformance?.flashcards?.accuracyRate != null && (
+              <p style={{ fontFamily: "Inter,sans-serif", fontSize: 12, color: "#94A3B8", margin: "0 0 18px" }}>
+                {contentPerformance.flashcards.accuracyRate}% de aproveitamento acumulado neste conteúdo
+              </p>
+            )}
             <motion.button whileTap={{ scale: 0.96 }} onClick={handleFinishReview}
               style={{ width: "100%", height: 50, borderRadius: 14, background: "linear-gradient(135deg,#2563EB,#7C3AED)", color: "white", fontFamily: "Inter,sans-serif", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer" }}>
               {reviewMode ? "Concluir revisão" : "Voltar"}
