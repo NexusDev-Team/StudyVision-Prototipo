@@ -789,6 +789,55 @@ test("F4-11. createEventEntry rejeita evento invalido", () => {
   assert.throws(() => eventService.createEventEntry({ type: "exam", title: "Prova", date: "" }), eventService.EventValidationError);
 });
 
+// ─── Fase 4 — cobertura dos testes obrigatorios do briefing ───────────────────
+
+test("F4-20. criar materia e recarregar preserva a materia (testes 1 e 2)", () => {
+  const subject = subjectService.createSubjectEntry("Banco de Dados");
+  const reloaded = JSON.parse(localStorage.getItem("sv_db"));
+  assert.ok(reloaded.subjects.some((s) => s.id === subject.id && s.name === "Banco de Dados"));
+});
+
+test("F4-21. criar evento de cada tipo canonico e recarregar preserva todos (testes 9-13)", () => {
+  const exam = eventService.createEventEntry({ type: "exam", title: "Prova", date: "2026-11-01" });
+  const assignment = eventService.createEventEntry({ type: "assignment", title: "Trabalho", date: "2026-11-02" });
+  const klass = eventService.createEventEntry({ type: "class", title: "Aula", date: "2026-11-03" });
+  const deadline = eventService.createEventEntry({ type: "deadline", title: "Entrega", date: "2026-11-04" });
+
+  const reloaded = JSON.parse(localStorage.getItem("sv_db"));
+  const byId = new Map(reloaded.events.map((e) => [e.id, e]));
+  assert.equal(byId.get(exam.id)?.type, "exam");
+  assert.equal(byId.get(assignment.id)?.type, "assignment");
+  assert.equal(byId.get(klass.id)?.type, "class");
+  assert.equal(byId.get(deadline.id)?.type, "deadline");
+  assert.equal(reloaded.events.length, 4);
+});
+
+test("F4-22. excluir evento nao exclui o conteudo relacionado (teste 17)", () => {
+  const { content } = seedContent();
+  const event = eventService.createEventEntry({ type: "exam", title: "P1", date: "2026-11-05", contentIds: [content.id] });
+  eventService.deleteEvent(event.id);
+  assert.ok(contentService.getContent(content.id));
+  assert.equal(eventService.getEvent(event.id), null);
+});
+
+test("F4-23. eventos e revisoes permanecem em colecoes separadas apos fluxo completo (teste 23)", () => {
+  const { content } = seedContent();
+  reviewService.scheduleInitialReview(content.id);
+  const event = eventService.createEventEntry({ type: "exam", title: "Prova", date: "2026-11-06", contentIds: [content.id] });
+  studyService.registerActivity(content.id);
+
+  const db = readDb();
+  // uma revisão pendente (do seedContent + scheduleInitialReview) e nenhum
+  // vazamento de tipo entre as coleções.
+  assert.ok(db.reviews.length >= 1);
+  assert.equal(db.events.length, 1);
+  assert.equal(db.reviews.some((r) => r.id === event.id), false);
+  assert.equal(db.events.some((e) => e.id === reviewService.getReviewsForContent(content.id)[0].id), false);
+  // getEventsForContent só devolve o AcademicEvent; a revisão nunca aparece ali.
+  const eventsForContent = eventService.getEventsForContent(content.id);
+  assert.deepEqual(eventsForContent.map((e) => e.id), [event.id]);
+});
+
 // ─── Fase 4 — excluir conteudo (UI) com cascata segura ────────────────────────
 
 test("F4-19. excluir conteudo com evento compartilhado preserva o evento para o outro conteudo", () => {
