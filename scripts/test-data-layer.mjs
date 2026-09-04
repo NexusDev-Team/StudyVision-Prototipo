@@ -720,6 +720,33 @@ test("F3-16. reload (nova leitura do localStorage) preserva todo o historico", (
   assert.equal(reloaded.reviews.filter((r) => r.contentId === content.id && r.status === "pending").length, 1);
 });
 
+// ─── Fase 4 — integridade referencial ampliada ────────────────────────────────
+
+test("F4-12. sweepOrphans limpa contentId orfao de evento sem apagar o evento", () => {
+  const { content } = seedContent();
+  const event = eventService.createEventEntry({ type: "exam", title: "Prova conjunta", date: "2026-03-10", contentIds: [content.id] });
+  // Simula conteúdo removido sem passar pelo cascade normal (dado corrompido).
+  withDb((db) => ({ ...db, contents: db.contents.filter((c) => c.id !== content.id) }));
+
+  const removed = integrityService.sweepOrphans();
+  assert.equal(removed.eventContentRefs, 1);
+  const stillThere = eventService.getEvent(event.id);
+  assert.ok(stillThere);
+  assert.deepEqual(stillThere.contentIds, []);
+});
+
+test("F4-13. sweepOrphans move conteudo com materia fantasma para Sem materia", () => {
+  const { content } = seedContent();
+  // Simula matéria removida sem passar por deleteSubject/reassignTo.
+  withDb((db) => ({ ...db, subjects: db.subjects.filter((s) => s.id !== content.subjectId) }));
+
+  const removed = integrityService.sweepOrphans();
+  assert.equal(removed.contentSubjectRefs, 1);
+  const after = contentService.getContent(content.id);
+  assert.equal(after.subjectId, null);
+  assert.equal(after.subjectName, "");
+});
+
 // ─── Fase 4 — eventService endurecido ──────────────────────────────────────────
 
 test("F4-7. updateEvent preserva eventId e createdAt, nao cria evento novo", () => {
