@@ -27,9 +27,11 @@ const MASTERY_LABEL_TO_LEVEL = Object.fromEntries(
   Object.entries(MASTERY_META).map(([level, meta]) => [meta.label, level])
 );
 
-export default function LibraryScreen({ onOpenItem, onVisionPlus, onToast }) {
+// `initialSubjectId` (opcional) abre a tela já filtrada por uma matéria —
+// usado pelo drill-down da tela de Evolução.
+export default function LibraryScreen({ onOpenItem, onVisionPlus, onToast, initialSubjectId }) {
   const [search, setSearch] = useState("");
-  const [activeFilter, setActiveFilter] = useState(ALL_FILTER_ID);
+  const [activeFilter, setActiveFilter] = useState(initialSubjectId || ALL_FILTER_ID);
   const [sortBy, setSortBy] = useState(SORT_OPTIONS[0]);
   const [masteryFilter, setMasteryFilter] = useState(MASTERY_FILTER_OPTIONS[0]);
   const [manageOpen, setManageOpen] = useState(false);

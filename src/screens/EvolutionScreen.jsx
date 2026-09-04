@@ -5,7 +5,8 @@ import Card from "../components/ui/Card";
 import ProgressRing from "../components/ui/ProgressRing";
 import EmptyState from "../components/ui/EmptyState";
 import PerformanceChart from "../components/plus/PerformanceChart";
-import { getEvolutionSummary } from "../services/evolutionService";
+import SubjectProgress from "../components/plus/SubjectProgress";
+import { getEvolutionSummary, getSubjectPerformances } from "../services/evolutionService";
 
 function StatCard({ value, label, delay = 0 }) {
   return (
@@ -21,6 +22,7 @@ function StatCard({ value, label, delay = 0 }) {
 // tarefas.
 export default function EvolutionScreen({ isPremium, onOpenContent, onOpenLibrary, onOpenReview, onVisionPlus }) {
   const summary = getEvolutionSummary();
+  const subjectRows = getSubjectPerformances().map((s) => ({ id: s.subjectId, name: s.name, accuracyRate: s.accuracy }));
 
   const breakdown = {
     not_started: summary.notStartedContents,
@@ -76,6 +78,8 @@ export default function EvolutionScreen({ isPremium, onOpenContent, onOpenLibrar
               </div>
             </Card>
             <PerformanceChart breakdown={breakdown} hasActivity={summary.hasActivity} locked={false} />
+
+            <SubjectProgress subjects={subjectRows} locked={false} onSelect={onOpenLibrary} />
           </>
         )}
       </div>

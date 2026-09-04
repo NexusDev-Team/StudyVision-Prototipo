@@ -4,14 +4,14 @@ import ProgressBar from "../ui/ProgressBar";
 import PlusPaywall from "./PlusPaywall";
 import { SUBJECT_META } from "../../constants";
 
-function SubjectRows({ subjects }) {
+function SubjectRows({ subjects, onSelect }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {subjects.map((s) => {
         const color = SUBJECT_META[s.name]?.color || "#2563EB";
         const value = s.accuracyRate;
-        return (
-          <div key={s.id}>
+        const row = (
+          <>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
               <span style={{ fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, color: "#111827" }}>{s.name}</span>
               <span style={{ fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, color: value != null ? "#111827" : "#94A3B8" }}>
@@ -19,7 +19,18 @@ function SubjectRows({ subjects }) {
               </span>
             </div>
             <ProgressBar value={value ?? 0} color={color} />
-          </div>
+          </>
+        );
+        return onSelect ? (
+          <button
+            key={s.id}
+            onClick={() => onSelect(s.id)}
+            style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: "none", padding: 0, cursor: "pointer", minHeight: 44 }}
+          >
+            {row}
+          </button>
+        ) : (
+          <div key={s.id}>{row}</div>
         );
       })}
     </div>
@@ -27,8 +38,9 @@ function SubjectRows({ subjects }) {
 }
 
 // Taxa de acerto real por matéria. Sem matéria ainda: estado vazio, não um card
-// em branco.
-export default function SubjectProgress({ subjects = [], locked, visibleCount = 2, onStartTrial }) {
+// em branco. `onSelect` (opcional) recebe o id da matéria tocada — usado pela
+// Evolução para abrir a Biblioteca já filtrada.
+export default function SubjectProgress({ subjects = [], locked, visibleCount = 2, onStartTrial, onSelect }) {
   if (subjects.length === 0) {
     return (
       <div style={{ marginBottom: 20 }}>
@@ -49,11 +61,11 @@ export default function SubjectProgress({ subjects = [], locked, visibleCount = 
     <div style={{ marginBottom: 20 }}>
       <SectionLabel>Evolução por matéria</SectionLabel>
       <Card style={{ padding: "18px 20px", margin: 0, display: "flex", flexDirection: "column", gap: 16 }}>
-        <SubjectRows subjects={visible} />
+        <SubjectRows subjects={visible} onSelect={onSelect} />
         {rest.length > 0 && (
           <PlusPaywall locked compact title="Ver evolução por tópico" onStartTrial={onStartTrial}>
             <div style={{ marginTop: 4 }}>
-              <SubjectRows subjects={rest} />
+              <SubjectRows subjects={rest} onSelect={onSelect} />
             </div>
           </PlusPaywall>
         )}

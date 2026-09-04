@@ -26,6 +26,7 @@ import { useState } from "react";
 export default function App() {
   const { screen, setScreen, prevScreens, setPrevScreens, reviewMode, setReviewMode, go, goBack, goTo } = useNavigation("camera");
   const [selectedContentId, setSelectedContentId] = useState(null);
+  const [libraryFilterSubjectId, setLibraryFilterSubjectId] = useState(null);
   const { toast, showToast, clearToast } = useToast();
   const analysis = useAnalysis();
   const { contents, dueCount, reload: refreshDueCount, mutate } = useContentStore();
@@ -34,6 +35,10 @@ export default function App() {
   // Derivado do store, nunca um snapshot congelado — some a classe de bug em
   // que a tela de detalhe mostrava o estado de antes de uma edição/revisão.
   const selectedContent = contents.find((c) => c.id === selectedContentId) || null;
+
+  // subjectId opcional: drill-down da Evolução chega já filtrado; qualquer
+  // outra entrada na Biblioteca (nav, salvar conteúdo, excluir) limpa o filtro.
+  const openLibrary = (subjectId = null) => { setLibraryFilterSubjectId(subjectId); goTo("library"); };
 
   const handleStartTrial = () => { startTrial(); showToast("✓ Study Vision+ ativado"); };
   const handleResetToFree = () => { resetToFree(); showToast("Demonstração reiniciada"); };
@@ -75,7 +80,7 @@ export default function App() {
           {screen === "camera" && (
             <CameraScreen
               onCapture={(dataUrl) => { analysis.run(dataUrl); go("analysis"); }}
-              onLibraryNav={() => goTo("library")}
+              onLibraryNav={() => openLibrary()}
             />
           )}
           {screen === "analysis" && (
@@ -90,8 +95,8 @@ export default function App() {
           {screen === "summary" && (
             <SummaryScreen
               capturedContent={analysis.content}
-              onSave={() => { showToast("✓ Conteúdo salvo com sucesso"); refreshDueCount(); setTimeout(() => goTo("library"), 500); }}
-              onLibrary={() => goTo("library")}
+              onSave={() => { showToast("✓ Conteúdo salvo com sucesso"); refreshDueCount(); setTimeout(() => openLibrary(), 500); }}
+              onLibrary={() => openLibrary()}
               onToast={showToast}
             />
           )}
@@ -100,13 +105,14 @@ export default function App() {
               onOpenItem={(item) => { setSelectedContentId(item.id); go("detail"); }}
               onVisionPlus={() => go("visionplus")}
               onToast={showToast}
+              initialSubjectId={libraryFilterSubjectId}
             />
           )}
           {screen === "detail" && selectedContent && (
             <ContentDetailScreen
               content={selectedContent}
               onBack={goBack}
-              onDeleted={() => { setSelectedContentId(null); goTo("library"); }}
+              onDeleted={() => { setSelectedContentId(null); openLibrary(); }}
               onFlashcards={() => go("flashcards")}
               onQuestions={() => go("questions")}
               onQuiz={() => go("quiz")}
@@ -141,7 +147,7 @@ export default function App() {
             <EvolutionScreen
               isPremium={isPremium}
               onOpenContent={(id) => { setSelectedContentId(id); go("detail"); }}
-              onOpenLibrary={() => goTo("library")}
+              onOpenLibrary={(subjectId) => openLibrary(subjectId)}
               onOpenReview={() => goTo("review")}
               onVisionPlus={() => go("visionplus")}
             />
@@ -164,7 +170,7 @@ export default function App() {
         <BottomNav active={navActive} dueCount={dueCount}
           onGo={(id) => {
             if (id === "camera") goTo("camera");
-            else if (id === "library") goTo("library");
+            else if (id === "library") openLibrary();
             else if (id === "review") goTo("review");
             else if (id === "evolution") goTo("evolution");
           }}
