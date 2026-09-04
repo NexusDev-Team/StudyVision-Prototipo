@@ -19,7 +19,13 @@ import {
   getPerformanceForSubject,
 } from "./performanceService.js";
 import { masteryLevelFromScore } from "./studyService.js";
-import { getOverdueReviews } from "./reviewService.js";
+import {
+  getPendingReviews,
+  getCompletedReviews,
+  getOverdueReviews,
+  getDueReviews,
+  reviewReasonLabel,
+} from "./reviewService.js";
 import { getMasteryMeta } from "../constants.js";
 import { readDb } from "../data/storage/index.js";
 import { startOfWeekKey, fromDayKey, toMs } from "../utils/date.js";
@@ -220,4 +226,26 @@ export function getAccuracyDelta({ weeks = 4 } = {}) {
   const to = history[history.length - 1];
   if (from.accuracy === null || to.accuracy === null) return null;
   return { deltaPoints: to.accuracy - from.accuracy, from: from.accuracy, to: to.accuracy };
+}
+
+// Revisão é mecanismo de aprendizagem/retenção — nunca vira evento de
+// calendário; esta função só agrega o que o reviewService já resolve.
+export function getReviewProgress() {
+  const pending = getPendingReviews();
+  return {
+    pending: pending.length,
+    completed: getCompletedReviews().length,
+    overdue: getOverdueReviews().length,
+    dueToday: getDueReviews().length,
+    contentsInReview: pending
+      .slice()
+      .sort((a, b) => new Date(a.scheduledFor) - new Date(b.scheduledFor))
+      .map((r) => ({
+        contentId: r.contentId,
+        title: getContent(r.contentId)?.title ?? "",
+        scheduledFor: r.scheduledFor,
+        reason: r.reason,
+        reasonLabel: reviewReasonLabel(r.reason),
+      })),
+  };
 }

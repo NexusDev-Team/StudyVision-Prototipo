@@ -1183,6 +1183,38 @@ test("F5-14. getAccuracyDelta retorna null com apenas 1 ponto no historico", () 
   assert.equal(evolutionService.getAccuracyDelta(), null);
 });
 
+test("F5-15. review criada aparece como pendente na evolucao", () => {
+  const { content } = seedContent();
+  reviewService.scheduleInitialReview(content.id);
+  const progress = evolutionService.getReviewProgress();
+  assert.equal(progress.pending, 1);
+  assert.equal(progress.completed, 0);
+  assert.equal(progress.contentsInReview.length, 1);
+  assert.equal(progress.contentsInReview[0].contentId, content.id);
+  assert.equal(progress.contentsInReview[0].reasonLabel, "Primeiro estudo");
+});
+
+test("F5-16. concluir review incrementa concluidas e ensureNextReview aparece pendente", () => {
+  const { content } = seedContent();
+  const initial = reviewService.scheduleInitialReview(content.id);
+  reviewService.markReviewDone(initial.id);
+  const progress = evolutionService.getReviewProgress();
+  assert.equal(progress.completed, 1);
+  assert.equal(progress.pending, 1);
+  assert.equal(progress.contentsInReview[0].contentId, content.id);
+});
+
+test("F5-17. review com scheduledFor no passado conta em overdue", () => {
+  const { content } = seedContent();
+  const review = reviewService.scheduleInitialReview(content.id);
+  withDb((db) => ({
+    ...db,
+    reviews: db.reviews.map((r) => (r.id === review.id ? { ...r, scheduledFor: "2000-01-01T00:00:00.000Z" } : r)),
+  }));
+  const progress = evolutionService.getReviewProgress();
+  assert.equal(progress.overdue, 1);
+});
+
 // ─── relatório ───────────────────────────────────────────────────────────────
 console.log(`\n${passed} passaram, ${failed} falharam`);
 if (failed > 0) {
