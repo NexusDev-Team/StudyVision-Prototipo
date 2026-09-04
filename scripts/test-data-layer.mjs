@@ -1215,6 +1215,31 @@ test("F5-17. review com scheduledFor no passado conta em overdue", () => {
   assert.equal(progress.overdue, 1);
 });
 
+test("F5-18. banco vazio: recomendacoes ficam vazias", () => {
+  assert.deepEqual(evolutionService.getRecommendations(), []);
+});
+
+test("F5-19. conteudo com 58% gera recomendacao de atencao apontando para ele", () => {
+  const { content } = seedContent();
+  const quiz = contentService.getContent(content.id).quizzes[0];
+  studyService.recordQuizAttempt({ quizId: quiz.id, contentId: content.id, answers: buildAnswers(100, 58) });
+  studyService.registerActivity(content.id);
+  const recs = evolutionService.getRecommendations();
+  const found = recs.find((r) => r.action?.contentId === content.id);
+  assert.ok(found, "deveria haver recomendacao para o conteudo fraco");
+  assert.equal(found.tone, "attention");
+});
+
+test("F5-20. duas chamadas seguidas com o mesmo banco retornam recomendacoes identicas", () => {
+  const { content } = seedContent();
+  const quiz = contentService.getContent(content.id).quizzes[0];
+  studyService.recordQuizAttempt({ quizId: quiz.id, contentId: content.id, answers: buildAnswers(100, 58) });
+  studyService.registerActivity(content.id);
+  const first = evolutionService.getRecommendations();
+  const second = evolutionService.getRecommendations();
+  assert.deepEqual(first, second);
+});
+
 // ─── relatório ───────────────────────────────────────────────────────────────
 console.log(`\n${passed} passaram, ${failed} falharam`);
 if (failed > 0) {

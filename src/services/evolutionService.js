@@ -249,3 +249,61 @@ export function getReviewProgress() {
       })),
   };
 }
+
+// Recomendações determinísticas: mesma entrada produz sempre a mesma saída,
+// zero IA e zero aleatoriedade. Ordem fixa de prioridade — conteúdo mais
+// fraco, revisão mais atrasada, evolução recente, matéria mais forte —
+// preenchida só até `limit`, pulando regras sem dado suficiente.
+export function getRecommendations({ limit = 3 } = {}) {
+  const recommendations = [];
+  const usedContentIds = new Set();
+
+  const weak = getWeakContents({ limit: 1 })[0];
+  if (weak && weak.reason === "low_accuracy") {
+    recommendations.push({
+      id: `weak_${weak.contentId}`,
+      tone: "attention",
+      title: "Vale revisar",
+      message: `Você teve ${weak.accuracy}% de acerto em "${weak.title}". Esse conteúdo pode precisar de mais uma revisão.`,
+      action: { screen: "detail", contentId: weak.contentId },
+    });
+    usedContentIds.add(weak.contentId);
+  }
+
+  const overdue = getOverdueReviews().sort((a, b) => new Date(a.scheduledFor) - new Date(b.scheduledFor))[0];
+  if (overdue && !usedContentIds.has(overdue.contentId)) {
+    const content = getContent(overdue.contentId);
+    recommendations.push({
+      id: `overdue_${overdue.contentId}`,
+      tone: "attention",
+      title: "Revisão atrasada",
+      message: `Sua revisão de "${content?.title ?? "um conteúdo"}" está atrasada. Vale revisar esse conteúdo.`,
+      action: { screen: "detail", contentId: overdue.contentId },
+    });
+    usedContentIds.add(overdue.contentId);
+  }
+
+  const delta = getAccuracyDelta();
+  if (delta && delta.deltaPoints > 0) {
+    recommendations.push({
+      id: "delta_positive",
+      tone: "positive",
+      title: "Você está evoluindo",
+      message: `Sua taxa de acerto subiu ${delta.deltaPoints} pontos percentuais nas últimas semanas. Continue assim.`,
+      action: null,
+    });
+  }
+
+  const strong = getStrongSubjects({ limit: 1 })[0];
+  if (strong) {
+    recommendations.push({
+      id: `strong_${strong.subjectId}`,
+      tone: "positive",
+      title: "Bom desempenho",
+      message: `Você teve bom desempenho em ${strong.name} (${strong.accuracy}%). Continue praticando.`,
+      action: { screen: "library", subjectId: strong.subjectId },
+    });
+  }
+
+  return recommendations.slice(0, limit);
+}
