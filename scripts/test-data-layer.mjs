@@ -230,13 +230,13 @@ test("12. desempenho agrega tentativas reais", () => {
   assert.equal(summary.flashcardAccuracyRate, 100);
 });
 
-test("13. agendar revisões gera o ciclo D+1..D+30", () => {
+test("13. agendar revisão inicial cria uma única pendente em D+1", () => {
   const { content } = seedContent();
-  const reviews = reviewService.scheduleReviewsForContent(content.id, "2026-01-01T12:00:00.000Z");
-  assert.equal(reviews.length, 5);
-  assert.deepEqual(reviews.map((r) => r.stage), [1, 2, 3, 4, 5]);
-  assert.equal(reviewService.getReviewsForContent(content.id).length, 5);
-  assert.equal(reviews[0].scheduledFor, "2026-01-02T12:00:00.000Z");
+  const review = reviewService.scheduleInitialReview(content.id, "2026-01-01T12:00:00.000Z");
+  assert.equal(review.stage, 1);
+  assert.equal(review.reason, "first_study");
+  assert.equal(reviewService.getReviewsForContent(content.id).length, 1);
+  assert.equal(review.scheduledFor, "2026-01-02T12:00:00.000Z");
 });
 
 test("14. criar evento acadêmico", () => {
@@ -279,7 +279,7 @@ test("17. mover conteúdo de matéria mantém o mesmo id", () => {
 
 test("18. excluir conteúdo faz cascade em revisões/tentativas/eventos", () => {
   const { content } = seedContent();
-  reviewService.scheduleReviewsForContent(content.id);
+  reviewService.scheduleInitialReview(content.id);
   const fc = contentService.getContent(content.id).flashcards[0];
   studyService.recordFlashcardAttempt({ flashcardId: fc.id, contentId: content.id, correct: true });
   const event = eventService.createEventEntry({ type: "exam", title: "P1", date: "2026-03-10", contentIds: [content.id] });
@@ -297,8 +297,8 @@ test("18. excluir conteúdo faz cascade em revisões/tentativas/eventos", () => 
 test("19. varredura de referências órfãs volta vazia após exclusão", () => {
   const a = seedContent({ subjectName: "Matemática" });
   const b = seedContent({ subjectName: "História" });
-  reviewService.scheduleReviewsForContent(a.content.id);
-  reviewService.scheduleReviewsForContent(b.content.id);
+  reviewService.scheduleInitialReview(a.content.id);
+  reviewService.scheduleInitialReview(b.content.id);
   const evt = eventService.createEventEntry({
     type: "exam",
     title: "Prova conjunta",
@@ -328,7 +328,7 @@ test("19. varredura de referências órfãs volta vazia após exclusão", () => 
 
 test("20. round-trip de persistência (JSON estável)", () => {
   const { content } = seedContent();
-  reviewService.scheduleReviewsForContent(content.id);
+  reviewService.scheduleInitialReview(content.id);
   const raw = localStorage.getItem("sv_db");
   const roundTripped = JSON.parse(raw);
   assert.deepEqual(roundTripped, readDb());
@@ -454,6 +454,45 @@ test("F3-1b. validateContent rejeita recommendedDifficulty inválido", () => {
   const { valid, errors } = validate.validateContent(bad);
   assert.equal(valid, false);
   assert.ok(errors.includes("recommendedDifficulty inválido"));
+});
+
+test("F3-2. intervalo de revisão por faixa de desempenho", () => {
+  assert.deepEqual(reviewService.resolveReviewInterval(null), { days: 1, reason: "first_study" });
+  assert.deepEqual(reviewService.resolveReviewInterval(45), { days: 1, reason: "low_performance" });
+  assert.deepEqual(reviewService.resolveReviewInterval(70), { days: 3, reason: "reinforcement" });
+  assert.deepEqual(reviewService.resolveReviewInterval(85), { days: 7, reason: "consolidation" });
+  assert.deepEqual(reviewService.resolveReviewInterval(95), { days: 14, reason: "long_term" });
+});
+
+test("F3-3. dez atividades seguidas -> exatamente uma revisão pendente", () => {
+  const { content } = seedContent();
+  reviewService.scheduleInitialReview(content.id);
+  for (let i = 0; i < 10; i++) {
+    reviewService.scheduleReviewFromPerformance(content.id, i % 2 === 0 ? 40 : 90);
+  }
+  const pending = reviewService.getReviewsForContent(content.id).filter((r) => r.status === "pending");
+  assert.equal(pending.length, 1);
+  assert.equal(pending[0].reason, "long_term");
+});
+
+test("F3-4. revisão manual não é sobrescrita pelo desempenho", () => {
+  const { content } = seedContent();
+  const manual = reviewService.scheduleManualReview(content.id, "2026-06-01T12:00:00.000Z");
+  const result = reviewService.scheduleReviewFromPerformance(content.id, 20);
+  assert.equal(result.id, manual.id);
+  assert.equal(result.reason, "manual");
+  assert.equal(result.scheduledFor, "2026-06-01T12:00:00.000Z");
+});
+
+test("F3-5. markReviewDone conclui e agenda a próxima com stage incrementado", () => {
+  const { content } = seedContent();
+  const first = reviewService.scheduleInitialReview(content.id);
+  const done = reviewService.markReviewDone(first.id);
+  assert.equal(done.status, "completed");
+  const next = reviewService.nextPendingReview(content.id);
+  assert.ok(next);
+  assert.equal(next.stage, 2);
+  assert.equal(reviewService.getReviewsForContent(content.id).filter((r) => r.status === "pending").length, 1);
 });
 
 // ─── relatório ───────────────────────────────────────────────────────────────
