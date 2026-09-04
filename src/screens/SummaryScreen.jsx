@@ -7,7 +7,7 @@ import ContentBlocks from "../components/study/ContentBlocks";
 import ExportSection from "../components/study/ExportSection";
 import PlanningSection from "../components/study/PlanningSection";
 import { createContentEntry } from "../services/contentService";
-import { getSubjects, createSubjectEntry } from "../services/subjectService";
+import { ensureSubject } from "../services/subjectService";
 import { scheduleInitialReview } from "../services/reviewService";
 import { scheduleCommitment } from "../services/calendarService";
 import { getSubjectVisual } from "../constants";
@@ -32,14 +32,12 @@ export default function SummaryScreen({ capturedContent, onSave, onLibrary, onTo
     if (saving) return;
     setSaving(true);
 
-    let subject = getSubjects().find((s) => s.name === capturedContent.subjectName);
-    if (!subject && capturedContent.subjectName) {
-      subject = createSubjectEntry(capturedContent.subjectName);
-    }
+    const subject = ensureSubject(capturedContent.subjectName);
 
     const { content: saved, result } = createContentEntry({
       ...capturedContent,
       subjectId: subject?.id || null,
+      subjectName: subject?.name || "",
     });
     scheduleInitialReview(saved.id, saved.createdAt);
     if (calendarEvent) {

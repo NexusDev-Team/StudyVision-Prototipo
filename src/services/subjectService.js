@@ -13,10 +13,42 @@ export function getSubject(id) {
   return readDb().subjects.find((s) => s.id === id) || null;
 }
 
+// Trim + colapso de espaços internos — "  Banco   de Dados " -> "Banco de Dados".
+export function normalizeSubjectName(name) {
+  return String(name || "").trim().replace(/\s+/g, " ");
+}
+
+// Comparação insensível a maiúsculas/acentos, para "Química" e "quimica"
+// serem reconhecidas como a mesma matéria.
+function comparableName(name) {
+  return normalizeSubjectName(name)
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase();
+}
+
+export function findSubjectByName(name) {
+  const target = comparableName(name);
+  if (!target) return null;
+  return readDb().subjects.find((s) => comparableName(s.name) === target) || null;
+}
+
+// Rejeita nome vazio — matéria sem nome não deve existir. Retorna null nesse
+// caso (o chamador decide como avisar o usuário), coerente com getSubject().
 export function createSubjectEntry(name) {
-  const subject = createSubject({ name });
+  const normalized = normalizeSubjectName(name);
+  if (!normalized) return null;
+  const subject = createSubject({ name: normalized });
   withDb((db) => ({ ...db, subjects: [...db.subjects, subject] }));
   return subject;
+}
+
+// Reaproveita a matéria existente (por nome, case/acento-insensitive) em vez
+// de duplicar. Usado onde a IA ou o usuário informam só um nome de matéria.
+export function ensureSubject(name) {
+  const normalized = normalizeSubjectName(name);
+  if (!normalized) return null;
+  return findSubjectByName(normalized) || createSubjectEntry(normalized);
 }
 
 // Renomear não altera o id da matéria; os conteúdos que a referenciam via

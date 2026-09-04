@@ -720,6 +720,28 @@ test("F3-16. reload (nova leitura do localStorage) preserva todo o historico", (
   assert.equal(reloaded.reviews.filter((r) => r.contentId === content.id && r.status === "pending").length, 1);
 });
 
+// ─── Fase 4 — subjectService à prova de duplicata ─────────────────────────────
+
+test("F4-4. nomes equivalentes de materia nao duplicam", () => {
+  const a = subjectService.createSubjectEntry("Química");
+  const b = subjectService.ensureSubject(" quimica ");
+  const c = subjectService.ensureSubject("QUÍMICA");
+  assert.equal(b.id, a.id);
+  assert.equal(c.id, a.id);
+  assert.equal(subjectService.getSubjects().length, 1);
+});
+
+test("F4-5. nome vazio nao cria materia", () => {
+  assert.equal(subjectService.createSubjectEntry("   "), null);
+  assert.equal(subjectService.ensureSubject(""), null);
+  assert.equal(subjectService.getSubjects().length, 0);
+});
+
+test("F4-6. ensureSubject normaliza espacos internos", () => {
+  const s = subjectService.ensureSubject("  Banco   de   Dados  ");
+  assert.equal(s.name, "Banco de Dados");
+});
+
 // ─── Fase 4 — conteúdo sem matéria é estado válido ────────────────────────────
 
 test("F4-0. conteudo sem materia e valido; subjectId sem subjectName nao e", () => {
