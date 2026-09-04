@@ -73,8 +73,10 @@ const studyService = await import("../src/services/studyService.js");
 const reviewService = await import("../src/services/reviewService.js");
 const eventService = await import("../src/services/eventService.js");
 const performanceService = await import("../src/services/performanceService.js");
-const { readDb } = await import("../src/data/storage/index.js");
+const { readDb, withDb } = await import("../src/data/storage/index.js");
 const validate = await import("../src/data/models/validate.js");
+const integrityService = await import("../src/services/integrityService.js");
+const { nowIso } = await import("../src/utils/date.js");
 
 // helper: cria um conteúdo mínimo já com matéria
 function seedContent(overrides = {}) {
@@ -661,6 +663,33 @@ test("F3-13. registerActivity com desempenho baixo -> needs_review, easy e revis
   assert.equal(result.review.status, "pending");
   assert.equal(result.review.reason, "low_performance");
   assert.equal(reviewService.getReviewsForContent(content.id).filter((r) => r.status === "pending").length, 1);
+});
+
+test("F3-15. sweepOrphans remove tentativas/revisoes sem conteudo, preserva o resto", () => {
+  const { content } = seedContent();
+  const fc = contentService.getContent(content.id).flashcards[0];
+  studyService.recordFlashcardAttempt({ flashcardId: fc.id, contentId: content.id, correct: true });
+  reviewService.scheduleInitialReview(content.id);
+
+  withDb((db) => ({
+    ...db,
+    reviews: [...db.reviews, { id: "rev_orphan", contentId: "cnt_missing", stage: 1, scheduledFor: nowIso(), status: "pending", completedAt: null, reason: "manual", updatedAt: nowIso(), skippedAt: null }],
+    flashcardAttempts: [...db.flashcardAttempts, { id: "fa_orphan", flashcardId: "fc_missing", contentId: "cnt_missing", correct: true, answeredAt: nowIso(), responseTimeMs: null }],
+    quizAttempts: [...db.quizAttempts, { id: "qa_orphan", quizId: "qz_missing", contentId: "cnt_missing", score: 0, correctAnswers: 0, totalQuestions: 0, answeredAt: nowIso(), answers: [] }],
+  }));
+
+  const removed = integrityService.sweepOrphans();
+  assert.equal(removed.reviews, 1);
+  assert.equal(removed.flashcardAttempts, 1);
+  assert.equal(removed.quizAttempts, 1);
+
+  const db = readDb();
+  assert.equal(db.reviews.some((r) => r.id === "rev_orphan"), false);
+  assert.equal(db.flashcardAttempts.some((a) => a.id === "fa_orphan"), false);
+  assert.equal(db.quizAttempts.some((a) => a.id === "qa_orphan"), false);
+  // registros válidos preservados
+  assert.equal(reviewService.getReviewsForContent(content.id).length, 1);
+  assert.equal(studyService.getAttemptsForContent(content.id).flashcardAttempts.length, 1);
 });
 
 // ─── relatório ───────────────────────────────────────────────────────────────

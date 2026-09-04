@@ -6,6 +6,7 @@
 
 import { createContext, useContext, useState, useCallback, useMemo, useEffect } from "react";
 import { readDb } from "../data/storage/index.js";
+import { sweepOrphans } from "../services/integrityService.js";
 import { endOfTodayIso } from "../utils/date.js";
 
 const ContentStoreContext = createContext(null);
@@ -24,7 +25,9 @@ export function ContentStoreProvider({ children }) {
   const [snapshot, setSnapshot] = useState(readSnapshot);
 
   const reload = useCallback(() => setSnapshot(readSnapshot()), []);
-  useEffect(() => { reload(); }, [reload]);
+  // Roda uma vez ao montar: limpa qualquer tentativa/revisão órfã antes da
+  // primeira leitura visível na UI.
+  useEffect(() => { sweepOrphans(); reload(); }, [reload]);
 
   // Executa a operação de serviço e recarrega o estado do disco numa tacada só.
   const mutate = useCallback((fn) => {
