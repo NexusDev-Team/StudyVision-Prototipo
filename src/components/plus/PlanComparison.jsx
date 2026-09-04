@@ -1,17 +1,7 @@
 import { Check } from "lucide-react";
 import Card from "../ui/Card";
 import SectionLabel from "../ui/SectionLabel";
-
-const FREE_ITEMS = [
-  "Captura inteligente", "Leitura inteligente", "Resumos", "Biblioteca",
-  "Revisões", "Flashcards dentro do limite gratuito", "Perguntas dentro do limite gratuito", "Calendário de revisões",
-];
-
-const PLUS_ITEMS = [
-  "Tudo do Free", "Flashcards ilimitados", "Quizzes ilimitados", "Personalização avançada",
-  "Dashboard de evolução", "Análise por matéria", "Análise por tópico", "Insights inteligentes",
-  "Histórico de evolução", "Estatísticas avançadas",
-];
+import { FREE_BENEFITS, PLUS_BENEFITS } from "../../constants";
 
 function PlanColumn({ title, items, accent }) {
   return (
@@ -37,8 +27,8 @@ export default function PlanComparison() {
         O Free já resolve o problema. O Plus leva o aprendizado além.
       </p>
       <div style={{ display: "flex", gap: 10 }}>
-        <PlanColumn title="Free" items={FREE_ITEMS} />
-        <PlanColumn title="Plus" items={PLUS_ITEMS} accent />
+        <PlanColumn title="Free" items={FREE_BENEFITS} />
+        <PlanColumn title="Plus" items={PLUS_BENEFITS} accent />
       </div>
     </div>
   );

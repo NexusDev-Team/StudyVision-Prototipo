@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Lock } from "lucide-react";
 import Button from "../ui/Button";
+import { PLUS_PRICE_FULL, TRIAL_DAYS } from "../../constants";
 
 // Locked content stays visible but blurred behind a bottom-anchored gradient +
 // conversion block — never a blank screen or generic modal. Unlocking animates
@@ -46,9 +47,9 @@ export default function PlusPaywall({ locked, compact = false, title = "Desbloqu
             <p style={{ fontFamily: "Inter,sans-serif", fontSize: 15, fontWeight: 800, color: "#111827", margin: "0 0 4px" }}>{title}</p>
             {message && <p style={{ fontFamily: "Inter,sans-serif", fontSize: 12, color: "#64748B", margin: "0 0 14px", maxWidth: 240, lineHeight: 1.5 }}>{message}</p>}
             <Button variant="primary" onClick={onStartTrial} style={{ padding: "0 22px", height: 44, fontSize: 13 }}>
-              Começar 7 dias grátis
+              Começar {TRIAL_DAYS} dias grátis
             </Button>
-            <p style={{ fontFamily: "Inter,sans-serif", fontSize: 11, color: "#94A3B8", margin: "8px 0 0" }}>Depois, R$ 9,90/mês · cancele quando quiser</p>
+            <p style={{ fontFamily: "Inter,sans-serif", fontSize: 11, color: "#94A3B8", margin: "8px 0 0" }}>Depois, {PLUS_PRICE_FULL} · cancele quando quiser</p>
           </motion.div>
         ))}
       </AnimatePresence>

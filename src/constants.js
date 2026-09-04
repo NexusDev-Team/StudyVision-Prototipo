@@ -1,5 +1,23 @@
 export const FREE_FLASHCARD_LIMIT = 5;
 
+// Fonte única do preço e do teste do Study Vision+ — qualquer tela que
+// mostre valor ou duração do teste lê daqui, nunca escreve o número solto.
+export const TRIAL_DAYS = 7;
+export const PLUS_PRICE_LABEL = "R$ 9,90";
+export const PLUS_PRICE_PERIOD = "/mês";
+export const PLUS_PRICE_FULL = "R$ 9,90/mês";
+
+export const FREE_BENEFITS = [
+  "Captura inteligente", "Leitura inteligente", "Resumos", "Biblioteca",
+  "Revisões", "Flashcards dentro do limite gratuito", "Perguntas dentro do limite gratuito",
+  "Calendário de revisões", "Evolução completa",
+];
+
+export const PLUS_BENEFITS = [
+  "Tudo do Free", "Flashcards personalizados ilimitados", "Quizzes ilimitados",
+  "Personalização avançada", "Insights detalhados da sua evolução", "Recursos avançados de estudo",
+];
+
 // Rótulo do bucket de conteúdos sem matéria (subjectId/subjectName ausentes) —
 // captura recém-feita, IA sem classificação, ou ainda não organizado pelo usuário.
 export const UNASSIGNED_SUBJECT_LABEL = "Sem matéria";

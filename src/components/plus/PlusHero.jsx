@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Sparkles } from "lucide-react";
 import Button from "../ui/Button";
+import { PLUS_PRICE_LABEL, PLUS_PRICE_PERIOD, TRIAL_DAYS } from "../../constants";
 
 // Sell the outcome first, price second — hero for the free/pre-trial state.
 export default function PlusHero({ onStartTrial }) {
@@ -18,14 +19,14 @@ export default function PlusHero({ onStartTrial }) {
       </p>
 
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 8, marginBottom: 4 }}>
-        <span style={{ fontFamily: "Inter,sans-serif", fontSize: 26, fontWeight: 900, color: "#111827" }}>R$ 9,90</span>
-        <span style={{ fontFamily: "Inter,sans-serif", fontSize: 14, fontWeight: 600, color: "#64748B" }}>/mês</span>
+        <span style={{ fontFamily: "Inter,sans-serif", fontSize: 26, fontWeight: 900, color: "#111827" }}>{PLUS_PRICE_LABEL}</span>
+        <span style={{ fontFamily: "Inter,sans-serif", fontSize: 14, fontWeight: 600, color: "#64748B" }}>{PLUS_PRICE_PERIOD}</span>
       </div>
-      <p style={{ fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, color: "#2563EB", margin: "0 0 16px" }}>7 dias grátis</p>
+      <p style={{ fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, color: "#2563EB", margin: "0 0 16px" }}>{TRIAL_DAYS} dias grátis</p>
 
       <Button variant="primary" onClick={onStartTrial} style={{ width: "100%", height: 52, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
         <Sparkles size={17} />
-        Começar 7 dias grátis
+        Começar {TRIAL_DAYS} dias grátis
       </Button>
       <p style={{ fontFamily: "Inter,sans-serif", fontSize: 12, color: "#94A3B8", margin: "10px 0 0" }}>Cancele quando quiser.</p>
 

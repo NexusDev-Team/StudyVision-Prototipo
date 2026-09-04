@@ -1,5 +1,7 @@
+import { TRIAL_DAYS } from "../constants";
+
 const KEY = "sv_subscription";
-export const TRIAL_DAYS = 7;
+export { TRIAL_DAYS };
 
 const DEFAULT_SUBSCRIPTION = { status: "free", trialStartedAt: null };
 
