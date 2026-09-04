@@ -6,8 +6,9 @@ import ProgressRing from "../components/ui/ProgressRing";
 import EmptyState from "../components/ui/EmptyState";
 import PerformanceChart from "../components/plus/PerformanceChart";
 import SubjectProgress from "../components/plus/SubjectProgress";
+import AttentionCard from "../components/plus/AttentionCard";
 import SparkChart from "../components/ui/SparkChart";
-import { getEvolutionSummary, getSubjectPerformances, getProgressHistory } from "../services/evolutionService";
+import { getEvolutionSummary, getSubjectPerformances, getProgressHistory, getWeakContents } from "../services/evolutionService";
 
 function StatCard({ value, label, delay = 0 }) {
   return (
@@ -25,6 +26,7 @@ export default function EvolutionScreen({ isPremium, onOpenContent, onOpenLibrar
   const summary = getEvolutionSummary();
   const subjectRows = getSubjectPerformances().map((s) => ({ id: s.subjectId, name: s.name, accuracyRate: s.accuracy }));
   const history = getProgressHistory({ weeks: 8 });
+  const weakContents = getWeakContents({ limit: 5 });
 
   const breakdown = {
     not_started: summary.notStartedContents,
@@ -107,6 +109,8 @@ export default function EvolutionScreen({ isPremium, onOpenContent, onOpenLibrar
                 </ul>
               </Card>
             )}
+
+            <AttentionCard items={weakContents} onSelect={onOpenContent} />
           </>
         )}
       </div>

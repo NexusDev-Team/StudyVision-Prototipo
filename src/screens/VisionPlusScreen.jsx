@@ -14,6 +14,7 @@ import InsightCard from "../components/plus/InsightCard";
 import PlanComparison from "../components/plus/PlanComparison";
 import PlusFinalCta from "../components/plus/PlusFinalCta";
 import { getPerformanceSummary, getSubjectsWithPerformance } from "../services/performanceService";
+import { getWeakContents } from "../services/evolutionService";
 import { PLUS_PRICE_FULL } from "../constants";
 
 export default function VisionPlusScreen({ onBack, isPremium, daysRemaining, onStartTrial, onResetToFree, onToast }) {
@@ -23,7 +24,7 @@ export default function VisionPlusScreen({ onBack, isPremium, daysRemaining, onS
   const summary = getPerformanceSummary();
   const subjects = getSubjectsWithPerformance();
   const strengths = subjects.filter((s) => s.accuracyRate != null && s.accuracyRate >= 80);
-  const attention = subjects.filter((s) => s.accuracyRate != null && s.accuracyRate < 60);
+  const weakContents = getWeakContents({ limit: 5 });
 
   const handleStartTrial = () => {
     onStartTrial();
@@ -45,7 +46,7 @@ export default function VisionPlusScreen({ onBack, isPremium, daysRemaining, onS
         <SubjectProgress subjects={subjects} locked={!isPremium} onStartTrial={handleStartTrial} />
         <PerformanceChart breakdown={summary.masteryBreakdown} hasActivity={summary.hasActivity} locked={!isPremium} onStartTrial={handleStartTrial} />
         <StrengthsCard subjects={strengths} />
-        <AttentionCard subjects={attention} hideNames={!isPremium} />
+        <AttentionCard items={weakContents} />
         <InsightCard summary={summary} locked={!isPremium} onStartTrial={handleStartTrial} />
         {!isPremium && <PlanComparison />}
         {!isPremium && <PlusFinalCta onStartTrial={handleStartTrial} />}
