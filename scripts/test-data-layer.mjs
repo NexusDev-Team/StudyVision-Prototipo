@@ -643,6 +643,26 @@ test("F3-12. dificuldade recomendada deriva do desempenho e persiste", () => {
   assert.equal(contentService.getContent(content.id).recommendedDifficulty, "easy");
 });
 
+test("F3-13. registerActivity com desempenho baixo -> needs_review, easy e revisao em D+1", () => {
+  const { content } = seedContent();
+  const quiz = contentService.getContent(content.id).quizzes[0];
+  studyService.recordQuizAttempt({
+    quizId: quiz.id,
+    contentId: content.id,
+    answers: [
+      { questionId: quiz.questions[0].id, selectedAnswer: 1, correct: false },
+      { questionId: quiz.questions[1].id, selectedAnswer: false, correct: false },
+    ],
+  });
+  const result = studyService.registerActivity(content.id);
+  assert.equal(result.performance.overall, 0);
+  assert.equal(result.mastery.level, "needs_review");
+  assert.equal(result.recommendedDifficulty, "easy");
+  assert.equal(result.review.status, "pending");
+  assert.equal(result.review.reason, "low_performance");
+  assert.equal(reviewService.getReviewsForContent(content.id).filter((r) => r.status === "pending").length, 1);
+});
+
 // ─── relatório ───────────────────────────────────────────────────────────────
 console.log(`\n${passed} passaram, ${failed} falharam`);
 if (failed > 0) {

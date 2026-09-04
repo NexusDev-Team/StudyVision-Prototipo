@@ -6,6 +6,7 @@ import { createFlashcardAttempt } from "../data/models/flashcard.js";
 import { createQuizAttempt } from "../data/models/quiz.js";
 import { nowIso } from "../utils/date.js";
 import { getContentPerformance } from "./performanceService.js";
+import { scheduleReviewFromPerformance } from "./reviewService.js";
 
 export function recordFlashcardAttempt({ flashcardId, contentId, correct, responseTimeMs }) {
   const attempt = createFlashcardAttempt({ flashcardId, contentId, correct, responseTimeMs });
@@ -103,4 +104,14 @@ export function updateRecommendedDifficulty(contentId) {
     contents: db.contents.map((c) => (c.id === contentId ? { ...c, recommendedDifficulty, updatedAt: nowIso() } : c)),
   }));
   return recommendedDifficulty;
+}
+
+// Orquestrador único chamado pelas telas de estudo após uma sessão de quiz ou
+// flashcards: nenhuma fórmula, agendamento ou escrita de db fica em componente.
+export function registerActivity(contentId) {
+  const mastery = updateMastery(contentId);
+  const recommendedDifficulty = updateRecommendedDifficulty(contentId);
+  const performance = getContentPerformance(contentId);
+  const review = scheduleReviewFromPerformance(contentId, performance.overall);
+  return { mastery, recommendedDifficulty, review, performance };
 }
