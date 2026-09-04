@@ -59,18 +59,33 @@ export default function ContentDetailScreen({ content, onBack, onDeleted, onFlas
   };
 
   const handleUnlinkEvent = (event) => {
-    mutate(() => unlinkContentFromEvent(event.id, content.id));
-    onToast?.("✓ Compromisso desvinculado");
+    try {
+      mutate(() => unlinkContentFromEvent(event.id, content.id));
+      onToast?.("✓ Compromisso desvinculado");
+    } catch {
+      onToast?.("Não foi possível desvincular o compromisso.");
+    }
   };
 
   const handleSubjectSelect = (subjectId, subjectName) => {
-    mutate(() => moveContentToSubject(content.id, subjectId, subjectName));
+    try {
+      mutate(() => moveContentToSubject(content.id, subjectId, subjectName));
+    } catch {
+      onToast?.("Não foi possível atualizar a matéria.");
+      return;
+    }
     setSubjectPickerOpen(false);
     onToast?.("✓ Matéria atualizada");
   };
 
   const handleDelete = () => {
-    mutate(() => deleteContent(content.id));
+    try {
+      mutate(() => deleteContent(content.id));
+    } catch {
+      onToast?.("Não foi possível excluir o conteúdo.");
+      setConfirmDeleteOpen(false);
+      return;
+    }
     setConfirmDeleteOpen(false);
     onToast?.("✓ Conteúdo excluído");
     onDeleted?.();

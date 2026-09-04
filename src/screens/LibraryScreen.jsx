@@ -6,6 +6,7 @@ import ContentCard from "../components/study/ContentCard";
 import SubjectFolderGrid from "../components/ui/SubjectFolderGrid";
 import FilterPills from "../components/ui/FilterPills";
 import SubjectManagerModal from "../components/study/SubjectManagerModal";
+import EmptyState from "../components/ui/EmptyState";
 import { useContentStore } from "../context/ContentStoreContext.jsx";
 import { endOfTodayIso } from "../utils/date";
 import { matchesQuery } from "../utils/search";
@@ -135,21 +136,19 @@ export default function LibraryScreen({ onOpenItem, onVisionPlus, onToast }) {
       {/* List */}
       <div style={{ flex: 1, overflowY: "auto", padding: "14px 20px 24px" }}>
         {sorted.length === 0 ? (
-          <div style={{ textAlign: "center", paddingTop: 60, color: "#94A3B8" }}>
-            <BookOpen size={40} style={{ margin: "0 auto 12px", display: "block" }} />
-            {hasQuery ? (
-              <p style={{ fontSize: 14, fontFamily: "Inter,sans-serif" }}>Nada encontrado para "{search.trim()}"</p>
-            ) : contents.length === 0 ? (
-              <>
-                <p style={{ fontSize: 14, fontWeight: 700, color: "#475569", fontFamily: "Inter,sans-serif", margin: "0 0 4px" }}>Você ainda não possui conteúdos</p>
-                <p style={{ fontSize: 13, fontFamily: "Inter,sans-serif" }}>Capture uma matéria ou adicione seu primeiro conteúdo para começar.</p>
-              </>
-            ) : hasNarrowingFilter ? (
-              <p style={{ fontSize: 14, fontFamily: "Inter,sans-serif" }}>Nenhum conteúdo corresponde aos filtros</p>
-            ) : (
-              <p style={{ fontSize: 14, fontFamily: "Inter,sans-serif" }}>Nenhum conteúdo nesta matéria ainda</p>
-            )}
-          </div>
+          hasQuery ? (
+            <EmptyState icon={<BookOpen size={40} style={{ margin: "0 auto 12px", display: "block", color: "#94A3B8" }} />} message={`Nada encontrado para "${search.trim()}"`} />
+          ) : contents.length === 0 ? (
+            <EmptyState
+              icon={<BookOpen size={40} style={{ margin: "0 auto 12px", display: "block", color: "#94A3B8" }} />}
+              title="Você ainda não possui conteúdos"
+              description="Capture uma matéria ou adicione seu primeiro conteúdo para começar."
+            />
+          ) : hasNarrowingFilter ? (
+            <EmptyState icon={<BookOpen size={40} style={{ margin: "0 auto 12px", display: "block", color: "#94A3B8" }} />} message="Nenhum conteúdo corresponde aos filtros" />
+          ) : (
+            <EmptyState icon={<BookOpen size={40} style={{ margin: "0 auto 12px", display: "block", color: "#94A3B8" }} />} message="Nenhum conteúdo nesta matéria ainda" />
+          )
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {sorted.map((content, i) => (

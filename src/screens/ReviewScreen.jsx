@@ -8,6 +8,7 @@ import CalendarMonth from "../components/study/CalendarMonth";
 import DayEventsModal from "../components/study/DayEventsModal";
 import EventFormModal from "../components/study/EventFormModal";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
+import EmptyState from "../components/ui/EmptyState";
 import { useContentStore } from "../context/ContentStoreContext.jsx";
 import { createEventEntry, updateEvent, deleteEvent } from "../services/eventService";
 import { endOfTodayIso, DAY_MS } from "../utils/date";
@@ -85,10 +86,14 @@ export default function ReviewScreen({ onReview, onOpenContent, onToast }) {
   };
 
   const handleConfirmDeleteEvent = () => {
-    mutate(() => deleteEvent(deletingEvent.id));
+    try {
+      mutate(() => deleteEvent(deletingEvent.id));
+      onToast?.("✓ Compromisso excluído");
+    } catch {
+      onToast?.("Não foi possível excluir o compromisso.");
+    }
     setDeletingEvent(null);
     setSelectedDate(null);
-    onToast?.("✓ Compromisso excluído");
   };
 
   return (
@@ -118,11 +123,15 @@ export default function ReviewScreen({ onReview, onOpenContent, onToast }) {
         )}
 
         <p style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: 1.2, marginBottom: 10 }}>PRÓXIMAS REVISÕES</p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
-          {upcoming.map(({ content, nextReview }) => (
-            <UpcomingReviewRow key={content.id} content={content} nextReview={nextReview} />
-          ))}
-        </div>
+        {upcoming.length === 0 ? (
+          <p style={{ fontSize: 12.5, color: "#94A3B8", margin: "0 0 24px", fontFamily: "Inter,sans-serif" }}>Nada agendado para os próximos 3 dias.</p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
+            {upcoming.map(({ content, nextReview }) => (
+              <UpcomingReviewRow key={content.id} content={content} nextReview={nextReview} />
+            ))}
+          </div>
+        )}
 
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
           <p style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: 1.2, margin: 0 }}>CALENDÁRIO ACADÊMICO</p>
@@ -133,9 +142,7 @@ export default function ReviewScreen({ onReview, onOpenContent, onToast }) {
         </div>
         <CalendarMonth eventsByDate={eventsByDate} onSelectDate={setSelectedDate} />
         {Object.keys(eventsByDate).length === 0 && (
-          <p style={{ fontSize: 12, color: "#94A3B8", textAlign: "center", margin: "10px 0 0", fontFamily: "Inter,sans-serif" }}>
-            Nenhum compromisso acadêmico cadastrado ainda.
-          </p>
+          <EmptyState message="Nenhum compromisso acadêmico cadastrado ainda." paddingTop={10} />
         )}
       </div>
 
