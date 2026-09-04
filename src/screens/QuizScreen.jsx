@@ -2,7 +2,8 @@ import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ChevronLeft, ListChecks, Sparkles } from "lucide-react";
 import QuizQuestion, { isCorrectOption } from "../components/study/QuizQuestion";
-import { recordQuizAttempt, updateMastery } from "../services/studyService";
+import { recordQuizAttempt, registerActivity } from "../services/studyService";
+import { getQuizPerformance } from "../services/performanceService";
 import { useContentStore } from "../context/ContentStoreContext.jsx";
 import { newId } from "../utils/id";
 
@@ -28,6 +29,7 @@ export default function QuizScreen({ content, onBack, isPlus = false, onVisionPl
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState(null);
   const [score, setScore] = useState(0);
+  const [attemptResult, setAttemptResult] = useState(null);
   const done = index >= questions.length;
   const q = questions[index];
   const options = q?.type === "vf" ? [true, false] : q?.options || [];
@@ -52,10 +54,14 @@ export default function QuizScreen({ content, onBack, isPlus = false, onVisionPl
     if (!done || recordedRef.current) return;
     if (!quiz?.id || !content?.id || answersRef.current.length === 0) return;
     recordedRef.current = true;
-    mutate(() => {
-      recordQuizAttempt({ quizId: quiz.id, contentId: content.id, answers: answersRef.current });
-      updateMastery(content.id);
+    const result = mutate(() => {
+      const before = getQuizPerformance(content.id);
+      const attempt = recordQuizAttempt({ quizId: quiz.id, contentId: content.id, answers: answersRef.current });
+      registerActivity(content.id);
+      const previousScore = before.history.length > 0 ? before.history[before.history.length - 1].score : null;
+      return { attempt, previousScore };
     });
+    setAttemptResult(result);
   }, [done, quiz?.id, content?.id, mutate]);
 
   const generateMore = () => {
@@ -88,7 +94,15 @@ export default function QuizScreen({ content, onBack, isPlus = false, onVisionPl
           <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
             style={{ background: "white", borderRadius: 20, padding: "24px 20px", textAlign: "center", border: "1px solid #E2E8F0", boxShadow: "0 1px 8px rgba(0,0,0,0.05)" }}>
             <Sparkles size={30} color="#EA580C" style={{ margin: "0 auto 12px" }} />
-            <p style={{ fontFamily: "Inter,sans-serif", fontSize: 17, fontWeight: 800, color: "#111827", margin: "0 0 4px" }}>Você acertou {score} de {questions.length}</p>
+            {attemptResult ? (
+              <p style={{ fontFamily: "Inter,sans-serif", fontSize: 24, fontWeight: 800, color: "#111827", margin: "0 0 2px" }}>{attemptResult.attempt.score}%</p>
+            ) : null}
+            <p style={{ fontFamily: "Inter,sans-serif", fontSize: 15, fontWeight: 700, color: "#374151", margin: "0 0 4px" }}>Você acertou {score} de {questions.length}</p>
+            {attemptResult?.previousScore != null && (
+              <p style={{ fontFamily: "Inter,sans-serif", fontSize: 12, fontWeight: 700, color: attemptResult.attempt.score >= attemptResult.previousScore ? "#16A34A" : "#DC2626", margin: "0 0 4px" }}>
+                {attemptResult.attempt.score >= attemptResult.previousScore ? "↑" : "↓"} {Math.abs(attemptResult.attempt.score - attemptResult.previousScore)} pts em relação à última tentativa
+              </p>
+            )}
             <p style={{ fontFamily: "Inter,sans-serif", fontSize: 13, color: "#64748B", margin: "0 0 18px" }}>Continue revisando para fixar o conteúdo</p>
             <motion.button whileTap={{ scale: 0.96 }} onClick={onBack}
               style={{ width: "100%", height: 50, borderRadius: 14, background: "linear-gradient(135deg,#EA580C,#F59E0B)", color: "white", fontFamily: "Inter,sans-serif", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer" }}>
