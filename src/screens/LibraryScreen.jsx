@@ -4,17 +4,32 @@ import { Star, Search, BookOpen } from "lucide-react";
 import LogoSVG from "../components/brand/LogoSVG";
 import ContentCard from "../components/study/ContentCard";
 import SubjectFolderGrid from "../components/ui/SubjectFolderGrid";
+import FilterPills from "../components/ui/FilterPills";
 import { useContentStore } from "../context/ContentStoreContext.jsx";
 import { endOfTodayIso } from "../utils/date";
 import { matchesQuery } from "../utils/search";
-import { UNASSIGNED_SUBJECT_LABEL } from "../constants";
+import { UNASSIGNED_SUBJECT_LABEL, MASTERY_META } from "../constants";
 
 const ALL_FILTER_ID = "all";
 const UNASSIGNED_FILTER_ID = "unassigned";
 
+const SORT_OPTIONS = ["Mais recentes", "Mais antigos", "Nome"];
+const MASTERY_FILTER_OPTIONS = [
+  "Todos",
+  MASTERY_META.mastered.label,
+  MASTERY_META.developing.label,
+  MASTERY_META.needs_review.label,
+  MASTERY_META.not_started.label,
+];
+const MASTERY_LABEL_TO_LEVEL = Object.fromEntries(
+  Object.entries(MASTERY_META).map(([level, meta]) => [meta.label, level])
+);
+
 export default function LibraryScreen({ onOpenItem, onVisionPlus }) {
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState(ALL_FILTER_ID);
+  const [sortBy, setSortBy] = useState(SORT_OPTIONS[0]);
+  const [masteryFilter, setMasteryFilter] = useState(MASTERY_FILTER_OPTIONS[0]);
   const { contents, subjects, reviews, events } = useContentStore();
 
   // Revisão pendente (para o selo "Revisar hoje") e próximo evento, indexados
@@ -58,9 +73,18 @@ export default function LibraryScreen({ onOpenItem, onVisionPlus }) {
     const matchFilter =
       activeFilter === ALL_FILTER_ID ||
       (activeFilter === UNASSIGNED_FILTER_ID ? !c.subjectId : c.subjectId === activeFilter);
-    return matchSearch && matchFilter;
+    const matchMastery =
+      masteryFilter === "Todos" || (c.mastery?.level || "not_started") === MASTERY_LABEL_TO_LEVEL[masteryFilter];
+    return matchSearch && matchFilter && matchMastery;
   });
   const hasQuery = search.trim().length > 0;
+  const hasNarrowingFilter = hasQuery || masteryFilter !== "Todos";
+
+  const sorted = [...filtered].sort((a, b) => {
+    if (sortBy === "Nome") return (a.title || "").localeCompare(b.title || "", "pt-BR");
+    const diff = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    return sortBy === "Mais antigos" ? diff : -diff;
+  });
 
   return (
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#F8FAFC", fontFamily: "Inter,sans-serif", overflow: "hidden" }}>
@@ -78,22 +102,31 @@ export default function LibraryScreen({ onOpenItem, onVisionPlus }) {
           </motion.button>
         </div>
         <h1 style={{ fontSize: 24, fontWeight: 800, color: "#111827", margin: 0 }}>Biblioteca</h1>
-        <p style={{ fontSize: 13, color: "#64748B", margin: "2px 0 12px" }}>{filtered.length} conteúdo{filtered.length !== 1 ? "s" : ""} organizado{filtered.length !== 1 ? "s" : ""}</p>
+        <p style={{ fontSize: 13, color: "#64748B", margin: "2px 0 12px" }}>{sorted.length} conteúdo{sorted.length !== 1 ? "s" : ""} organizado{sorted.length !== 1 ? "s" : ""}</p>
 
         {/* Search */}
         <div style={{ position: "relative" }}>
+          <label htmlFor="library-search" style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>Buscar conteúdo na biblioteca</label>
           <Search size={15} color="#94A3B8" style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)" }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar conteúdo..."
+          <input id="library-search" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar conteúdo..."
             style={{ width: "100%", height: 42, borderRadius: 12, paddingLeft: 38, paddingRight: 14, border: "1.5px solid #E2E8F0", background: "#F8FAFC", fontFamily: "Inter,sans-serif", fontSize: 14, color: "#111827", outline: "none", boxSizing: "border-box" }} />
         </div>
 
         {/* Filters */}
         <SubjectFolderGrid options={subjectFilters} activeId={activeFilter} onSelect={setActiveFilter} />
+
+        {/* Ordenação e domínio */}
+        <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+          <FilterPills options={SORT_OPTIONS} active={sortBy} onSelect={setSortBy}
+            padding="5px 12px" activeBg="#111827" activeColor="white" inactiveColor="#64748B" />
+          <FilterPills options={MASTERY_FILTER_OPTIONS} active={masteryFilter} onSelect={setMasteryFilter}
+            padding="5px 12px" activeBg="#7C3AED" activeColor="white" inactiveColor="#64748B" />
+        </div>
       </div>
 
       {/* List */}
       <div style={{ flex: 1, overflowY: "auto", padding: "14px 20px 24px" }}>
-        {filtered.length === 0 ? (
+        {sorted.length === 0 ? (
           <div style={{ textAlign: "center", paddingTop: 60, color: "#94A3B8" }}>
             <BookOpen size={40} style={{ margin: "0 auto 12px", display: "block" }} />
             {hasQuery ? (
@@ -103,13 +136,15 @@ export default function LibraryScreen({ onOpenItem, onVisionPlus }) {
                 <p style={{ fontSize: 14, fontWeight: 700, color: "#475569", fontFamily: "Inter,sans-serif", margin: "0 0 4px" }}>Você ainda não possui conteúdos</p>
                 <p style={{ fontSize: 13, fontFamily: "Inter,sans-serif" }}>Capture uma matéria ou adicione seu primeiro conteúdo para começar.</p>
               </>
+            ) : hasNarrowingFilter ? (
+              <p style={{ fontSize: 14, fontFamily: "Inter,sans-serif" }}>Nenhum conteúdo corresponde aos filtros</p>
             ) : (
               <p style={{ fontSize: 14, fontFamily: "Inter,sans-serif" }}>Nenhum conteúdo nesta matéria ainda</p>
             )}
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {filtered.map((content, i) => (
+            {sorted.map((content, i) => (
               <ContentCard
                 key={content.id}
                 content={content}
