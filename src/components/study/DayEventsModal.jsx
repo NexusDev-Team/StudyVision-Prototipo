@@ -1,4 +1,4 @@
-import { X, Calendar } from "lucide-react";
+import { X, Calendar, Pencil, Trash2 } from "lucide-react";
 import Modal from "../ui/Modal";
 import { EVENT_TYPE_META } from "../../data/models/event.js";
 
@@ -15,7 +15,7 @@ function formatDate(dateStr) {
 // entries: [{ id, event }] — um AcademicEvent por linha. contentById resolve
 // os títulos vinculados; um contentId sem conteúdo correspondente aparece como
 // "Conteúdo não disponível" em vez de quebrar a interface.
-export default function DayEventsModal({ date, entries, contentById, onClose, onViewContent }) {
+export default function DayEventsModal({ date, entries, contentById, onClose, onViewContent, onEditEvent, onDeleteEvent }) {
   return (
     <Modal center>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
@@ -41,6 +41,18 @@ export default function DayEventsModal({ date, entries, contentById, onClose, on
                   <p style={{ fontSize: 11, color: "#94A3B8", margin: "1px 0 0" }}>{meta.label}{event.time ? ` · ${event.time}` : ""}</p>
                 </div>
                 <span style={{ fontSize: 10, fontWeight: 700, color: meta.color, background: `${meta.color}1A`, borderRadius: 8, padding: "3px 8px", flexShrink: 0 }}>{meta.label}</span>
+                {onEditEvent && (
+                  <button onClick={() => onEditEvent(event)} aria-label={`Editar ${event.title}`}
+                    style={{ background: "none", border: "none", cursor: "pointer", padding: 4, flexShrink: 0 }}>
+                    <Pencil size={14} color="#64748B" />
+                  </button>
+                )}
+                {onDeleteEvent && (
+                  <button onClick={() => onDeleteEvent(event)} aria-label={`Excluir ${event.title}`}
+                    style={{ background: "none", border: "none", cursor: "pointer", padding: 4, flexShrink: 0 }}>
+                    <Trash2 size={14} color="#DC2626" />
+                  </button>
+                )}
               </div>
 
               {event.notes && <p style={{ fontSize: 12, color: "#64748B", margin: "8px 0 0" }}>{event.notes}</p>}

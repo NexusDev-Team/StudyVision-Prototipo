@@ -7,14 +7,17 @@ import UpcomingReviewRow from "../components/study/UpcomingReviewRow";
 import CalendarMonth from "../components/study/CalendarMonth";
 import DayEventsModal from "../components/study/DayEventsModal";
 import EventFormModal from "../components/study/EventFormModal";
+import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { useContentStore } from "../context/ContentStoreContext.jsx";
-import { createEventEntry } from "../services/eventService";
+import { createEventEntry, updateEvent, deleteEvent } from "../services/eventService";
 import { endOfTodayIso, DAY_MS } from "../utils/date";
 
 export default function ReviewScreen({ onReview, onOpenContent, onToast }) {
   const { contents, reviews, events, mutate } = useContentStore();
   const [selectedDate, setSelectedDate] = useState(null);
   const [creatingEvent, setCreatingEvent] = useState(false);
+  const [editingEvent, setEditingEvent] = useState(null);
+  const [deletingEvent, setDeletingEvent] = useState(null);
 
   const contentById = useMemo(() => new Map(contents.map((c) => [c.id, c])), [contents]);
 
@@ -68,6 +71,24 @@ export default function ReviewScreen({ onReview, onOpenContent, onToast }) {
     } catch (err) {
       onToast?.(err.message || "Não foi possível criar o compromisso.");
     }
+  };
+
+  const handleEditEvent = async (payload) => {
+    try {
+      mutate(() => updateEvent(editingEvent.id, payload));
+      setEditingEvent(null);
+      setSelectedDate(null);
+      onToast?.("✓ Compromisso atualizado");
+    } catch (err) {
+      onToast?.(err.message || "Não foi possível salvar as alterações.");
+    }
+  };
+
+  const handleConfirmDeleteEvent = () => {
+    mutate(() => deleteEvent(deletingEvent.id));
+    setDeletingEvent(null);
+    setSelectedDate(null);
+    onToast?.("✓ Compromisso excluído");
   };
 
   return (
@@ -125,6 +146,8 @@ export default function ReviewScreen({ onReview, onOpenContent, onToast }) {
             entries={selectedEntries}
             contentById={contentById}
             onViewContent={onOpenContent}
+            onEditEvent={(event) => { setEditingEvent(event); setSelectedDate(null); }}
+            onDeleteEvent={(event) => { setDeletingEvent(event); setSelectedDate(null); }}
             onClose={() => setSelectedDate(null)}
           />
         )}
@@ -133,6 +156,23 @@ export default function ReviewScreen({ onReview, onOpenContent, onToast }) {
             contents={contents}
             onSave={handleCreateEvent}
             onClose={() => setCreatingEvent(false)}
+          />
+        )}
+        {editingEvent && (
+          <EventFormModal
+            event={editingEvent}
+            contents={contents}
+            onSave={handleEditEvent}
+            onClose={() => setEditingEvent(null)}
+          />
+        )}
+        {deletingEvent && (
+          <ConfirmDialog
+            title="Excluir este compromisso?"
+            description={`"${deletingEvent.title}" será removido do calendário. O conteúdo relacionado, se houver, não é afetado.`}
+            confirmLabel="Excluir compromisso"
+            onConfirm={handleConfirmDeleteEvent}
+            onCancel={() => setDeletingEvent(null)}
           />
         )}
       </AnimatePresence>
