@@ -19,6 +19,7 @@ import FlashcardsScreen from "./screens/FlashcardsScreen";
 import QuestionsScreen from "./screens/QuestionsScreen";
 import QuizScreen from "./screens/QuizScreen";
 import ReviewScreen from "./screens/ReviewScreen";
+import EvolutionScreen from "./screens/EvolutionScreen";
 import VisionPlusScreen from "./screens/VisionPlusScreen";
 import { useState } from "react";
 
@@ -56,12 +57,12 @@ export default function App() {
   const navActive = (screen === "review" || (reviewMode && screen === "flashcards")) ? "review"
     : screen === "detail" && cameFromReview ? "review"
     : ["library", "detail", "flashcards", "questions", "quiz"].includes(screen) ? "library"
-    : screen === "visionplus" ? "visionplus" : "camera";
+    : screen === "evolution" || screen === "visionplus" ? "evolution" : "camera";
 
   const isLight = !["camera", "analysis"].includes(screen);
   const showNav = !["camera", "analysis"].includes(screen);
 
-  const transitions = ["visionplus", "library", "review"].includes(screen) ? fadeUp : slideIn;
+  const transitions = ["visionplus", "evolution", "library", "review"].includes(screen) ? fadeUp : slideIn;
 
   return (
     <PhoneFrame>
@@ -136,6 +137,15 @@ export default function App() {
               onToast={showToast}
             />
           )}
+          {screen === "evolution" && (
+            <EvolutionScreen
+              isPremium={isPremium}
+              onOpenContent={(id) => { setSelectedContentId(id); go("detail"); }}
+              onOpenLibrary={() => goTo("library")}
+              onOpenReview={() => goTo("review")}
+              onVisionPlus={() => go("visionplus")}
+            />
+          )}
           {screen === "visionplus" && (
             <VisionPlusScreen
               onBack={goBack}
@@ -156,7 +166,7 @@ export default function App() {
             if (id === "camera") goTo("camera");
             else if (id === "library") goTo("library");
             else if (id === "review") goTo("review");
-            else if (id === "visionplus") goTo("visionplus");
+            else if (id === "evolution") goTo("evolution");
           }}
         />
       )}

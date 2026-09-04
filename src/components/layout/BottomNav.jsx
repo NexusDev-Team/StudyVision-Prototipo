@@ -1,12 +1,12 @@
 import { motion } from "framer-motion";
-import { Camera, BookMarked, CalendarClock, Star } from "lucide-react";
+import { Camera, BookMarked, CalendarClock, TrendingUp } from "lucide-react";
 import styles from "./BottomNav.module.css";
 
 const NAV_ITEMS = [
   { id: "camera", icon: <Camera size={22} />, label: "Câmera" },
   { id: "library", icon: <BookMarked size={22} />, label: "Biblioteca" },
   { id: "review", icon: <CalendarClock size={22} />, label: "Revisão" },
-  { id: "visionplus", icon: <Star size={22} />, label: "Vision+" },
+  { id: "evolution", icon: <TrendingUp size={22} />, label: "Evolução" },
 ];
 
 export default function BottomNav({ active, onGo, dueCount = 0 }) {
