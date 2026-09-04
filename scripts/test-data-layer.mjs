@@ -77,6 +77,7 @@ const { readDb, withDb } = await import("../src/data/storage/index.js");
 const validate = await import("../src/data/models/validate.js");
 const integrityService = await import("../src/services/integrityService.js");
 const { nowIso } = await import("../src/utils/date.js");
+const { createEvent } = await import("../src/data/models/event.js");
 
 // helper: cria um conteúdo mínimo já com matéria
 function seedContent(overrides = {}) {
@@ -717,6 +718,44 @@ test("F3-16. reload (nova leitura do localStorage) preserva todo o historico", (
   const reloadedContent = reloaded.contents.find((c) => c.id === content.id);
   assert.equal(reloadedContent.mastery.level, "mastered");
   assert.equal(reloaded.reviews.filter((r) => r.contentId === content.id && r.status === "pending").length, 1);
+});
+
+// ─── Fase 4 — evento acadêmico (modelo/validação) ─────────────────────────────
+
+test("F4-1. evento com tipo deadline/other sobrevive a round-trip", () => {
+  const deadline = eventService.createEventEntry({ type: "deadline", title: "Entrega TCC", date: "2026-04-01" });
+  const other = eventService.createEventEntry({ type: "other", title: "Reunião", date: "2026-04-02" });
+  const reloaded = JSON.parse(localStorage.getItem("sv_db"));
+  assert.equal(reloaded.events.find((e) => e.id === deadline.id).type, "deadline");
+  assert.equal(reloaded.events.find((e) => e.id === other.id).type, "other");
+});
+
+test("F4-2. validateEvent reprova titulo vazio, tipo invalido e data malformada", () => {
+  const semTitulo = createEvent({ type: "exam", title: "  ", date: "2026-03-10" });
+  assert.equal(validate.validateEvent(semTitulo).valid, false);
+
+  const tipoInvalido = { ...createEvent({ type: "exam", title: "Prova", date: "2026-03-10" }), type: "invalido" };
+  assert.equal(validate.validateEvent(tipoInvalido).valid, false);
+
+  const dataInvalida = createEvent({ type: "exam", title: "Prova", date: "10/03/2026" });
+  assert.equal(validate.validateEvent(dataInvalida).valid, false);
+
+  const valido = createEvent({ type: "exam", title: "Prova", date: "2026-03-10" });
+  assert.equal(validate.validateEvent(valido).valid, true);
+});
+
+test("F4-3. evento antigo sem notes/updatedAt nao quebra ao ser lido", () => {
+  withDb((db) => ({
+    ...db,
+    events: [...db.events, {
+      id: "evt_legacy", type: "exam", title: "Prova legada", date: "2026-05-01", time: null,
+      reminders: [], contentIds: [], createdAt: nowIso(),
+      // sem notes, sem updatedAt — formato pré-Fase 4
+    }],
+  }));
+  const event = eventService.getEvent("evt_legacy");
+  assert.equal(event.title, "Prova legada");
+  assert.deepEqual(eventService.getEvents().map((e) => e.id), ["evt_legacy"]);
 });
 
 // ─── relatório ───────────────────────────────────────────────────────────────

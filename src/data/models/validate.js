@@ -2,6 +2,8 @@
 // IA ou de uma migração. Retorna { valid, errors[] } em vez de lançar, para
 // que o chamador decida (aplicar defaults, rejeitar, logar) sem quebrar o app.
 
+import { EVENT_TYPES } from "./event.js";
+
 export function validateContent(content) {
   const errors = [];
 
@@ -64,11 +66,15 @@ export function validateSubject(subject) {
   return { valid: errors.length === 0, errors };
 }
 
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
 export function validateEvent(event) {
   const errors = [];
   if (!event || typeof event !== "object") return { valid: false, errors: ["evento ausente ou inválido"] };
   if (!event.id) errors.push("id ausente");
   if (!event.title || !String(event.title).trim()) errors.push("título ausente");
+  if (!EVENT_TYPES.includes(event.type)) errors.push("tipo inválido");
+  if (!event.date || !DATE_RE.test(event.date)) errors.push("data ausente ou em formato inválido (esperado YYYY-MM-DD)");
   if (!Array.isArray(event.contentIds)) errors.push("contentIds deveria ser um array");
   return { valid: errors.length === 0, errors };
 }
