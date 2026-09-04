@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, CalendarClock, CreditCard, ListChecks, HelpCircle, ChevronRight } from "lucide-react";
+import { ChevronLeft, CalendarClock, CreditCard, ListChecks, HelpCircle, ChevronRight, Trash2 } from "lucide-react";
 import CapturedPageVisual from "../components/brand/CapturedPageVisual";
 import ContentBlocks from "../components/study/ContentBlocks";
 import ExportSection from "../components/study/ExportSection";
 import PlanningSection from "../components/study/PlanningSection";
 import SubjectPickerModal from "../components/study/SubjectPickerModal";
+import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { useContentStore } from "../context/ContentStoreContext.jsx";
 import {
   getReviewsForContent,
@@ -16,14 +17,15 @@ import {
 } from "../services/reviewService";
 import { getEventsForContent } from "../services/eventService";
 import { scheduleCommitment } from "../services/calendarService";
-import { moveContentToSubject } from "../services/contentService";
+import { moveContentToSubject, deleteContent } from "../services/contentService";
 import { getContentPerformance } from "../services/performanceService";
 import { CANONICAL_TO_LEGACY_EVENT_TYPE } from "../data/adapters/legacyEventType";
 import { getSubjectVisual, getMasteryMeta, UNASSIGNED_SUBJECT_LABEL } from "../constants";
 
-export default function ContentDetailScreen({ content, onBack, onFlashcards, onQuestions, onQuiz, onVisionPlus, onToast }) {
+export default function ContentDetailScreen({ content, onBack, onDeleted, onFlashcards, onQuestions, onQuiz, onVisionPlus, onToast }) {
   const { mutate, subjects } = useContentStore();
   const [subjectPickerOpen, setSubjectPickerOpen] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const visual = getSubjectVisual(content.subjectName);
 
   const reviews = getReviewsForContent(content.id);
@@ -52,6 +54,13 @@ export default function ContentDetailScreen({ content, onBack, onFlashcards, onQ
     mutate(() => moveContentToSubject(content.id, subjectId, subjectName));
     setSubjectPickerOpen(false);
     onToast?.("✓ Matéria atualizada");
+  };
+
+  const handleDelete = () => {
+    mutate(() => deleteContent(content.id));
+    setConfirmDeleteOpen(false);
+    onToast?.("✓ Conteúdo excluído");
+    onDeleted?.();
   };
 
   return (
@@ -159,6 +168,13 @@ export default function ContentDetailScreen({ content, onBack, onFlashcards, onQ
             <span style={{ fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, color: "#2563EB" }}>Perguntas</span>
           </motion.button>
         </motion.div>
+
+        {/* Excluir conteúdo */}
+        <motion.button whileTap={{ scale: 0.97 }} onClick={() => setConfirmDeleteOpen(true)}
+          style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 7, width: "100%", height: 46, borderRadius: 14, background: "none", border: "1.5px dashed #FCA5A5", cursor: "pointer", marginTop: 4, marginBottom: 8 }}>
+          <Trash2 size={15} color="#DC2626" />
+          <span style={{ fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, color: "#DC2626" }}>Excluir conteúdo</span>
+        </motion.button>
       </div>
 
       <AnimatePresence>
@@ -169,6 +185,15 @@ export default function ContentDetailScreen({ content, onBack, onFlashcards, onQ
             onSelect={handleSubjectSelect}
             onClose={() => setSubjectPickerOpen(false)}
             mutate={mutate}
+          />
+        )}
+        {confirmDeleteOpen && (
+          <ConfirmDialog
+            title="Excluir este conteúdo?"
+            description={`Fotos, flashcards, quizzes, tentativas e revisões de "${content.title}" serão apagados junto. Compromissos do calendário vinculados a outros conteúdos não são afetados; se este for o único conteúdo vinculado, o compromisso também será removido.`}
+            confirmLabel="Excluir conteúdo"
+            onConfirm={handleDelete}
+            onCancel={() => setConfirmDeleteOpen(false)}
           />
         )}
       </AnimatePresence>

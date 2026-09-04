@@ -789,6 +789,32 @@ test("F4-11. createEventEntry rejeita evento invalido", () => {
   assert.throws(() => eventService.createEventEntry({ type: "exam", title: "Prova", date: "" }), eventService.EventValidationError);
 });
 
+// ─── Fase 4 — excluir conteudo (UI) com cascata segura ────────────────────────
+
+test("F4-19. excluir conteudo com evento compartilhado preserva o evento para o outro conteudo", () => {
+  const a = seedContent({ subjectName: "Matemática" });
+  const b = seedContent({ subjectName: "Física" });
+  const event = eventService.createEventEntry({
+    type: "exam", title: "Prova conjunta", date: "2026-03-10",
+    contentIds: [a.content.id, b.content.id],
+  });
+  reviewService.scheduleInitialReview(a.content.id);
+  const fc = contentService.getContent(a.content.id).flashcards[0];
+  studyService.recordFlashcardAttempt({ flashcardId: fc.id, contentId: a.content.id, correct: true });
+
+  contentService.deleteContent(a.content.id);
+
+  const stillThere = eventService.getEvent(event.id);
+  assert.ok(stillThere);
+  assert.deepEqual(stillThere.contentIds, [b.content.id]);
+  assert.equal(reviewService.getReviewsForContent(a.content.id).length, 0);
+  assert.equal(studyService.getAttemptsForContent(a.content.id).flashcardAttempts.length, 0);
+
+  // nenhuma referência quebrada sobra para a varredura de integridade encontrar
+  const removed = integrityService.sweepOrphans();
+  assert.deepEqual(removed, { reviews: 0, flashcardAttempts: 0, quizAttempts: 0, eventContentRefs: 0, contentSubjectRefs: 0 });
+});
+
 // ─── Fase 4 — mover conteudo entre materias preserva tudo ─────────────────────
 
 test("F4-18. mover conteudo preserva id, fotos, flashcards, quizzes, notas, tentativas, reviews e eventos", () => {

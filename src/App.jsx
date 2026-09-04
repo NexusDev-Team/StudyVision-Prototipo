@@ -101,6 +101,7 @@ export default function App() {
             <ContentDetailScreen
               content={selectedContent}
               onBack={goBack}
+              onDeleted={() => { setSelectedContentId(null); goTo("library"); }}
               onFlashcards={() => go("flashcards")}
               onQuestions={() => go("questions")}
               onQuiz={() => go("quiz")}
