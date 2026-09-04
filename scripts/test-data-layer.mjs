@@ -625,6 +625,24 @@ test("F3-11. conteudos de materias diferentes nao se contaminam", () => {
   assert.equal(historySubjectPerf.averageOverall, null);
 });
 
+test("F3-12. dificuldade recomendada deriva do desempenho e persiste", () => {
+  const { content } = seedContent();
+  assert.equal(studyService.getRecommendedDifficulty(content.id), null);
+
+  const quiz = contentService.getContent(content.id).quizzes[0];
+  studyService.recordQuizAttempt({
+    quizId: quiz.id,
+    contentId: content.id,
+    answers: [
+      { questionId: quiz.questions[0].id, selectedAnswer: 1, correct: false },
+      { questionId: quiz.questions[1].id, selectedAnswer: false, correct: false },
+    ],
+  });
+  const persisted = studyService.updateRecommendedDifficulty(content.id);
+  assert.equal(persisted, "easy");
+  assert.equal(contentService.getContent(content.id).recommendedDifficulty, "easy");
+});
+
 // ─── relatório ───────────────────────────────────────────────────────────────
 console.log(`\n${passed} passaram, ${failed} falharam`);
 if (failed > 0) {

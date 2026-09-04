@@ -5,6 +5,7 @@ import { readDb, withDb } from "../data/storage/index.js";
 import { createFlashcardAttempt } from "../data/models/flashcard.js";
 import { createQuizAttempt } from "../data/models/quiz.js";
 import { nowIso } from "../utils/date.js";
+import { getContentPerformance } from "./performanceService.js";
 
 export function recordFlashcardAttempt({ flashcardId, contentId, correct, responseTimeMs }) {
   const attempt = createFlashcardAttempt({ flashcardId, contentId, correct, responseTimeMs });
@@ -81,4 +82,25 @@ export function updateMastery(contentId) {
     }),
   }));
   return updated?.mastery ?? mastery;
+}
+
+// Sinal derivado do desempenho real — não confundir com content.difficulty
+// (o nível do material analisado pela IA). Usado futuramente para a IA
+// gerar novas questões no nível certo para o estudante.
+export function getRecommendedDifficulty(contentId) {
+  const { overall } = getContentPerformance(contentId);
+  if (overall === null) return null;
+  if (overall < 60) return "easy";
+  if (overall < 80) return "medium";
+  return "hard";
+}
+
+// Recalcula e persiste content.recommendedDifficulty.
+export function updateRecommendedDifficulty(contentId) {
+  const recommendedDifficulty = getRecommendedDifficulty(contentId);
+  withDb((db) => ({
+    ...db,
+    contents: db.contents.map((c) => (c.id === contentId ? { ...c, recommendedDifficulty, updatedAt: nowIso() } : c)),
+  }));
+  return recommendedDifficulty;
 }
