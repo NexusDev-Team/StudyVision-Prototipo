@@ -7,12 +7,10 @@ import UpcomingReviewRow from "../components/study/UpcomingReviewRow";
 import CalendarMonth from "../components/study/CalendarMonth";
 import DayEventsModal from "../components/study/DayEventsModal";
 import { useContentStore } from "../context/ContentStoreContext.jsx";
-import { REVIEW_OFFSETS } from "../services/reviewService";
+import { reviewReasonLabel } from "../services/reviewService";
 import { toDayKey, endOfTodayIso, DAY_MS } from "../utils/date";
 import { getSubjectVisual } from "../constants";
 import { CANONICAL_TO_LEGACY_EVENT_TYPE } from "../data/adapters/legacyEventType";
-
-const STAGE_LABEL = Object.fromEntries(REVIEW_OFFSETS.map((o) => [o.stage, o.label]));
 
 export default function ReviewScreen({ onReview }) {
   const { contents, reviews, events } = useContentStore();
@@ -78,7 +76,7 @@ export default function ReviewScreen({ onReview }) {
         kind: "review",
         item: { concept: content.title, subject: content.subjectName, subjectColor: visual.color, subjectBg: visual.bg },
         type: "Revisão",
-        stageLabel: STAGE_LABEL[r.stage],
+        stageLabel: reviewReasonLabel(r.reason),
       });
     }
 

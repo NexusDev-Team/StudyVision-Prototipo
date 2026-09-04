@@ -6,18 +6,16 @@ import ExportSection from "../components/study/ExportSection";
 import PlanningSection from "../components/study/PlanningSection";
 import { useContentStore } from "../context/ContentStoreContext.jsx";
 import {
-  REVIEW_OFFSETS,
   getReviewsForContent,
   nextPendingReview,
   isContentDueForReview,
   formatDue,
+  reviewReasonLabel,
 } from "../services/reviewService";
 import { getEventsForContent } from "../services/eventService";
 import { scheduleCommitment } from "../services/calendarService";
 import { CANONICAL_TO_LEGACY_EVENT_TYPE } from "../data/adapters/legacyEventType";
 import { getSubjectVisual, getMasteryMeta } from "../constants";
-
-const STAGE_LABEL = Object.fromEntries(REVIEW_OFFSETS.map((o) => [o.stage, o.label]));
 
 export default function ContentDetailScreen({ content, onBack, onFlashcards, onQuestions, onQuiz, onVisionPlus, onToast }) {
   const { mutate } = useContentStore();
@@ -90,9 +88,9 @@ export default function ContentDetailScreen({ content, onBack, onFlashcards, onQ
             <CalendarClock size={18} color={due ? "#DC2626" : "#64748B"} />
             <div>
               <p style={{ fontSize: 13, fontWeight: 700, color: due ? "#DC2626" : "#111827", margin: 0, fontFamily: "Inter,sans-serif" }}>
-                {due ? "Revisão pendente hoje" : `Próxima revisão: ${STAGE_LABEL[next.stage] || ""} · ${formatDue(next.scheduledFor)}`}
+                {due ? "Revisão pendente hoje" : `Próxima revisão: ${reviewReasonLabel(next.reason)} · ${formatDue(next.scheduledFor)}`}
               </p>
-              <p style={{ fontSize: 11, color: "#94A3B8", margin: "2px 0 0", fontFamily: "Inter,sans-serif" }}>{doneCount}/{REVIEW_OFFSETS.length} revisões concluídas</p>
+              <p style={{ fontSize: 11, color: "#94A3B8", margin: "2px 0 0", fontFamily: "Inter,sans-serif" }}>{doneCount} {doneCount === 1 ? "revisão concluída" : "revisões concluídas"}</p>
             </div>
           </motion.div>
         )}

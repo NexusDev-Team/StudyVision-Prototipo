@@ -8,7 +8,7 @@ import ExportSection from "../components/study/ExportSection";
 import PlanningSection from "../components/study/PlanningSection";
 import { createContentEntry } from "../services/contentService";
 import { getSubjects, createSubjectEntry } from "../services/subjectService";
-import { scheduleReviewsForContent } from "../services/reviewService";
+import { scheduleInitialReview } from "../services/reviewService";
 import { scheduleCommitment } from "../services/calendarService";
 import { getSubjectVisual } from "../constants";
 import { fadeUp } from "../styles/motion";
@@ -41,7 +41,7 @@ export default function SummaryScreen({ capturedContent, onSave, onLibrary, onTo
       ...capturedContent,
       subjectId: subject?.id || null,
     });
-    scheduleReviewsForContent(saved.id, saved.createdAt);
+    scheduleInitialReview(saved.id, saved.createdAt);
     if (calendarEvent) {
       scheduleCommitment({ contentId: saved.id, title: saved.title, ...calendarEvent });
     }
