@@ -73,6 +73,7 @@ const studyService = await import("../src/services/studyService.js");
 const reviewService = await import("../src/services/reviewService.js");
 const eventService = await import("../src/services/eventService.js");
 const performanceService = await import("../src/services/performanceService.js");
+const evolutionService = await import("../src/services/evolutionService.js");
 const { readDb, withDb } = await import("../src/data/storage/index.js");
 const validate = await import("../src/data/models/validate.js");
 const integrityService = await import("../src/services/integrityService.js");
@@ -1006,6 +1007,45 @@ test("F4-3. evento antigo sem notes/updatedAt nao quebra ao ser lido", () => {
   const event = eventService.getEvent("evt_legacy");
   assert.equal(event.title, "Prova legada");
   assert.deepEqual(eventService.getEvents().map((e) => e.id), ["evt_legacy"]);
+});
+
+// ─── Fase 5 — evolutionService ───────────────────────────────────────────────
+
+test("F5-1. banco vazio: resumo de evolucao sem atividade e taxas nulas", () => {
+  const summary = evolutionService.getEvolutionSummary();
+  assert.equal(summary.hasActivity, false);
+  assert.equal(summary.totalContents, 0);
+  assert.equal(summary.contentsStudied, 0);
+  assert.equal(summary.quizAccuracy, null);
+  assert.equal(summary.flashcardAccuracy, null);
+  assert.equal(summary.overallAccuracy, null);
+});
+
+test("F5-2. conteudo criado e nunca estudado nao entra em contentsStudied", () => {
+  seedContent();
+  const summary = evolutionService.getEvolutionSummary();
+  assert.equal(summary.totalContents, 1);
+  assert.equal(summary.contentsStudied, 0);
+  assert.equal(summary.hasActivity, false);
+});
+
+test("F5-3. um quiz de 2 questoes com 1 acerto atualiza resumo geral", () => {
+  const { content } = seedContent();
+  const quiz = contentService.getContent(content.id).quizzes[0];
+  studyService.recordQuizAttempt({
+    quizId: quiz.id,
+    contentId: content.id,
+    answers: [
+      { questionId: quiz.questions[0].id, selectedAnswer: 1, correct: true },
+      { questionId: quiz.questions[1].id, selectedAnswer: false, correct: false },
+    ],
+  });
+  const summary = evolutionService.getEvolutionSummary();
+  assert.equal(summary.questionsAnswered, 2);
+  assert.equal(summary.correctAnswers, 1);
+  assert.equal(summary.incorrectAnswers, 1);
+  assert.equal(summary.quizAccuracy, 50);
+  assert.equal(summary.hasActivity, true);
 });
 
 // ─── relatório ───────────────────────────────────────────────────────────────
