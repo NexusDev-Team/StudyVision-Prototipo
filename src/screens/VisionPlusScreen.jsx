@@ -7,11 +7,12 @@ import PlusHero from "../components/plus/PlusHero";
 import PlusActiveStatus from "../components/plus/PlusActiveStatus";
 import PlanComparison from "../components/plus/PlanComparison";
 import PlusFinalCta from "../components/plus/PlusFinalCta";
+import { PLUS_PRICE_FULL } from "../constants";
 
 // Tela de oferta do Study Vision+ (Fase 5) — vende profundidade e escala,
 // não bloqueia o aprendizado básico. O dashboard de evolução em si vive na
 // tela de Evolução (gratuita); esta tela só apresenta o plano e o CTA.
-export default function VisionPlusScreen({ onBack, isPremium, isTrialActive, daysRemaining, onStartTrial, onResetToFree }) {
+export default function VisionPlusScreen({ onBack, isPremium, isTrialActive, status, daysRemaining, onStartTrial, onResetToFree }) {
   const scrollRef = useRef(null);
 
   const handleStartTrial = () => {
@@ -32,7 +33,14 @@ export default function VisionPlusScreen({ onBack, isPremium, isTrialActive, day
         {isPremium ? (
           <PlusActiveStatus daysRemaining={daysRemaining} isTrialActive={isTrialActive} />
         ) : (
-          <PlusHero onStartTrial={handleStartTrial} />
+          <>
+            {status === "expired" && (
+              <p style={{ fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, color: "#B45309", textAlign: "center", margin: "0 0 16px" }}>
+                Seu teste terminou — continue com {PLUS_PRICE_FULL}
+              </p>
+            )}
+            <PlusHero onStartTrial={handleStartTrial} />
+          </>
         )}
 
         <PlanComparison />

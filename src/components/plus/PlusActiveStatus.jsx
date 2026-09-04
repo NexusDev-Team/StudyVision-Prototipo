@@ -1,9 +1,11 @@
 import { motion } from "framer-motion";
 import { CheckCircle2 } from "lucide-react";
 
-// Replaces the sell-the-plan hero once the trial is active — no repeated
+// Replaces the sell-the-plan hero enquanto o plano está ativo — no repeated
 // purchase CTAs, no fake countdown urgency, just a quiet status line.
-export default function PlusActiveStatus({ daysRemaining }) {
+// `isTrialActive` diferencia o teste (com contagem) do premium contínuo
+// (sem contagem) — hoje só o teste é alcançável, sem cobrança real.
+export default function PlusActiveStatus({ daysRemaining, isTrialActive = true }) {
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
       style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24, padding: "14px 16px", borderRadius: 16, background: "#F0FDF4", border: "1px solid #BBF7D0" }}>
@@ -11,7 +13,9 @@ export default function PlusActiveStatus({ daysRemaining }) {
       <div>
         <p style={{ fontFamily: "Inter,sans-serif", fontSize: 14, fontWeight: 800, color: "#16A34A", margin: 0 }}>Study Vision+ ativo</p>
         <p style={{ fontFamily: "Inter,sans-serif", fontSize: 12, color: "#166534", margin: "2px 0 0" }}>
-          Seu período de teste termina em {daysRemaining} {daysRemaining === 1 ? "dia" : "dias"}.
+          {isTrialActive
+            ? `Seu período de teste termina em ${daysRemaining} ${daysRemaining === 1 ? "dia" : "dias"}.`
+            : "Sua assinatura está ativa."}
         </p>
       </div>
     </motion.div>
