@@ -19,7 +19,13 @@ import {
   getPerformanceForSubject,
 } from "./performanceService.js";
 import { masteryLevelFromScore } from "./studyService.js";
+import { getOverdueReviews } from "./reviewService.js";
 import { getMasteryMeta } from "../constants.js";
+
+// Cortes usados para "pontos fortes" e "precisa de reforço" — alinhados aos
+// mesmos limites de masteryLevelFromScore (needs_review < 60, mastered >= 80).
+export const STRONG_THRESHOLD = 80;
+export const WEAK_THRESHOLD = 60;
 
 export function getEvolutionSummary() {
   const summary = getPerformanceSummary();
@@ -131,4 +137,33 @@ export function getSubjectPerformances() {
     .map((s) => calculateSubjectPerformance(s.id))
     .filter((p) => p.hasActivity)
     .sort((a, b) => (b.accuracy ?? -1) - (a.accuracy ?? -1));
+}
+
+// Matérias com atividade e acurácia alta — nunca uma matéria sem nenhum
+// conteúdo estudado.
+export function getStrongSubjects({ limit = 3 } = {}) {
+  return getSubjectPerformances()
+    .filter((s) => s.accuracy !== null && s.accuracy >= STRONG_THRESHOLD)
+    .slice(0, limit);
+}
+
+// Conteúdos com desempenho baixo OU com revisão pendente atrasada — cada um
+// carrega `reason` para a UI escolher o texto certo, sem duplicar conteúdo
+// que já apareceu por baixo desempenho.
+export function getWeakContents({ limit = 5 } = {}) {
+  const overdueContentIds = new Set(getOverdueReviews().map((r) => r.contentId));
+
+  const lowAccuracy = getContents()
+    .map((c) => calculateContentPerformance(c.id))
+    .filter((p) => p.hasActivity && p.accuracy !== null && p.accuracy < WEAK_THRESHOLD)
+    .map((p) => ({ ...p, reason: "low_accuracy" }));
+
+  const lowIds = new Set(lowAccuracy.map((p) => p.contentId));
+  const overdueOnly = getContents()
+    .filter((c) => overdueContentIds.has(c.id) && !lowIds.has(c.id))
+    .map((c) => ({ ...calculateContentPerformance(c.id), reason: "overdue_review" }));
+
+  return [...lowAccuracy, ...overdueOnly]
+    .sort((a, b) => (a.accuracy ?? Infinity) - (b.accuracy ?? Infinity))
+    .slice(0, limit);
 }

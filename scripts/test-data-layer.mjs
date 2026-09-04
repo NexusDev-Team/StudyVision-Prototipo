@@ -1098,6 +1098,43 @@ test("F5-6. conteudo com menos de 3 interacoes e 100% fica em developing, nao ma
   assert.equal(perf.masteryLevel, "developing");
 });
 
+test("F5-7. banco vazio: pontos fortes e conteudos para reforco ficam vazios", () => {
+  assert.deepEqual(evolutionService.getStrongSubjects(), []);
+  assert.deepEqual(evolutionService.getWeakContents(), []);
+});
+
+test("F5-8. materia sem atividade nunca aparece em getStrongSubjects", () => {
+  const subject = subjectService.createSubjectEntry("Filosofia");
+  contentService.createContentEntry({ subjectId: subject.id, subjectName: subject.name, title: "Ética" });
+  assert.equal(evolutionService.getStrongSubjects().some((s) => s.subjectId === subject.id), false);
+});
+
+test("F5-9. conteudo com 58% aparece em getWeakContents com reason low_accuracy", () => {
+  const { content } = seedContent();
+  const quiz = contentService.getContent(content.id).quizzes[0];
+  studyService.recordQuizAttempt({ quizId: quiz.id, contentId: content.id, answers: buildAnswers(100, 58) });
+  studyService.registerActivity(content.id);
+  const weak = evolutionService.getWeakContents();
+  const found = weak.find((w) => w.contentId === content.id);
+  assert.ok(found, "conteudo com 58% deveria aparecer em getWeakContents");
+  assert.equal(found.reason, "low_accuracy");
+  assert.equal(found.accuracy, 58);
+});
+
+test("F5-10. conteudo com review atrasada e sem tentativas aparece com reason overdue_review", () => {
+  const { content } = seedContent();
+  reviewService.scheduleInitialReview(content.id);
+  const pending = reviewService.getPendingReviews().find((r) => r.contentId === content.id);
+  withDb((db) => ({
+    ...db,
+    reviews: db.reviews.map((r) => (r.id === pending.id ? { ...r, scheduledFor: "2000-01-01T00:00:00.000Z" } : r)),
+  }));
+  const weak = evolutionService.getWeakContents();
+  const found = weak.find((w) => w.contentId === content.id);
+  assert.ok(found, "conteudo com review atrasada deveria aparecer em getWeakContents");
+  assert.equal(found.reason, "overdue_review");
+});
+
 // ─── relatório ───────────────────────────────────────────────────────────────
 console.log(`\n${passed} passaram, ${failed} falharam`);
 if (failed > 0) {
