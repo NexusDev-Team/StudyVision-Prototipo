@@ -1,6 +1,6 @@
 # PRD — Study Vision (JOVI Smartphones)
 
-> Documento vivo. Atualizar sempre que uma decisão de escopo, fluxo ou regra de negócio mudar. Baseado no que está implementado em `src/` + `api/` + `lib/` em **2026-09-01**.
+> Documento vivo. Atualizar sempre que uma decisão de escopo, fluxo ou regra de negócio mudar. Baseado no que está implementado em `src/` + `api/` + `lib/` em **2026-09-04** (Fase 5).
 
 ## 1. Contexto
 
@@ -36,66 +36,61 @@ Fotos diferentes produzem resultados diferentes — testado com fotos reais de F
 ### 5.2 Biblioteca e conteúdo salvo
 - **Biblioteca** (`LibraryScreen`) — lista de conteúdos salvos, busca por texto, filtro por matéria, badge de "revisar hoje" quando aplicável.
 - **Grade de pastas de matéria** (`SubjectFolderGrid`) — fileira **rolável na horizontal** (não quebra mais linha), com setas de navegação ("Ver mais matérias") e botão de scroll. Estilo em CSS module (`SubjectFolderGrid.module.css`).
-- **Detalhe do conteúdo** (`ContentDetailScreen`) — resumo, conceitos, palavras-chave, status da próxima revisão (X/5 concluídas), acesso a Flashcards / Quiz / Perguntas.
+- **Detalhe do conteúdo** (`ContentDetailScreen`) — resumo, conceitos, palavras-chave, nível de domínio (`not_started`/`needs_review`/`developing`/`mastered`, com mínimo de 3 interações antes de "dominado"), desempenho real de quiz/flashcards, próxima revisão pendente, acesso a Flashcards / Quiz / Perguntas.
 
 ### 5.3 Modos de estudo
-- **Flashcards** (`FlashcardsScreen`) — cartão com flip 3D, avaliação "Lembrei" / "Não lembrei". Plano grátis: limite de **5 flashcards por conteúdo** (`FREE_FLASHCARD_LIMIT`) + CTA de upsell nos cards bloqueados. Com **Study Vision+ ativo** (`isPlus`): libera todos os cards do item + cards extras (`extraCards`), sem bloqueio.
-- **Perguntas** (`QuestionsScreen`) — perguntas dissertativas geradas. Ilimitado no grátis; conteúdo adicional/personalizado é diferenciado quando `isPlus`.
-- **Quiz** (`QuizScreen`) — múltipla escolha / verdadeiro-falso, feedback imediato, placar final. Recebe `isPlus`.
+- **Flashcards** (`FlashcardsScreen`) — cartão com flip 3D, avaliação "Lembrei" / "Não lembrei". Plano grátis: limite de **5 flashcards por conteúdo** (`FREE_FLASHCARD_LIMIT`) + CTA de upsell nos cards bloqueados. Com **Study Vision+ ativo** (`isPremium`): libera todos os cards do item + cards extras (`extraCards`), sem bloqueio.
+- **Perguntas** (`QuestionsScreen`) — perguntas dissertativas geradas. Ilimitado no grátis; conteúdo adicional/personalizado é diferenciado quando `isPremium`.
+- **Quiz** (`QuizScreen`) — múltipla escolha / verdadeiro-falso, feedback imediato, placar final. Recebe `isPremium`.
 
 ### 5.4 Revisão espaçada
-- Cronograma fixo por conteúdo: **D+1, D+3, D+7, D+15, D+30** (`REVIEW_OFFSETS`).
+- No máximo **uma revisão pendente por conteúdo** (`reviewService`), criada em D+1 ao salvar o conteúdo (`scheduleInitialReview`). Cada atividade (quiz/flashcards) reagenda essa pendente pelo desempenho real via `REVIEW_INTERVALS`: sem dados ou `<60%` → 1 dia; `60-79%` → 3 dias; `80-89%` → 7 dias; `≥90%` → 14 dias. Revisão agendada manualmente (`reason: "manual"`) nunca é sobrescrita pelo cálculo automático.
 - **Revisão** (`ReviewScreen`) — separa "Para hoje" (vencidas) de "Próximas revisões" (ordenadas por data).
-- Revisar um conteúdo abre o modo Flashcards em `reviewMode`; ao concluir, marca o próximo estágio do cronograma como feito e volta para a tela de Revisão com toast de confirmação.
+- Revisar um conteúdo abre o modo Flashcards em `reviewMode`; ao concluir, `markReviewDone` marca a pendente atual como concluída e `ensureNextReview` garante a próxima, voltando para a tela de Revisão com toast de confirmação.
 - Contador de pendências (`dueCount`) exibido como badge vermelho na nav inferior, no ícone "Revisão".
 
-### 5.5 Monetização — Study Vision+ (upsell)
-- **Vision+** (`VisionPlusScreen`) foi reconstruída de uma tela de venda simples para um **dashboard de analytics com paywall**. Composição (ordem na tela):
-  - `PlusHeader` — cabeçalho; long-press no selo dispara `onResetToFree` (reset de demonstração).
-  - `PlusHero` (quando grátis) **ou** `PlusActiveStatus` com contador de dias restantes do teste (quando `isPlus`).
-  - `MetricCards` — cards de métricas do dashboard (sempre visíveis).
-  - `SubjectProgress` — evolução por matéria (bloqueada quando grátis).
-  - `PerformanceChart` — desempenho semana a semana (bloqueada quando grátis, wrapper `PlusPaywall` com blur + degradê).
-  - `StrengthsCard` — pontos fortes (visível).
-  - `AttentionCard` — pontos de atenção (`hideNames` quando grátis).
-  - `InsightCard` — insight da semana (bloqueado quando grátis).
-  - `PlanComparison` — comparativo Free vs Plus (só aparece quando grátis).
-  - `PlusFinalCta` — 4º ponto de conversão (só quando grátis).
-- **Estado de assinatura real (simulado)** — `services/subscription.js` + hook `useSubscription` (fonte única, chamado 1x em `App.jsx`, propagado via prop `isPlus`).
-  - `localStorage` chave `sv_subscription` = `{ status: "free" | "plus", trialStartedAt: ISO | null }`.
-  - Botão "Ativar Study Vision+" **agora tem ação**: `startTrial()` grava `status: "plus"` + `trialStartedAt` (teste de 7 dias, `TRIAL_DAYS`), toast `"✓ Study Vision+ ativado"`, scroll pro topo.
-  - `trialDaysRemaining()` calcula a contagem regressiva; `resetToFree()` volta ao grátis (long-press no selo, toast `"Demonstração reiniciada"`).
-  - **Ainda não há checkout/pagamento real** — não cobra R$ 9,90/mês, sem gateway, sem conta de usuário. É só o toggle de plano local que destrava/trava as features.
-- Regra de negócio atual: grátis = até 5 flashcards por conteúdo + perguntas dissertativas ilimitadas + quiz ilimitado + seções de profundidade do Vision+ bloqueadas. Plus = flashcards ilimitados + seções de analytics desbloqueadas.
+### 5.5 Evolução (dashboard gratuito)
+- **Evolução** (`EvolutionScreen`, 4º destino da nav) — dashboard de aprendizado, **gratuito e completo**, alimentado por `evolutionService` (que por sua vez deriva tudo de `performanceService`/`reviewService`/`studyService`/`contentService`/`subjectService` — nenhum dado próprio). Seções: Resumo (conteúdos estudados, questões respondidas, taxa de acerto, reviews concluídas), Desempenho geral (anel + distribuição de domínio), Evolução por matéria (com drill-down para a Biblioteca filtrada), Evolução semanal (`getProgressHistory`, só semanas com tentativa real, sem interpolar), Precisa de reforço (conteúdos fracos ou com revisão atrasada, com drill-down para o conteúdo), Reviews (pendentes/concluídas/atrasadas), Pontos fortes (matérias com ≥80% de acerto). Toda taxa é `null` ("Sem dados ainda") quando não há denominador — nunca `0%`. Tela vazia (nenhum conteúdo) mostra estado vazio único, incentivando a primeira captura.
+- **Insights** é a única seção da Evolução que fica atrás de paywall: recomendações determinísticas (`getRecommendations`, sem IA) + delta de acerto das últimas semanas (`getAccuracyDelta`).
 
-### 5.6 Navegação
-- Nav inferior com 4 destinos: Câmera, Biblioteca, Revisão, Vision+.
+### 5.6 Monetização — Study Vision+ (oferta de teste)
+- **Vision+** (`VisionPlusScreen`) é uma **tela de oferta**, não um dashboard — o dashboard de evolução é gratuito e vive em 5.5. Composição: `PlusHeader` (long-press no selo dispara `onResetToFree`, reset de demonstração) → `PlusHero` (grátis) **ou** `PlusActiveStatus` com contador de dias do teste (premium) → `PlanComparison` (Free × Plus) → `PlusFinalCta` (só quando grátis).
+- **Estado de assinatura** — `services/subscriptionService.js` + hook `useSubscription` (fonte única, chamado 1x em `App.jsx`, propagado via prop `isPremium`).
+  - `localStorage["sv_subscription"] = { plan: "free" | "premium", status: "active" | "trial" | "expired", trialStartedAt: ISO | null, trialEndsAt: ISO | null }`.
+  - `startTrial()` grava `plan: "premium"`, `status: "trial"`, `trialEndsAt` 7 dias à frente (`TRIAL_DAYS`).
+  - **O teste expira de verdade**: toda leitura de `getSubscription()` compara `trialEndsAt` com `Date.now()` e rebaixa para `plan: "free"`, `status: "expired"` quando vencido — sem precisar de ação manual. `useSubscription` reavalia também ao voltar de background (`visibilitychange`).
+  - `resetToFree()` volta ao grátis (long-press no selo, toast `"Demonstração reiniciada"`).
+  - **Ainda não há checkout/pagamento real** — não cobra R$ 9,90/mês, sem gateway, sem conta de usuário. É só o estado local que destrava/trava features específicas.
+- Regra de negócio: **grátis já entrega o produto inteiro** — captura, biblioteca, resumos, quiz, flashcards (limite de 5 por conteúdo), reviews e a Evolução completa. Plus soma: flashcards personalizados ilimitados, quizzes/perguntas ilimitados e a seção de Insights.
+
+### 5.7 Navegação
+- Nav inferior com 4 destinos: Câmera, Biblioteca, Revisão, Evolução. Vision+ deixou de ser item de nav — é alcançada pelo CTA de Insights na Evolução (`go("visionplus")`), preservando o histórico de navegação para o "Voltar".
 - Histórico de navegação simples (`useNavigation` / `prevScreens`) para o botão "Voltar" dentro de fluxos (ex: Biblioteca → Detalhe → Flashcards).
 
-### 5.7 Responsividade
+### 5.8 Responsividade
 - Em telas ≤480px de largura (celulares reais), a moldura decorativa de smartphone some e o app ocupa a tela inteira (100vw/100dvh, sem bezel/`border-radius`), como um app de verdade.
 - Em telas maiores (desktop/tablet), mantém a moldura de smartphone 375×812 centralizada, com `max-width`/`max-height` para não estourar viewports menores que isso.
 - Implementado via CSS (`PhoneFrame.module.css` / `src/styles`) com media query, em vez de estilos inline fixos.
 
-### 5.8 Integrações — Notion e Google Calendar (mock)
+### 5.9 Integrações — Notion e Google Calendar (mock)
 - **Exportar Conteúdo** (`ExportSection`, na tela de Resumo, antes de "Salvar na Biblioteca") — **refatorado para modal dialog** (padrão `Modal` + `Button` do design system) em vez de botões inline. 3 opções: Notion (`notionService.exportToNotion`), Documento PDF/DOCX (`exportService.exportDocument`), Copiar Conteúdo (`exportService.copyContent`, usa `navigator.clipboard`). Cada uma simula latência de rede e mostra toast de sucesso. Estrutura exportada: título, data, imagem, resumo, conceitos-chave, flashcards, perguntas.
 - **Planejamento** (`PlanningSection` + `PlanningModal`, abaixo de Exportar Conteúdo) — modal com Tipo (Prova/Trabalho/Apresentação/Revisão), Data, Horário e checkboxes de revisões automáticas (7 dias, 3 dias, 1 dia, no dia). Botão "Salvar no Google Calendar" chama `calendarService.createEvent` + `calendarService.scheduleReviews` (mock) e mostra toasts `"✓ Evento criado com sucesso"` seguido de `"✓ Revisões adicionadas automaticamente"`. O evento fica anexado ao item (`item.calendarEvent`) quando ele é salvo na Biblioteca.
 - **Biblioteca** — item com `calendarEvent` mostra badge de calendário (ícone) na listagem.
 - **Revisão** (`ReviewScreen`) — botão "Agendar Revisão" (ícone `CalendarPlus`) em cada item pendente/próximo sem evento associado; dispara os mesmos mocks de `calendarService` e persiste `calendarEvent` no item.
 - Arquitetura: `src/services/notionService.js`, `src/services/exportService.js`, `src/services/calendarService.js` — todos mockados com `setTimeout`/Promise, sem chamadas de rede reais. Preparados para trocar por Notion API, Google Calendar API, geração real de PDF/DOCX e compartilhamento Android no futuro.
 
-### 5.9 Imagem de conteúdo capturado
+### 5.10 Imagem de conteúdo capturado
 - `CapturedPageVisual` (`src/components/brand/`) — renderização **data-driven**: se o item tem `photo`, mostra a foto real (agora a miniatura da foto capturada pela câmera, gerada em `src/utils/image.js`); senão cai na simulação visual (página inclinada com linhas de texto, ícone da matéria no canto, vinheta de câmera, cantos de enquadramento) — usado só pelos itens semente sem foto. Usado na tela de Resumo e no Detalhe do conteúdo.
 - O ciclo fixo de captura (`CAPTURE_POOL`/`nextCaptureTemplate`) foi **removido** junto com a câmera simulada — cada captura agora gera um item novo a partir da análise real da IA.
 
-### 5.10 Conteúdos de exemplo e matérias
-- `SAMPLE_ITEMS` (`src/data/sampleContent.js`) continua como **semente da biblioteca** (conteúdo de demonstração, visível mesmo sem nunca ter usado a câmera): 5 matérias com material completo — Matemática (Derivadas), História (Segunda Guerra Mundial), Química (Ligações Químicas), Física (Leis de Ohm), Português (Absolutismo).
-- **Matérias agora são dinâmicas**: o filtro da Biblioteca (`LibraryScreen`) é derivado das matérias realmente presentes nos itens salvos, não de uma lista fixa — uma matéria nova identificada pela IA (Biologia, Filosofia, Geografia, Sociologia, Inglês, Artes, Redação, entre outras) aparece automaticamente no filtro.
+### 5.11 Matérias
+- **Sem semente/conteúdo de demonstração** — o app começa vazio; toda matéria e todo conteúdo vêm de uma captura real ou de `subjectService.createSubjectEntry`/`ensureSubject`, que normaliza e reaproveita por nome (case/acento-insensitive).
+- **Matérias são dinâmicas**: o filtro da Biblioteca (`LibraryScreen`) é derivado das matérias realmente presentes nos itens salvos, não de uma lista fixa — uma matéria nova identificada pela IA (Biologia, Filosofia, Geografia, Sociologia, Inglês, Artes, Redação, entre outras) aparece automaticamente no filtro.
 - `SUBJECT_META` (`src/constants.js`) tem entradas para as matérias mais comuns; `getSubjectMeta(nome)` gera um fallback de cor/ícone determinístico (hash do nome) para qualquer matéria fora da lista, então nada fica sem cor/ícone.
 
 ## 6. Modelo de dados (`localStorage`, alimentado por IA real)
 
-Camada de dados relacional (Fases 1-4), versão de schema `2`, definida em
+Camada de dados relacional (Fases 1-4; Fase 5 só lê, via `evolutionService`, nunca escreve nada novo em `sv_db`), versão de schema `2`, definida em
 `src/data/models/` e persistida como um único objeto em `localStorage["sv_db"]`
 via `src/data/storage/` (`readDb`/`writeDb`/`withDb` — nenhum outro módulo
 acessa `localStorage` diretamente). Migração automática do formato legado
@@ -117,7 +112,7 @@ Entidades relacionadas, cada uma referenciando `content.id`:
 
 Persistência:
 - `localStorage["sv_db"]` — `{ version, subjects[], contents[], flashcardAttempts[], quizAttempts[], reviews[], events[] }`. Se a cota estourar (fotos em base64 pesam), os conteúdos mais antigos são podados automaticamente e, em último caso, salvos sem imagem.
-- `localStorage["sv_subscription"]` — estado do plano (`status`, `trialStartedAt`), ver 5.5.
+- `localStorage["sv_subscription"]` — estado do plano (`plan`, `status`, `trialStartedAt`, `trialEndsAt`), ver 5.6. Fica fora de `sv_db`: assinatura nunca influencia dado acadêmico.
 - `integrityService.sweepOrphans()` roda ao abrir o app: remove tentativas/revisões apontando para conteúdo inexistente, limpa `contentIds` órfãos em eventos (sem apagar o evento) e reseta `subjectId` de conteúdo cuja matéria não existe mais.
 
 Backend serverless (Vercel) para a análise de imagem via Gemini (ver 5.1); sem banco de dados remoto, sem autenticação, sem sincronização entre dispositivos.
@@ -204,9 +199,9 @@ Ordem cronológica das principais entregas desde o baseline do PRD (2026-08-07).
 - [x] Backend serverless (`api/analyze.js`) com chave protegida, tratamento de erro amigável e sem timeout artificial.
 - [x] Flashcards, perguntas e quiz gerados dinamicamente a partir do conteúdo real da foto.
 - [x] Matérias dinâmicas na Biblioteca (não mais uma lista fixa de 5).
-- [x] Revisão espaçada com cronograma (D+1/3/7/15/30) e contador de pendências.
-- [x] Study Vision+ como dashboard de analytics com paywall visual.
-- [x] Estado de plano real-simulado (`sv_subscription`): ativar/reiniciar teste de 7 dias, features destravam de verdade quando `isPlus`.
+- [x] Revisão espaçada por desempenho real (uma pendente por conteúdo, reagendada por `REVIEW_INTERVALS`) e contador de pendências.
+- [x] Dashboard de Evolução gratuito e completo (`EvolutionScreen` + `evolutionService`); Study Vision+ como tela de oferta com paywall só nos Insights.
+- [x] Estado de plano real-simulado (`sv_subscription`): ativar/reiniciar teste de 7 dias com expiração real, features destravam de verdade quando `isPremium`.
 - [x] Exportar Conteúdo em modal padronizado (Notion / PDF-DOCX / Copiar — mock).
 - [x] Planejamento no Google Calendar (mock) com revisões automáticas.
 - [x] Grade de matérias rolável na horizontal com navegação.
@@ -222,7 +217,7 @@ Ordem cronológica das principais entregas desde o baseline do PRD (2026-08-07).
 - [ ] OAuth e APIs reais de Notion e Google Calendar.
 - [ ] Geração real de PDF/DOCX e compartilhamento nativo Android.
 - [ ] Teste de responsividade em mais tamanhos/orientações (landscape).
-- [ ] Expiração real do teste de 7 dias (hoje o contador zera mas não trava sozinho ao chegar a 0).
+- [x] Expiração real do teste de 7 dias — resolvido na Fase 5: `subscriptionService.getSubscription()` deriva `status: "expired"` a partir de `trialEndsAt` a cada leitura.
 - [ ] Cache/retry mais sofisticado para instabilidade momentânea do Gemini (hoje é "tentar novamente" manual).
 
 ## 12. Próximos passos
@@ -236,5 +231,5 @@ Ordem cronológica das principais entregas desde o baseline do PRD (2026-08-07).
 - [x] Fluxo câmera → análise → resumo → biblioteca funcionando de ponta a ponta, com câmera e IA reais
 - [x] Flashcards, perguntas e quiz gerados dinamicamente a partir da foto capturada
 - [x] Revisão espaçada com cronograma e contador de pendências
-- [x] Tela de upsell Vision+ (evoluída para dashboard + ativação simulada de teste; ainda sem checkout)
+- [x] Dashboard de evolução gratuito + tela de oferta Study Vision+ com teste de 7 dias (expiração real; ainda sem checkout)
 - [x] Deploy publicado e acessível na Vercel, com backend de IA funcionando em produção

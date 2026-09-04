@@ -13,7 +13,7 @@ Este repositório contém o protótipo completo — front-end React/Vite **e um 
 - **Framer Motion** — animações e transições
 - **Lucide React** — ícones
 - **CSS Modules** — estilização por componente, com design tokens (`src/styles/tokens.css`)
-- **localStorage** — persistência local dos dados mocados (sem backend)
+- **localStorage** — persistência local dos dados reais de uso (sem backend de dados)
 
 ## Como instalar as dependências
 
@@ -72,14 +72,15 @@ src/
 │   ├── layout/    # PhoneFrame, StatusBar, BottomNav, Screen, ScreenHeader, ScrollArea
 │   ├── ui/        # Button, Card, Badge, SectionLabel, FilterPills, Modal, Toast...
 │   ├── brand/     # LogoSVG, CapturedPageVisual
-│   ├── plus/      # Componentes da aba Study Vision+ (paywall, métricas, cards)
+│   ├── plus/      # Componentes do Study Vision+ (paywall, comparativo de planos, cards)
 │   └── study/     # ContentBlocks, Flashcard, QuizQuestion, ReviewCard...
-├── screens/       # As telas do app (Camera, Library, Flashcards, Review, Vision+...)
-├── data/          # Conteúdo de exemplo (SAMPLE_ITEMS, métricas Plus) — seeds da biblioteca
-├── services/      # studyVisionService (fala com /api/analyze), storage (localStorage),
-│                  # reviewEngine (repetição espaçada), calendarService/exportService/
-│                  # notionService (mocks), subscription
-├── hooks/         # useNavigation, useToast, useStudyItems, useSubscription, useAnalysis
+├── screens/       # As telas do app (Camera, Library, Review, Evolution, VisionPlus...)
+├── data/          # models/ (Content, Subject, Review, Event...), storage/ (sv_db versionado), adapters/
+├── services/      # contentService, subjectService, studyService, reviewService, eventService,
+│                  # performanceService, evolutionService (dashboard de evolução), integrityService,
+│                  # subscriptionService (free/trial/premium), exportService, notionService (mock),
+│                  # studyVisionService (fala com /api/analyze)
+├── hooks/         # useNavigation, useToast, useSubscription, useAnalysis
 ├── utils/         # image.js (captura de frame da câmera, geração de miniatura)
 ├── styles/        # tokens.css (design tokens), global.css, motion.js
 ├── constants.js

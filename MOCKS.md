@@ -1,8 +1,8 @@
 # Mocks e dados sintéticos restantes
 
 Inventário do que ainda **não** é medido/persistido de verdade no Study Vision.
-Após a Fase 4, sobra apenas a exportação para o Notion — Biblioteca e Calendário
-não usam nenhum dado sintético.
+Após a Fase 5, sobra apenas a exportação para o Notion — Biblioteca, Calendário
+e Evolução não usam nenhum dado sintético.
 
 | Mock | Arquivo | Quem consome | O que é | Substituto futuro |
 |---|---|---|---|---|
@@ -63,8 +63,23 @@ registrar eventos de início/fim de sessão — fora do escopo desta fase.
 | `sweepOrphans` não limpava `contentIds` órfãos em eventos nem `subjectId` de matéria inexistente | Limpa as duas referências sem apagar o evento/conteúdo em si |
 | Modais sem `role="dialog"`, sem fechar no Esc/backdrop, sem devolver foco | `ui/Modal` cobre os quatro |
 
+## O que passou a ser real na Fase 5
+
+| Antes (mock/incompleto) | Agora |
+|---|---|
+| Dashboard vivia só dentro do Vision+, com paywall em cima de métricas reais | `evolutionService` (13 funções) alimenta a tela de Evolução, gratuita e sem nenhuma métrica bloqueada |
+| Nenhuma taxa de acerto combinando quiz + flashcards | `getEvolutionSummary().overallAccuracy` — `null` (nunca `0%`) sem resposta |
+| `getSubjectPerformance` fazia média dos `overall` por conteúdo, distorcendo com conteúdo sem atividade | `calculateSubjectPerformance` soma acertos/respostas só dos conteúdos com atividade |
+| `getReviewMetrics()` calculado e nunca mostrado em tela nenhuma | `getReviewProgress()` na seção Reviews da Evolução |
+| `SparkChart` construído e nunca importado; nenhuma série temporal existia | `getProgressHistory()` agrupa `quizAttempts`/`flashcardAttempts` por semana (segunda-feira local); só semanas com atividade viram ponto |
+| Assinatura só tinha `{status: "free"\|"plus"}`; teste de 7 dias nunca expirava sozinho | `subscriptionService` deriva `expired` a partir de `trialEndsAt` toda leitura; `useSubscription` reavalia em `visibilitychange` |
+| Vision+ era dashboard com paywall (`MetricCards`/`SubjectProgress`/`PerformanceChart`/`AttentionCard`/`InsightCard` borrados) | Vision+ virou tela de oferta (hero, benefícios, comparação Free×Plus, CTA); `MetricCards.jsx`/`InsightCard.jsx` removidos, superados pelas seções da Evolução |
+| Recomendações não existiam | `getRecommendations()` — regras fixas, determinísticas, zero IA |
+
+Nenhum dado sintético foi introduzido na Fase 5 — toda métrica de evolução deriva de `performanceService`/`reviewService`/`studyService`/`contentService`/`subjectService`, que por sua vez só leem tentativas reais. **A exportação para o Notion continua sendo o único mock do projeto.**
+
 ## Camadas reais desde a Fase 1
 
 - Captura de câmera (`getUserMedia`) → `api/analyze.js` → Gemini → `normalizeAnalysisResult`.
 - Persistência versionada `sv_db` (`src/data/storage/`), migração `v1 → v2`, poda por cota.
-- `contentService` / `subjectService` / `studyService` / `reviewService` / `eventService` / `performanceService` / `integrityService` — cobertos por `npm run test:data` (66 cenários).
+- `contentService` / `subjectService` / `studyService` / `reviewService` / `eventService` / `performanceService` / `integrityService` / `evolutionService` / `subscriptionService` — cobertos por `npm run test:data` (93 cenários).
