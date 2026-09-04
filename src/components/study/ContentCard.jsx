@@ -3,7 +3,7 @@ import { ChevronRight, CalendarClock, Clock, Calendar } from "lucide-react";
 import Badge from "../ui/Badge";
 import { getSubjectVisual, getMasteryMeta, UNASSIGNED_SUBJECT_LABEL } from "../../constants";
 import { relativeLabel } from "../../utils/date";
-import { CANONICAL_TO_LEGACY_EVENT_TYPE } from "../../data/adapters/legacyEventType";
+import { EVENT_TYPE_META } from "../../data/models/event.js";
 
 export default function ContentCard({ content, index, isDue = false, nextEvent = null, onClick }) {
   const visual = getSubjectVisual(content.subjectName);
@@ -42,7 +42,7 @@ export default function ContentCard({ content, index, isDue = false, nextEvent =
           <Badge color={mastery.color} background={mastery.bg} fontSize={11} fontWeight={700} padding="3px 10px" radius={6}>{mastery.label}</Badge>
         )}
         {nextEvent && (
-          <span title={`${CANONICAL_TO_LEGACY_EVENT_TYPE[nextEvent.type] || nextEvent.type} · ${nextEvent.date}`}>
+          <span title={`${(EVENT_TYPE_META[nextEvent.type] || EVENT_TYPE_META.other).label} · ${nextEvent.date}`}>
             <Badge color="#0F766E" background="rgba(20,184,166,0.12)" fontSize={11} fontWeight={600} padding="3px 8px" radius={6}>
               <Calendar size={11} />
             </Badge>

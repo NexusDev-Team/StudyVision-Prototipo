@@ -95,13 +95,32 @@ Fotos diferentes produzem resultados diferentes — testado com fotos reais de F
 
 ## 6. Modelo de dados (`localStorage`, alimentado por IA real)
 
-Cada item de conteúdo (`SAMPLE_ITEMS` semente / itens salvos a partir da câmera) tem: `id`, `subject`, `subjectIcon`, `subjectColor`, `subjectBg`, `topic`, `concept`, `time`, `summary`, `concepts[]`, `keywords[]`, `extractedText?`, `difficulty?` (`easy`/`medium`/`hard`), `photo?` (miniatura JPEG comprimida gerada da foto real, ou import de asset nos itens semente), `flashcards[]` (`front`/`back`), `questions[]`, `quiz[]` (`type: "mc"|"vf"`, `question`, `options?`, `answer` — índice da alternativa correta, `explanation?`), `reviewSchedule[]` (`stage`, `label`, `dueAt`, `done`), `calendarEvent?` (`id`, `type`, `date`, `time`, `createdAt`, `reminders[]` — opcional, ver 5.8).
+Camada de dados relacional (Fases 1-4), versão de schema `2`, definida em
+`src/data/models/` e persistida como um único objeto em `localStorage["sv_db"]`
+via `src/data/storage/` (`readDb`/`writeDb`/`withDb` — nenhum outro módulo
+acessa `localStorage` diretamente). Migração automática do formato legado
+(`sv_items`, v1) para o v2 roda uma vez, na primeira leitura/escrita da sessão.
+
+`Content` é a entidade central: `id`, `subjectId?`, `subjectName` (cache de
+leitura; `subjectId: null` + `subjectName: ""` é um estado válido — conteúdo
+"Sem matéria"), `topic`, `title`, `summary`, `notes`, `keyConcepts[]`,
+`keywords[]`, `extractedText?`, `difficulty?` (vindo da IA), `recommendedDifficulty?`
+(derivado do desempenho real, nunca do `difficulty`), `images[]`, `flashcards[]`,
+`quizzes[]`, `openQuestions[]`, `mastery` (`score`, `level`, `updatedAt`),
+`createdAt`/`updatedAt`.
+
+Entidades relacionadas, cada uma referenciando `content.id`:
+- `Subject` — `id`, `name`, `createdAt`/`updatedAt`. CRUD completo (`subjectService`), com reaproveitamento por nome (case/acento-insensitive) e destino obrigatório ao excluir matéria com conteúdo vinculado.
+- `Flashcard` / `FlashcardAttempt`, `Quiz`/`Question` / `QuizAttempt` — tentativas são *append-only*, nunca sobrescritas.
+- `Review` — revisão espaçada, no máximo uma pendente por conteúdo, reagendada por desempenho real (1/3/7/14 dias).
+- `AcademicEvent` — `id`, `type` (`exam`/`assignment`/`class`/`deadline`/`other`), `title`, `date`, `time?`, `notes`, `reminders[]`, `contentIds[]` (N:N — um evento pode não ter nenhum conteúdo, ou vários). **Nunca inclui revisão** — Review e AcademicEvent são entidades e coleções distintas por decisão de arquitetura.
 
 Persistência:
-- `localStorage` chave `sv_items` — biblioteca de conteúdos. Itens salvos são deduplicados por `id` (não mais por `concept`, já que a IA pode gerar conceitos parecidos para conteúdos diferentes); se a cota do `localStorage` estourar (fotos reais em base64 pesam mais que os mocks antigos), os itens mais antigos são podados automaticamente, e em último caso o item é salvo sem a foto.
-- `localStorage` chave `sv_subscription` — estado do plano (`status`, `trialStartedAt`), ver 5.5.
+- `localStorage["sv_db"]` — `{ version, subjects[], contents[], flashcardAttempts[], quizAttempts[], reviews[], events[] }`. Se a cota estourar (fotos em base64 pesam), os conteúdos mais antigos são podados automaticamente e, em último caso, salvos sem imagem.
+- `localStorage["sv_subscription"]` — estado do plano (`status`, `trialStartedAt`), ver 5.5.
+- `integrityService.sweepOrphans()` roda ao abrir o app: remove tentativas/revisões apontando para conteúdo inexistente, limpa `contentIds` órfãos em eventos (sem apagar o evento) e reseta `subjectId` de conteúdo cuja matéria não existe mais.
 
-Backend serverless (Vercel) para a análise de imagem via Gemini (ver 5.1); sem banco de dados, sem autenticação, sem sincronização entre dispositivos.
+Backend serverless (Vercel) para a análise de imagem via Gemini (ver 5.1); sem banco de dados remoto, sem autenticação, sem sincronização entre dispositivos.
 
 ## 7. Limitações conhecidas do protótipo
 

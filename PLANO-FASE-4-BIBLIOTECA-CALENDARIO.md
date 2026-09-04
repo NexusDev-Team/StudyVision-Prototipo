@@ -357,3 +357,18 @@ Rodar em sequência, com `npm run dev` e `localStorage` limpo:
 Dashboard de evolução, gráficos temporais, métricas avançadas, Study Vision+/paywall/assinatura,
 recomendações adaptativas, gamificação, ranking, novo backend de IA e novas APIs externas.
 A Fase 4 apenas **prepara os dados** para isso.
+
+## Status final e o que ficou pronto para a Fase 5
+
+Fase 4 concluída — as 21 tarefas (T0-T20) implementadas, com `npm run test:data`
+em 66 cenários (42 da Fase 1-3 + 24 novos) e `npm run build` verdes.
+
+Dados já disponíveis para a Fase 5 usar sem retrabalho:
+- `performanceService.getQuizPerformance(contentId).history[]` — série temporal de tentativas, pronta para virar gráfico de evolução.
+- `AcademicEvent.type` (5 categorias canônicas) — contagem de compromissos por tipo/período já é uma consulta simples sobre `eventService.getEvents()`.
+- `subjectService.getSubjectPerformance`/`getSubjectsWithPerformance` — mastery e acerto por matéria, base para comparação entre matérias no dashboard.
+- `Subject` como entidade própria (não mais string) — qualquer filtro/agrupamento futuro no dashboard usa `subjectId`, não comparação de texto.
+- `integrityService.sweepOrphans()` amplo (reviews, tentativas, `contentIds` de evento, `subjectId` de conteúdo) — a Fase 5 herda uma base já sem referência quebrada.
+
+Nada da Fase 5 foi antecipado: sem gráficos, sem paywall, sem gamificação, sem
+novo backend de IA.

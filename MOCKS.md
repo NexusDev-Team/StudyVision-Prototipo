@@ -1,7 +1,8 @@
 # Mocks e dados sintéticos restantes
 
 Inventário do que ainda **não** é medido/persistido de verdade no Study Vision.
-Após a Fase 3, sobra apenas a exportação para o Notion.
+Após a Fase 4, sobra apenas a exportação para o Notion — Biblioteca e Calendário
+não usam nenhum dado sintético.
 
 | Mock | Arquivo | Quem consome | O que é | Substituto futuro |
 |---|---|---|---|---|
@@ -47,8 +48,23 @@ registrar eventos de início/fim de sessão — fora do escopo desta fase.
 | Resultado do quiz/flashcards mostrava só "X de Y" | Mostra o `score` real (0-100), comparação com a tentativa anterior e o desempenho acumulado do conteúdo |
 | Tentativas podiam sobrar apontando para conteúdo excluído/corrompido | `integrityService.sweepOrphans()` roda ao iniciar o app |
 
+## O que passou a ser real na Fase 4
+
+| Antes (mock/incompleto) | Agora |
+|---|---|
+| Biblioteca filtrava por `subjectName` (texto) e escondia conteúdo sem matéria | Filtra por `subjectId`, com bucket explícito "Sem matéria" |
+| Nenhuma UI para criar/renomear/excluir matéria | `SubjectManagerModal` — CRUD completo, com destino obrigatório ao excluir matéria com conteúdo |
+| Busca só olhava título e matéria | `matchesQuery` cobre título, matéria, tópico, conceitos-chave, palavras-chave e texto extraído |
+| Matéria criada por comparação de nome exato (duplicava "Química"/"quimica") | `subjectService.ensureSubject` normaliza e reaproveita por nome, case/acento-insensitive |
+| Calendário: seção somente-leitura dentro da Revisão, misturando eventos e revisões no mesmo grid, e evento sem conteúdo nunca aparecia | Grid só de eventos acadêmicos (5 tipos, com legenda textual); revisões seguem separadas em "Para hoje"/"Próximas"; evento sem conteúdo aparece normalmente |
+| Sem CRUD de evento na UI (`updateEvent`/`deleteEvent`/`unlinkContentFromEvent` existiam no service, nunca chamados) | `EventFormModal` (criar/editar) + `DayEventsModal` (editar/excluir por dia) + `CommitmentsSection` no Content (listar/criar/editar/desvincular todos, não só o último) |
+| `ContentDetailScreen` mostrava só o evento mais recente | Lista todos os compromissos do conteúdo |
+| Sem exclusão de Content na UI | Botão "Excluir conteúdo" com `ConfirmDialog`, cascata revisada (reviews, tentativas, refs em eventos) |
+| `sweepOrphans` não limpava `contentIds` órfãos em eventos nem `subjectId` de matéria inexistente | Limpa as duas referências sem apagar o evento/conteúdo em si |
+| Modais sem `role="dialog"`, sem fechar no Esc/backdrop, sem devolver foco | `ui/Modal` cobre os quatro |
+
 ## Camadas reais desde a Fase 1
 
 - Captura de câmera (`getUserMedia`) → `api/analyze.js` → Gemini → `normalizeAnalysisResult`.
 - Persistência versionada `sv_db` (`src/data/storage/`), migração `v1 → v2`, poda por cota.
-- `contentService` / `subjectService` / `studyService` / `reviewService` / `eventService` / `performanceService` / `integrityService` — cobertos por `npm run test:data` (42 cenários).
+- `contentService` / `subjectService` / `studyService` / `reviewService` / `eventService` / `performanceService` / `integrityService` — cobertos por `npm run test:data` (66 cenários).
