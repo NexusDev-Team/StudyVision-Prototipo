@@ -598,6 +598,33 @@ test("F3-10. historico de quiz preserva todas as tentativas, sem sobrescrever", 
   assert.equal(perf.lastScore, 100);
 });
 
+test("F3-11. conteudos de materias diferentes nao se contaminam", () => {
+  const math = seedContent({ subjectName: "Matemática", title: "Derivadas" });
+  const history = seedContent({ subjectName: "História", title: "Revolução Francesa" });
+
+  const quiz = contentService.getContent(math.content.id).quizzes[0];
+  studyService.recordQuizAttempt({
+    quizId: quiz.id,
+    contentId: math.content.id,
+    answers: [
+      { questionId: quiz.questions[0].id, selectedAnswer: 1, correct: true },
+      { questionId: quiz.questions[1].id, selectedAnswer: true, correct: true },
+    ],
+  });
+
+  const historyPerf = performanceService.getContentPerformance(history.content.id);
+  assert.equal(historyPerf.overall, null);
+  assert.equal(historyPerf.hasActivity, false);
+
+  const mathSubjectPerf = performanceService.getSubjectPerformance(math.subject.id);
+  assert.equal(mathSubjectPerf.contentsCount, 1);
+  assert.equal(mathSubjectPerf.averageOverall, 100);
+
+  const historySubjectPerf = performanceService.getSubjectPerformance(history.subject.id);
+  assert.equal(historySubjectPerf.contentsCount, 1);
+  assert.equal(historySubjectPerf.averageOverall, null);
+});
+
 // ─── relatório ───────────────────────────────────────────────────────────────
 console.log(`\n${passed} passaram, ${failed} falharam`);
 if (failed > 0) {

@@ -2,6 +2,7 @@
 // nenhum número aqui pode ser inventado. É a fonte do dashboard Vision+.
 
 import { readDb } from "../data/storage/index.js";
+import { getPendingReviews, getCompletedReviews, getOverdueReviews } from "./reviewService.js";
 
 // Domínio médio: média do content.mastery.score entre os conteúdos que já
 // têm alguma tentativa (level != not_started). null quando ainda não há nenhum.
@@ -154,5 +155,52 @@ export function getPerformanceForSubject(subjectId) {
     accuracyRate: questionsAnswered > 0 ? Math.round((questionsCorrect / questionsAnswered) * 100) : null,
     flashcardsReviewed: flashcardAttempts.length,
     flashcardsCorrect: flashcardAttempts.filter((a) => a.correct).length,
+  };
+}
+
+// Desempenho da matéria baseado exclusivamente nos conteúdos reais dela —
+// média dos `overall` (não nulos) de getContentPerformance por conteúdo.
+export function getSubjectPerformance(subjectId) {
+  const db = readDb();
+  const contents = db.contents.filter((c) => c.subjectId === subjectId);
+  const performances = contents.map((c) => getContentPerformance(c.id));
+  const withActivity = performances.filter((p) => p.overall !== null);
+
+  const averageOverall =
+    withActivity.length > 0
+      ? Math.round(withActivity.reduce((sum, p) => sum + p.overall, 0) / withActivity.length)
+      : null;
+
+  return {
+    contentsCount: contents.length,
+    contentsWithActivity: withActivity.length,
+    averageOverall,
+    mastered: contents.filter((c) => (c.mastery?.level || "not_started") === "mastered").length,
+    needsReview: contents.filter((c) => (c.mastery?.level || "not_started") === "needs_review").length,
+  };
+}
+
+// Contadores reais de conteúdo por domínio — sem dashboard, só os números.
+export function getContentMetrics() {
+  const db = readDb();
+  const breakdown = { not_started: 0, needs_review: 0, developing: 0, mastered: 0 };
+  for (const content of db.contents) {
+    const level = content.mastery?.level || "not_started";
+    if (level in breakdown) breakdown[level] += 1;
+  }
+  return {
+    total: db.contents.length,
+    studied: db.contents.length - breakdown.not_started,
+    mastered: breakdown.mastered,
+    needsReview: breakdown.needs_review,
+    notStarted: breakdown.not_started,
+  };
+}
+
+export function getReviewMetrics() {
+  return {
+    pending: getPendingReviews().length,
+    completed: getCompletedReviews().length,
+    overdue: getOverdueReviews().length,
   };
 }
