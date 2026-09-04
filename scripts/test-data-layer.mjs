@@ -1282,6 +1282,26 @@ test("F5-25. resetToFree volta ao estado gratuito", () => {
   assert.equal(subscriptionService.isPremium(), false);
 });
 
+test("F5-26. assinatura persiste entre leituras independentes (simula reload)", () => {
+  subscriptionService.startTrial();
+  const reread = subscriptionService.getSubscription();
+  assert.equal(reread.plan, "premium");
+  assert.equal(reread.status, "trial");
+});
+
+test("F5-27. plano premium nao altera nenhum numero academico", () => {
+  const { content } = seedContent();
+  const quiz = contentService.getContent(content.id).quizzes[0];
+  studyService.recordQuizAttempt({ quizId: quiz.id, contentId: content.id, answers: buildAnswers(20, 15) });
+  studyService.registerActivity(content.id);
+  const summaryFree = evolutionService.getEvolutionSummary();
+
+  subscriptionService.startTrial();
+  const summaryPremium = evolutionService.getEvolutionSummary();
+
+  assert.deepEqual(summaryFree, summaryPremium);
+});
+
 // ─── relatório ───────────────────────────────────────────────────────────────
 console.log(`\n${passed} passaram, ${failed} falharam`);
 if (failed > 0) {
