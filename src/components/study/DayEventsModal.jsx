@@ -17,7 +17,7 @@ function formatDate(dateStr) {
 // "Conteúdo não disponível" em vez de quebrar a interface.
 export default function DayEventsModal({ date, entries, contentById, onClose, onViewContent, onEditEvent, onDeleteEvent }) {
   return (
-    <Modal center>
+    <Modal center onClose={onClose} label={`Compromissos de ${formatDate(date)}`}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <Calendar size={18} color="#2563EB" />

@@ -12,7 +12,7 @@ export default function ConfirmDialog({
   onCancel,
 }) {
   return (
-    <Modal center>
+    <Modal center onClose={onCancel} label={title}>
       <div style={{ display: "flex", gap: 12, marginBottom: 14 }}>
         <span style={{ width: 38, height: 38, borderRadius: 12, background: "#FEF2F2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
           <AlertTriangle size={19} color="#DC2626" />

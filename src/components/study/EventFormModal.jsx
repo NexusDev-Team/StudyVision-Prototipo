@@ -42,7 +42,7 @@ export default function EventFormModal({ event, contents, lockedContentId, onSav
   };
 
   return (
-    <Modal>
+    <Modal onClose={onClose} label={isEditing ? "Editar compromisso" : "Novo compromisso"}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
         <p style={{ fontSize: 17, fontWeight: 800, color: "#111827", margin: 0 }}>{isEditing ? "Editar compromisso" : "Novo compromisso"}</p>
         <button onClick={onClose} aria-label="Fechar" style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}>

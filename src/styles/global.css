@@ -9,6 +9,14 @@ body {
   font-family: var(--sv-font);
 }
 
+/* Foco visível — nunca depender só de hover/cor para indicar o elemento
+   ativo ao navegar por teclado. */
+:focus-visible {
+  outline: 2.5px solid #2563EB;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 /* ─── Phone shell responsiveness ─────────────────────────────────────────── */
 .sv-outer {
   display: flex;

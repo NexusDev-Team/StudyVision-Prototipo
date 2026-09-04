@@ -26,10 +26,10 @@ export default function PlanningModal({ onClose, onConfirm }) {
   };
 
   return (
-    <Modal>
+    <Modal onClose={onClose} label="Novo compromisso">
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
         <p style={{ fontSize: 17, fontWeight: 800, color: "#111827", margin: 0 }}>Novo Compromisso</p>
-        <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}>
+        <button onClick={onClose} aria-label="Fechar" style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}>
           <X size={20} color="#94A3B8" />
         </button>
       </div>

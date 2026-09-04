@@ -26,7 +26,7 @@ export default function SubjectPickerModal({ subjects, currentSubjectId, onSelec
   };
 
   return (
-    <Modal>
+    <Modal onClose={onClose} label="Escolher matéria">
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
         <p style={{ fontSize: 17, fontWeight: 800, color: "#111827", margin: 0 }}>Escolher matéria</p>
         <button onClick={onClose} aria-label="Fechar" style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}>

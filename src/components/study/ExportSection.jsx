@@ -40,13 +40,13 @@ export default function ExportSection({ content, onToast }) {
       </Button>
 
       {open && (
-        <Modal center>
+        <Modal center onClose={() => setOpen(false)} label="Exportar conteúdo">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <Upload size={18} color="#2563EB" />
               <span style={{ fontSize: 16, fontWeight: 800, color: "#111827" }}>Exportar</span>
             </div>
-            <button onClick={() => setOpen(false)} style={{ background: "#F1F5F9", border: "none", borderRadius: "50%", width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+            <button onClick={() => setOpen(false)} aria-label="Fechar" style={{ background: "#F1F5F9", border: "none", borderRadius: "50%", width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
               <X size={16} color="#64748B" />
             </button>
           </div>

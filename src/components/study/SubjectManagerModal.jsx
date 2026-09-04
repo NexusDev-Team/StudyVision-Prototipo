@@ -78,7 +78,7 @@ export default function SubjectManagerModal({ subjects, contents, mutate, onClos
   };
 
   return (
-    <Modal>
+    <Modal onClose={onClose} label="Gerenciar matérias">
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
         <p style={{ fontSize: 17, fontWeight: 800, color: "#111827", margin: 0 }}>Gerenciar matérias</p>
         <button onClick={onClose} aria-label="Fechar" style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}>
