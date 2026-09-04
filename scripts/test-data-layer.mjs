@@ -385,7 +385,7 @@ test("T4. not_started sem tentativa; updateMastery persiste content.mastery", ()
   assert.equal(contentService.getContent(content.id).mastery.level, "not_started");
 });
 
-test("T4. quiz 100% -> mastered", () => {
+test("T4. quiz 100% com >=3 interações -> mastered", () => {
   const { content } = seedContent();
   const quiz = contentService.getContent(content.id).quizzes[0];
   studyService.recordQuizAttempt({
@@ -396,6 +396,8 @@ test("T4. quiz 100% -> mastered", () => {
       { questionId: quiz.questions[1].id, selectedAnswer: true, correct: true },
     ],
   });
+  const fc = contentService.getContent(content.id).flashcards[0];
+  studyService.recordFlashcardAttempt({ flashcardId: fc.id, contentId: content.id, correct: true });
   assert.equal(studyService.updateMastery(content.id).level, "mastered");
   assert.equal(contentService.getContent(content.id).mastery.level, "mastered");
 });
@@ -493,6 +495,23 @@ test("F3-5. markReviewDone conclui e agenda a próxima com stage incrementado", 
   assert.ok(next);
   assert.equal(next.stage, 2);
   assert.equal(reviewService.getReviewsForContent(content.id).filter((r) => r.status === "pending").length, 1);
+});
+
+test("F3-6. dominio exige minimo de interacoes antes de 'mastered'", () => {
+  const { content } = seedContent();
+  const fc = contentService.getContent(content.id).flashcards[0];
+  studyService.recordFlashcardAttempt({ flashcardId: fc.id, contentId: content.id, correct: true });
+  const oneInteraction = studyService.calculateMastery(content.id);
+  assert.equal(oneInteraction.score, 100);
+  assert.equal(oneInteraction.interactions, 1);
+  assert.equal(oneInteraction.level, "developing");
+
+  const fc2 = contentService.getContent(content.id).flashcards[1];
+  studyService.recordFlashcardAttempt({ flashcardId: fc2.id, contentId: content.id, correct: true });
+  studyService.recordFlashcardAttempt({ flashcardId: fc2.id, contentId: content.id, correct: true });
+  const threeInteractions = studyService.calculateMastery(content.id);
+  assert.equal(threeInteractions.interactions, 3);
+  assert.equal(threeInteractions.level, "mastered");
 });
 
 // ─── relatório ───────────────────────────────────────────────────────────────

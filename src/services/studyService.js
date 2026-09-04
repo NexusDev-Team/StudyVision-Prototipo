@@ -26,12 +26,22 @@ export function getAttemptsForContent(contentId) {
   };
 }
 
+// Um único acerto isolado não vira "domínio absoluto": abaixo desse número de
+// interações, o nível fica travado em "developing" mesmo com score alto.
+export const MIN_INTERACTIONS_FOR_MASTERY = 3;
+
 // not_started (sem tentativa) | needs_review (<60%) | developing (60-79%) | mastered (>=80%)
-export function masteryLevelFromScore(score, hasAttempts) {
+export function masteryLevelFromScore(score, hasAttempts, interactions = Infinity) {
   if (!hasAttempts) return "not_started";
-  if (score >= 80) return "mastered";
+  if (score >= 80) return interactions < MIN_INTERACTIONS_FOR_MASTERY ? "developing" : "mastered";
   if (score >= 60) return "developing";
   return "needs_review";
+}
+
+// 1 interação = 1 flashcard respondido ou 1 questão de quiz respondida.
+export function getInteractionCount(contentId) {
+  const { flashcardAttempts, quizAttempts } = getAttemptsForContent(contentId);
+  return flashcardAttempts.length + quizAttempts.reduce((sum, a) => sum + a.totalQuestions, 0);
 }
 
 export function calculateMastery(contentId) {
@@ -39,7 +49,7 @@ export function calculateMastery(contentId) {
   const hasAttempts = flashcardAttempts.length > 0 || quizAttempts.length > 0;
 
   if (!hasAttempts) {
-    return { score: 0, level: "not_started", updatedAt: nowIso() };
+    return { score: 0, level: "not_started", interactions: 0, updatedAt: nowIso() };
   }
 
   const flashcardCorrect = flashcardAttempts.filter((a) => a.correct).length;
@@ -53,8 +63,9 @@ export function calculateMastery(contentId) {
   // Média simples entre as duas fontes disponíveis; se só uma existir, usa só ela.
   const parts = [flashcardRate, quizAvg].filter((v) => v !== null);
   const score = Math.round(parts.reduce((sum, v) => sum + v, 0) / parts.length);
+  const interactions = getInteractionCount(contentId);
 
-  return { score, level: masteryLevelFromScore(score, true), updatedAt: nowIso() };
+  return { score, level: masteryLevelFromScore(score, true, interactions), interactions, updatedAt: nowIso() };
 }
 
 // Recalcula e persiste o domínio do conteúdo (content.mastery).
