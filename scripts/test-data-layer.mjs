@@ -74,6 +74,7 @@ const reviewService = await import("../src/services/reviewService.js");
 const eventService = await import("../src/services/eventService.js");
 const performanceService = await import("../src/services/performanceService.js");
 const evolutionService = await import("../src/services/evolutionService.js");
+const subscriptionService = await import("../src/services/subscriptionService.js");
 const { readDb, withDb } = await import("../src/data/storage/index.js");
 const validate = await import("../src/data/models/validate.js");
 const integrityService = await import("../src/services/integrityService.js");
@@ -1238,6 +1239,47 @@ test("F5-20. duas chamadas seguidas com o mesmo banco retornam recomendacoes ide
   const first = evolutionService.getRecommendations();
   const second = evolutionService.getRecommendations();
   assert.deepEqual(first, second);
+});
+
+test("F5-21. banco novo: assinatura comeca free/active", () => {
+  const sub = subscriptionService.getSubscription();
+  assert.equal(sub.plan, "free");
+  assert.equal(sub.status, "active");
+  assert.equal(subscriptionService.isPremium(sub), false);
+});
+
+test("F5-22. startTrial ativa premium/trial com trialEndsAt 7 dias a frente", () => {
+  const sub = subscriptionService.startTrial();
+  assert.equal(sub.plan, "premium");
+  assert.equal(sub.status, "trial");
+  assert.equal(subscriptionService.isPremium(sub), true);
+  const diffDays = Math.round((new Date(sub.trialEndsAt) - new Date(sub.trialStartedAt)) / (24 * 60 * 60 * 1000));
+  assert.equal(diffDays, subscriptionService.TRIAL_DAYS);
+});
+
+test("F5-23. teste com trialEndsAt no passado expira ao ler getSubscription", () => {
+  localStorage.setItem("sv_subscription", JSON.stringify({
+    plan: "premium", status: "trial", trialStartedAt: "2020-01-01T00:00:00.000Z", trialEndsAt: "2020-01-08T00:00:00.000Z",
+  }));
+  const sub = subscriptionService.getSubscription();
+  assert.equal(sub.status, "expired");
+  assert.equal(sub.plan, "free");
+  assert.equal(subscriptionService.isPremium(sub), false);
+});
+
+test("F5-24. formato antigo (status plus) migra sem perder trialStartedAt", () => {
+  localStorage.setItem("sv_subscription", JSON.stringify({ status: "plus", trialStartedAt: "2026-01-01T00:00:00.000Z" }));
+  const sub = subscriptionService.getSubscription();
+  assert.equal(sub.trialStartedAt, "2026-01-01T00:00:00.000Z");
+  assert.ok(sub.plan === "premium" || sub.plan === "free"); // pode já ter expirado dependendo da data atual
+});
+
+test("F5-25. resetToFree volta ao estado gratuito", () => {
+  subscriptionService.startTrial();
+  const sub = subscriptionService.resetToFree();
+  assert.equal(sub.plan, "free");
+  assert.equal(sub.status, "active");
+  assert.equal(subscriptionService.isPremium(), false);
 });
 
 // ─── relatório ───────────────────────────────────────────────────────────────

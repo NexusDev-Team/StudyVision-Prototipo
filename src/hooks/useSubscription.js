@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { getSubscription, startTrial as startTrialService, resetToFree as resetToFreeService, trialDaysRemaining } from "../services/subscription";
+import { getSubscription, startTrial as startTrialService, resetToFree as resetToFreeService, trialDaysRemaining, isPremium } from "../services/subscriptionService";
 
 // Single source of truth for subscription state — must be called once in
 // App.jsx and passed down via props (isPlus). Calling it from child screens
@@ -13,7 +13,7 @@ export function useSubscription() {
   const resetToFree = useCallback(() => { setSubscription(resetToFreeService()); }, []);
 
   return {
-    isPlus: subscription.status === "plus",
+    isPlus: isPremium(subscription),
     status: subscription.status,
     daysRemaining: trialDaysRemaining(subscription),
     startTrial,
