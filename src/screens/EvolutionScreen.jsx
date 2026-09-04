@@ -8,7 +8,8 @@ import PerformanceChart from "../components/plus/PerformanceChart";
 import SubjectProgress from "../components/plus/SubjectProgress";
 import AttentionCard from "../components/plus/AttentionCard";
 import SparkChart from "../components/ui/SparkChart";
-import { getEvolutionSummary, getSubjectPerformances, getProgressHistory, getWeakContents } from "../services/evolutionService";
+import Button from "../components/ui/Button";
+import { getEvolutionSummary, getSubjectPerformances, getProgressHistory, getWeakContents, getReviewProgress } from "../services/evolutionService";
 
 function StatCard({ value, label, delay = 0 }) {
   return (
@@ -27,6 +28,7 @@ export default function EvolutionScreen({ isPremium, onOpenContent, onOpenLibrar
   const subjectRows = getSubjectPerformances().map((s) => ({ id: s.subjectId, name: s.name, accuracyRate: s.accuracy }));
   const history = getProgressHistory({ weeks: 8 });
   const weakContents = getWeakContents({ limit: 5 });
+  const reviewProgress = getReviewProgress();
 
   const breakdown = {
     not_started: summary.notStartedContents,
@@ -111,6 +113,45 @@ export default function EvolutionScreen({ isPremium, onOpenContent, onOpenLibrar
             )}
 
             <AttentionCard items={weakContents} onSelect={onOpenContent} />
+
+            <SectionLabel>Reviews</SectionLabel>
+            <Card style={{ padding: "18px 20px", margin: "0 0 20px" }}>
+              <div style={{ display: "flex", gap: 16, marginBottom: reviewProgress.contentsInReview.length > 0 ? 14 : 0 }}>
+                <div>
+                  <p style={{ fontFamily: "Inter,sans-serif", fontSize: 18, fontWeight: 800, color: "#111827", margin: 0 }}>{reviewProgress.pending}</p>
+                  <p style={{ fontFamily: "Inter,sans-serif", fontSize: 11, color: "#64748B", margin: 0 }}>pendentes</p>
+                </div>
+                <div>
+                  <p style={{ fontFamily: "Inter,sans-serif", fontSize: 18, fontWeight: 800, color: "#111827", margin: 0 }}>{reviewProgress.completed}</p>
+                  <p style={{ fontFamily: "Inter,sans-serif", fontSize: 11, color: "#64748B", margin: 0 }}>concluídas</p>
+                </div>
+                <div>
+                  <p style={{ fontFamily: "Inter,sans-serif", fontSize: 18, fontWeight: 800, color: reviewProgress.overdue > 0 ? "#DC2626" : "#111827", margin: 0 }}>
+                    {reviewProgress.overdue}
+                  </p>
+                  <p style={{ fontFamily: "Inter,sans-serif", fontSize: 11, color: "#64748B", margin: 0 }}>atrasadas</p>
+                </div>
+              </div>
+
+              {reviewProgress.contentsInReview.length === 0 ? (
+                <p style={{ fontFamily: "Inter,sans-serif", fontSize: 12.5, color: "#94A3B8", margin: "0 0 12px" }}>
+                  Nenhuma revisão pendente. Elas aparecem aqui depois que você estuda um conteúdo.
+                </p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
+                  {reviewProgress.contentsInReview.slice(0, 3).map((r) => (
+                    <div key={r.contentId} style={{ display: "flex", justifyContent: "space-between", fontFamily: "Inter,sans-serif", fontSize: 12.5 }}>
+                      <span style={{ color: "#111827", fontWeight: 600 }}>{r.title}</span>
+                      <span style={{ color: "#64748B" }}>{r.reasonLabel}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <Button variant="outline" onClick={onOpenReview} style={{ width: "100%", height: 44 }}>
+                Ver revisões
+              </Button>
+            </Card>
           </>
         )}
       </div>
