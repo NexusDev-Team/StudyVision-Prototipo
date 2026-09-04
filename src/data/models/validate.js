@@ -16,8 +16,11 @@ export function validateContent(content) {
   if (!content.title || !String(content.title).trim()) {
     errors.push("título ausente");
   }
-  if (!content.subjectId && !content.subjectName) {
-    errors.push("matéria ausente (subjectId ou subjectName)");
+  // Conteúdo sem matéria é um estado válido (captura recém-feita, IA sem
+  // classificação, usuário ainda não organizou) — vira "Sem matéria" na UI.
+  // O que não pode acontecer é subjectId sem o cache subjectName correspondente.
+  if (content.subjectId && !content.subjectName) {
+    errors.push("subjectId presente sem subjectName (cache desatualizado)");
   }
   if (content.recommendedDifficulty != null && !["easy", "medium", "hard"].includes(content.recommendedDifficulty)) {
     errors.push("recommendedDifficulty inválido");

@@ -720,6 +720,18 @@ test("F3-16. reload (nova leitura do localStorage) preserva todo o historico", (
   assert.equal(reloaded.reviews.filter((r) => r.contentId === content.id && r.status === "pending").length, 1);
 });
 
+// ─── Fase 4 — conteúdo sem matéria é estado válido ────────────────────────────
+
+test("F4-0. conteudo sem materia e valido; subjectId sem subjectName nao e", () => {
+  const semMateria = { ...seedContent().content, subjectId: null, subjectName: "" };
+  assert.equal(validate.validateContent(semMateria).valid, true);
+
+  const cacheDesatualizado = { ...seedContent().content, subjectId: "sub_x", subjectName: "" };
+  const { valid, errors } = validate.validateContent(cacheDesatualizado);
+  assert.equal(valid, false);
+  assert.ok(errors.includes("subjectId presente sem subjectName (cache desatualizado)"));
+});
+
 // ─── Fase 4 — evento acadêmico (modelo/validação) ─────────────────────────────
 
 test("F4-1. evento com tipo deadline/other sobrevive a round-trip", () => {

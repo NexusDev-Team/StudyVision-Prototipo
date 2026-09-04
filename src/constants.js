@@ -1,5 +1,9 @@
 export const FREE_FLASHCARD_LIMIT = 5;
 
+// Rótulo do bucket de conteúdos sem matéria (subjectId/subjectName ausentes) —
+// captura recém-feita, IA sem classificação, ou ainda não organizado pelo usuário.
+export const UNASSIGNED_SUBJECT_LABEL = "Sem matéria";
+
 // Nível de domínio (content.mastery.level) → rótulo e cores para os selos.
 export const MASTERY_META = {
   not_started: { label: "Não iniciado", color: "#64748B", bg: "rgba(100,116,139,0.12)" },
