@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import {
   LayoutGrid, Calculator, Landmark, FlaskConical, Atom, BookA, Code2, ChevronLeft, ChevronRight,
-  Leaf, Globe2, BrainCircuit, Users, Languages, Palette, PenLine, BookOpen,
+  Leaf, Globe2, BrainCircuit, Users, Languages, Palette, PenLine, BookOpen, FolderOpen,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { getSubjectMeta } from "../../constants";
@@ -9,11 +9,14 @@ import styles from "./SubjectFolderGrid.module.css";
 
 const ICONS = {
   LayoutGrid, Calculator, Landmark, FlaskConical, Atom, BookA, Code2,
-  Leaf, Globe2, BrainCircuit, Users, Languages, Palette, PenLine, BookOpen,
+  Leaf, Globe2, BrainCircuit, Users, Languages, Palette, PenLine, BookOpen, FolderOpen,
 };
 const SCROLL_EDGE_SLACK = 4;
 
-export default function SubjectFolderGrid({ options, active, onSelect }) {
+// options: [{ id, label, count }]. id é o valor comparado/enviado ao selecionar
+// ("all" e "unassigned" são ids especiais para "Todos" e "Sem matéria"); label
+// decide o ícone/cor via getSubjectMeta (mesma matéria = mesma cor sempre).
+export default function SubjectFolderGrid({ options, activeId, onSelect }) {
   const scrollRef = useRef(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -53,11 +56,12 @@ export default function SubjectFolderGrid({ options, active, onSelect }) {
 
       <div ref={scrollRef} className={styles.row}>
         {options.map(opt => {
-          const meta = getSubjectMeta(opt);
+          const meta = getSubjectMeta(opt.label);
           const Icon = ICONS[meta.icon] || BookOpen;
-          const isActive = active === opt;
+          const isActive = activeId === opt.id;
           return (
-            <motion.button key={opt} className={styles.folder} whileTap={{ scale: 0.95 }} onClick={() => onSelect(opt)}
+            <motion.button key={opt.id} className={styles.folder} whileTap={{ scale: 0.95 }} onClick={() => onSelect(opt.id)}
+              aria-pressed={isActive}
               style={{
                 display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
                 gap: 4, width: 72, height: 64, borderRadius: 14, cursor: "pointer",
@@ -74,7 +78,8 @@ export default function SubjectFolderGrid({ options, active, onSelect }) {
               <span style={{
                 fontFamily: "Inter,sans-serif", fontSize: 10.5, fontWeight: 700,
                 color: isActive ? "white" : meta.color,
-              }}>{opt}</span>
+                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 64,
+              }}>{opt.label}{typeof opt.count === "number" ? ` (${opt.count})` : ""}</span>
             </motion.button>
           );
         })}

@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { ChevronRight, CalendarClock, Clock, Calendar } from "lucide-react";
 import Badge from "../ui/Badge";
-import { getSubjectVisual, getMasteryMeta } from "../../constants";
+import { getSubjectVisual, getMasteryMeta, UNASSIGNED_SUBJECT_LABEL } from "../../constants";
 import { relativeLabel } from "../../utils/date";
 import { CANONICAL_TO_LEGACY_EVENT_TYPE } from "../../data/adapters/legacyEventType";
 
@@ -23,7 +23,7 @@ export default function ContentCard({ content, index, isDue = false, nextEvent =
           </div>
           <div>
             <p style={{ fontFamily: "Inter,sans-serif", fontSize: 15, fontWeight: 700, color: "#111827", margin: 0 }}>{content.title}</p>
-            <p style={{ fontFamily: "Inter,sans-serif", fontSize: 12, color: "#64748B", margin: "2px 0 0" }}>{content.subjectName} · {content.topic}</p>
+            <p style={{ fontFamily: "Inter,sans-serif", fontSize: 12, color: "#64748B", margin: "2px 0 0" }}>{content.subjectName || UNASSIGNED_SUBJECT_LABEL} · {content.topic}</p>
           </div>
         </div>
         <ChevronRight size={18} color="#CBD5E1" />

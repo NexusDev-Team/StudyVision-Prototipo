@@ -73,6 +73,9 @@ export function getSubjectEmoji(subjectName) {
 }
 
 export function getSubjectMeta(subjectName) {
+  if (subjectName === UNASSIGNED_SUBJECT_LABEL || !subjectName) {
+    return { icon: "FolderOpen", color: "#64748B", bg: "#F1F5F9" };
+  }
   if (SUBJECT_META[subjectName]) return SUBJECT_META[subjectName];
   const color = FALLBACK_COLORS[hashString(subjectName || "") % FALLBACK_COLORS.length];
   return { icon: "BookOpen", color, bg: `${color}14` };
@@ -83,6 +86,7 @@ export function getSubjectMeta(subjectName) {
 // resto daqui, no lugar dos antigos campos subjectIcon/subjectColor/subjectBg
 // que o adaptador legado injetava.
 export function getSubjectVisual(subjectName) {
+  if (!subjectName) return { emoji: "🗂️", color: "#64748B", bg: "#F1F5F9" };
   const meta = getSubjectMeta(subjectName);
   return { emoji: getSubjectEmoji(subjectName), color: meta.color, bg: meta.bg };
 }

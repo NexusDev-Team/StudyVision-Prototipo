@@ -6,11 +6,15 @@ import ContentCard from "../components/study/ContentCard";
 import SubjectFolderGrid from "../components/ui/SubjectFolderGrid";
 import { useContentStore } from "../context/ContentStoreContext.jsx";
 import { endOfTodayIso } from "../utils/date";
+import { UNASSIGNED_SUBJECT_LABEL } from "../constants";
+
+const ALL_FILTER_ID = "all";
+const UNASSIGNED_FILTER_ID = "unassigned";
 
 export default function LibraryScreen({ onOpenItem, onVisionPlus }) {
   const [search, setSearch] = useState("");
-  const [activeFilter, setActiveFilter] = useState("Todos");
-  const { contents, reviews, events } = useContentStore();
+  const [activeFilter, setActiveFilter] = useState(ALL_FILTER_ID);
+  const { contents, subjects, reviews, events } = useContentStore();
 
   // Revisão pendente (para o selo "Revisar hoje") e próximo evento, indexados
   // por conteúdo — derivados uma vez do estado do store.
@@ -30,16 +34,32 @@ export default function LibraryScreen({ onOpenItem, onVisionPlus }) {
     return { dueByContent: due, eventByContent: evt };
   }, [reviews, events]);
 
-  // Matérias derivadas do conteúdo real na biblioteca — com a IA, novas
-  // matérias (Biologia, Filosofia, ...) aparecem sem lista fixa.
-  const subjectFilters = ["Todos", ...new Set(contents.map((c) => c.subjectName).filter(Boolean))];
+  // Filtros por matéria a partir das matérias reais cadastradas — não do texto
+  // livre em cada conteúdo — mais o bucket "Sem matéria" para os que ainda não
+  // foram organizados (subjectId === null). Contagem por opção ajuda a achar
+  // rápido onde estão os conteúdos.
+  const subjectFilters = useMemo(() => {
+    const unassignedCount = contents.filter((c) => !c.subjectId).length;
+    const bySubject = subjects.map((s) => ({
+      id: s.id,
+      label: s.name,
+      count: contents.filter((c) => c.subjectId === s.id).length,
+    }));
+    const options = [{ id: ALL_FILTER_ID, label: "Todos", count: contents.length }, ...bySubject];
+    if (unassignedCount > 0) {
+      options.push({ id: UNASSIGNED_FILTER_ID, label: UNASSIGNED_SUBJECT_LABEL, count: unassignedCount });
+    }
+    return options;
+  }, [contents, subjects]);
 
   const filtered = contents.filter((c) => {
     const q = search.trim().toLowerCase();
     const title = (c.title || "").toLowerCase();
     const subject = (c.subjectName || "").toLowerCase();
     const matchSearch = !q || title.includes(q) || subject.includes(q);
-    const matchFilter = activeFilter === "Todos" || c.subjectName === activeFilter;
+    const matchFilter =
+      activeFilter === ALL_FILTER_ID ||
+      (activeFilter === UNASSIGNED_FILTER_ID ? !c.subjectId : c.subjectId === activeFilter);
     return matchSearch && matchFilter;
   });
 
@@ -69,7 +89,7 @@ export default function LibraryScreen({ onOpenItem, onVisionPlus }) {
         </div>
 
         {/* Filters */}
-        <SubjectFolderGrid options={subjectFilters} active={activeFilter} onSelect={setActiveFilter} />
+        <SubjectFolderGrid options={subjectFilters} activeId={activeFilter} onSelect={setActiveFilter} />
       </div>
 
       {/* List */}
