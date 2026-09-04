@@ -1135,6 +1135,54 @@ test("F5-10. conteudo com review atrasada e sem tentativas aparece com reason ov
   assert.equal(found.reason, "overdue_review");
 });
 
+test("F5-11. banco vazio: historico semanal e delta ficam vazios", () => {
+  assert.deepEqual(evolutionService.getProgressHistory(), []);
+  assert.equal(evolutionService.getAccuracyDelta(), null);
+});
+
+test("F5-12. duas semanas com atividade separadas por semana vazia geram exatamente 2 pontos", () => {
+  const { content } = seedContent();
+  const quiz = contentService.getContent(content.id).quizzes[0];
+  const attempt1 = studyService.recordQuizAttempt({ quizId: quiz.id, contentId: content.id, answers: buildAnswers(10, 6) });
+  const attempt2 = studyService.recordQuizAttempt({ quizId: quiz.id, contentId: content.id, answers: buildAnswers(10, 8) });
+  withDb((db) => ({
+    ...db,
+    quizAttempts: db.quizAttempts.map((a) => {
+      if (a.id === attempt1.id) return { ...a, answeredAt: "2026-01-05T12:00:00.000Z" }; // segunda, semana 1
+      if (a.id === attempt2.id) return { ...a, answeredAt: "2026-01-19T12:00:00.000Z" }; // segunda, semana 3 (pula semana 2)
+      return a;
+    }),
+  }));
+  const history = evolutionService.getProgressHistory();
+  assert.equal(history.length, 2);
+  assert.equal(history[0].answered, 10);
+  assert.equal(history[0].accuracy, 60);
+  assert.equal(history[1].accuracy, 80);
+});
+
+test("F5-13. domingo e a segunda seguinte caem em semanas diferentes", () => {
+  const { content } = seedContent();
+  const quiz = contentService.getContent(content.id).quizzes[0];
+  const sunday = studyService.recordQuizAttempt({ quizId: quiz.id, contentId: content.id, answers: buildAnswers(4, 4) });
+  const monday = studyService.recordQuizAttempt({ quizId: quiz.id, contentId: content.id, answers: buildAnswers(4, 2) });
+  withDb((db) => ({
+    ...db,
+    quizAttempts: db.quizAttempts.map((a) => {
+      if (a.id === sunday.id) return { ...a, answeredAt: "2026-01-04T12:00:00.000Z" };
+      if (a.id === monday.id) return { ...a, answeredAt: "2026-01-05T12:00:00.000Z" };
+      return a;
+    }),
+  }));
+  assert.equal(evolutionService.getProgressHistory().length, 2);
+});
+
+test("F5-14. getAccuracyDelta retorna null com apenas 1 ponto no historico", () => {
+  const { content } = seedContent();
+  const quiz = contentService.getContent(content.id).quizzes[0];
+  studyService.recordQuizAttempt({ quizId: quiz.id, contentId: content.id, answers: buildAnswers(10, 5) });
+  assert.equal(evolutionService.getAccuracyDelta(), null);
+});
+
 // ─── relatório ───────────────────────────────────────────────────────────────
 console.log(`\n${passed} passaram, ${failed} falharam`);
 if (failed > 0) {

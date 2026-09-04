@@ -21,6 +21,8 @@ import {
 import { masteryLevelFromScore } from "./studyService.js";
 import { getOverdueReviews } from "./reviewService.js";
 import { getMasteryMeta } from "../constants.js";
+import { readDb } from "../data/storage/index.js";
+import { startOfWeekKey, fromDayKey, toMs } from "../utils/date.js";
 
 // Cortes usados para "pontos fortes" e "precisa de reforço" — alinhados aos
 // mesmos limites de masteryLevelFromScore (needs_review < 60, mastered >= 80).
@@ -166,4 +168,56 @@ export function getWeakContents({ limit = 5 } = {}) {
   return [...lowAccuracy, ...overdueOnly]
     .sort((a, b) => (a.accuracy ?? Infinity) - (b.accuracy ?? Infinity))
     .slice(0, limit);
+}
+
+// Única exceção a "não ler sv_db direto": a agregação temporal precisa
+// varrer todas as tentativas por answeredAt, o que nenhum service atual
+// expõe agregado. Só semanas com pelo menos uma resposta viram ponto —
+// nunca preenchida com zero nem interpolada.
+export function getProgressHistory({ weeks = 8 } = {}) {
+  const db = readDb();
+  const buckets = new Map();
+
+  for (const a of db.quizAttempts) {
+    const key = startOfWeekKey(a.answeredAt);
+    if (!key) continue;
+    const bucket = buckets.get(key) || { answered: 0, correct: 0 };
+    bucket.answered += a.totalQuestions;
+    bucket.correct += a.correctAnswers;
+    buckets.set(key, bucket);
+  }
+  for (const a of db.flashcardAttempts) {
+    const key = startOfWeekKey(a.answeredAt);
+    if (!key) continue;
+    const bucket = buckets.get(key) || { answered: 0, correct: 0 };
+    bucket.answered += 1;
+    if (a.correct) bucket.correct += 1;
+    buckets.set(key, bucket);
+  }
+
+  const sorted = [...buckets.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+  const limited = sorted.slice(-weeks);
+
+  return limited.map(([weekKey, bucket]) => {
+    const weekStart = fromDayKey(weekKey);
+    return {
+      weekStart,
+      label: new Date(toMs(weekStart)).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }),
+      answered: bucket.answered,
+      correct: bucket.correct,
+      accuracy: bucket.answered > 0 ? Math.round((bucket.correct / bucket.answered) * 100) : null,
+    };
+  });
+}
+
+// Diferença em pontos percentuais entre a primeira e a última semana com
+// dado dentro da janela — alimenta o insight "+N p.p.". null com menos de
+// 2 pontos, nunca inventado.
+export function getAccuracyDelta({ weeks = 4 } = {}) {
+  const history = getProgressHistory({ weeks });
+  if (history.length < 2) return null;
+  const from = history[0];
+  const to = history[history.length - 1];
+  if (from.accuracy === null || to.accuracy === null) return null;
+  return { deltaPoints: to.accuracy - from.accuracy, from: from.accuracy, to: to.accuracy };
 }

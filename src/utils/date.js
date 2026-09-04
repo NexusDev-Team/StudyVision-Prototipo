@@ -55,6 +55,19 @@ export function todayKey() {
   return toDayKey(Date.now());
 }
 
+// "YYYY-MM-DD" da segunda-feira da semana de `value`, em horário LOCAL —
+// mesma convenção de toDayKey, usada para agrupar tentativas por semana no
+// histórico de evolução (Fase 5). Semana Segunda→Domingo.
+export function startOfWeekKey(value) {
+  const ms = toMs(value);
+  if (ms === null) return null;
+  const d = new Date(ms);
+  const day = d.getDay(); // 0=domingo .. 6=sábado
+  const offsetToMonday = day === 0 ? 6 : day - 1;
+  const monday = new Date(d.getFullYear(), d.getMonth(), d.getDate() - offsetToMonday, 12, 0, 0, 0);
+  return toDayKey(monday);
+}
+
 export function addDaysIso(value, days) {
   const ms = toMs(value);
   if (ms === null) return null;
