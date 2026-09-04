@@ -10,8 +10,16 @@
 // conteúdo. Este serviço usa a agregação por soma (ver calculateSubjectPerformance),
 // que é a que não distorce quando um conteúdo não tem atividade.
 
-import { getContents } from "./contentService.js";
-import { getPerformanceSummary, getReviewMetrics } from "./performanceService.js";
+import { getContents, getContent } from "./contentService.js";
+import { getSubjects } from "./subjectService.js";
+import {
+  getPerformanceSummary,
+  getReviewMetrics,
+  getContentPerformance,
+  getPerformanceForSubject,
+} from "./performanceService.js";
+import { masteryLevelFromScore } from "./studyService.js";
+import { getMasteryMeta } from "../constants.js";
 
 export function getEvolutionSummary() {
   const summary = getPerformanceSummary();
@@ -61,4 +69,66 @@ export function getEvolutionSummary() {
 
     hasActivity: summary.hasActivity,
   };
+}
+
+// Desempenho de UM conteúdo, com o nível de domínio já resolvido pela mesma
+// régua do studyService (inclusive o mínimo de interações) — nenhum
+// threshold de classificação deve ser reimplementado na UI.
+export function calculateContentPerformance(contentId) {
+  const content = getContent(contentId);
+  const perf = getContentPerformance(contentId);
+  const masteryLevel = masteryLevelFromScore(perf.overall ?? 0, perf.hasActivity, perf.interactions);
+
+  return {
+    contentId,
+    title: content?.title ?? "",
+    subjectId: content?.subjectId ?? null,
+    subjectName: content?.subjectName ?? "",
+    questionsAnswered: perf.quiz.questionsAnswered,
+    correctAnswers: perf.quiz.questionsCorrect,
+    flashcardsReviewed: perf.flashcards.reviewed,
+    flashcardsCorrect: perf.flashcards.correct,
+    accuracy: perf.overall,
+    interactions: perf.interactions,
+    masteryLevel,
+    masteryLabel: getMasteryMeta(masteryLevel).label,
+    hasActivity: perf.hasActivity,
+  };
+}
+
+// Desempenho da matéria a partir da SOMA de acertos/respostas dos conteúdos
+// dela (getPerformanceForSubject) — nunca a média dos percentuais por
+// conteúdo, que distorceria contando conteúdo sem atividade como 0.
+export function calculateSubjectPerformance(subjectId) {
+  const subject = getSubjects().find((s) => s.id === subjectId) || null;
+  const contents = getContents().filter((c) => c.subjectId === subjectId);
+  const forSubject = getPerformanceForSubject(subjectId);
+
+  const denominator = forSubject.questionsAnswered + forSubject.flashcardsReviewed;
+  const accuracy =
+    denominator > 0
+      ? Math.round(((forSubject.questionsCorrect + forSubject.flashcardsCorrect) / denominator) * 100)
+      : null;
+  const contentsWithActivity = contents.filter((c) => (c.mastery?.level || "not_started") !== "not_started").length;
+
+  return {
+    subjectId,
+    name: subject?.name ?? "",
+    contentsCount: contents.length,
+    contentsWithActivity,
+    questionsAnswered: forSubject.questionsAnswered,
+    correctAnswers: forSubject.questionsCorrect,
+    accuracy,
+    mastered: contents.filter((c) => (c.mastery?.level || "not_started") === "mastered").length,
+    needsReview: contents.filter((c) => (c.mastery?.level || "not_started") === "needs_review").length,
+    hasActivity: contentsWithActivity > 0,
+  };
+}
+
+// Só matérias com atividade, da mais forte para a mais fraca.
+export function getSubjectPerformances() {
+  return getSubjects()
+    .map((s) => calculateSubjectPerformance(s.id))
+    .filter((p) => p.hasActivity)
+    .sort((a, b) => (b.accuracy ?? -1) - (a.accuracy ?? -1));
 }

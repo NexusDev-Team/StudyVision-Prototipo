@@ -82,6 +82,16 @@ const { createEvent } = await import("../src/data/models/event.js");
 const { matchesQuery } = await import("../src/utils/search.js");
 
 // helper: cria um conteúdo mínimo já com matéria
+// helper: gera `total` respostas de quiz com `correct` delas certas.
+function buildAnswers(total, correct) {
+  return Array.from({ length: total }, (_, i) => ({
+    questionId: `qs_fake_${i}`,
+    selectedAnswer: i < correct ? 1 : 0,
+    correctAnswer: 1,
+    correct: i < correct,
+  }));
+}
+
 function seedContent(overrides = {}) {
   const subject = subjectService.createSubjectEntry(overrides.subjectName || "Matemática");
   const { content } = contentService.createContentEntry({
@@ -1046,6 +1056,46 @@ test("F5-3. um quiz de 2 questoes com 1 acerto atualiza resumo geral", () => {
   assert.equal(summary.incorrectAnswers, 1);
   assert.equal(summary.quizAccuracy, 50);
   assert.equal(summary.hasActivity, true);
+});
+
+test("F5-4. desempenho de materia agrega so conteudos ativos, sem distorcer media", () => {
+  const subject = subjectService.createSubjectEntry("Matemática");
+  const a = contentService.createContentEntry({ subjectId: subject.id, subjectName: subject.name, title: "Derivadas" }).content;
+  const b = contentService.createContentEntry({ subjectId: subject.id, subjectName: subject.name, title: "Limites" }).content;
+  contentService.createContentEntry({ subjectId: subject.id, subjectName: subject.name, title: "Integrais" }); // sem atividade
+
+  studyService.recordQuizAttempt({ quizId: "qz_a", contentId: a.id, answers: buildAnswers(20, 17) }); // 85%
+  studyService.registerActivity(a.id);
+  studyService.recordQuizAttempt({ quizId: "qz_b", contentId: b.id, answers: buildAnswers(100, 72) }); // 72%
+  studyService.registerActivity(b.id);
+
+  const perf = evolutionService.calculateSubjectPerformance(subject.id);
+  assert.equal(perf.contentsCount, 3);
+  assert.equal(perf.contentsWithActivity, 2);
+  assert.equal(perf.hasActivity, true);
+  // soma bruta: (17+72)/(20+100)*100 = 74 — nao a media aritmetica (85+72+0)/3 = 52
+  assert.equal(perf.accuracy, Math.round(((17 + 72) / (20 + 100)) * 100));
+  assert.notEqual(perf.accuracy, Math.round((85 + 72 + 0) / 3));
+});
+
+test("F5-5. materia sem nenhum conteudo ativo fica com accuracy nula", () => {
+  const subject = subjectService.createSubjectEntry("Física");
+  contentService.createContentEntry({ subjectId: subject.id, subjectName: subject.name, title: "Cinemática" });
+  const perf = evolutionService.calculateSubjectPerformance(subject.id);
+  assert.equal(perf.accuracy, null);
+  assert.equal(perf.hasActivity, false);
+  assert.equal(evolutionService.getSubjectPerformances().some((s) => s.subjectId === subject.id), false);
+});
+
+test("F5-6. conteudo com menos de 3 interacoes e 100% fica em developing, nao mastered", () => {
+  const { content } = seedContent();
+  const fc = contentService.getContent(content.id).flashcards[0];
+  studyService.recordFlashcardAttempt({ flashcardId: fc.id, contentId: content.id, correct: true });
+  studyService.registerActivity(content.id);
+  const perf = evolutionService.calculateContentPerformance(content.id);
+  assert.equal(perf.interactions, 1);
+  assert.equal(perf.accuracy, 100);
+  assert.equal(perf.masteryLevel, "developing");
 });
 
 // ─── relatório ───────────────────────────────────────────────────────────────
