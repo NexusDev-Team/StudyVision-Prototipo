@@ -7,9 +7,20 @@ import EmptyState from "../components/ui/EmptyState";
 import PerformanceChart from "../components/plus/PerformanceChart";
 import SubjectProgress from "../components/plus/SubjectProgress";
 import AttentionCard from "../components/plus/AttentionCard";
+import StrengthsCard from "../components/plus/StrengthsCard";
+import PlusPaywall from "../components/plus/PlusPaywall";
 import SparkChart from "../components/ui/SparkChart";
 import Button from "../components/ui/Button";
-import { getEvolutionSummary, getSubjectPerformances, getProgressHistory, getWeakContents, getReviewProgress } from "../services/evolutionService";
+import {
+  getEvolutionSummary,
+  getSubjectPerformances,
+  getProgressHistory,
+  getWeakContents,
+  getReviewProgress,
+  getStrongSubjects,
+  getRecommendations,
+  getAccuracyDelta,
+} from "../services/evolutionService";
 
 function StatCard({ value, label, delay = 0 }) {
   return (
@@ -29,6 +40,9 @@ export default function EvolutionScreen({ isPremium, onOpenContent, onOpenLibrar
   const history = getProgressHistory({ weeks: 8 });
   const weakContents = getWeakContents({ limit: 5 });
   const reviewProgress = getReviewProgress();
+  const strongSubjects = getStrongSubjects({ limit: 3 }).map((s) => ({ id: s.subjectId, name: s.name, accuracyRate: s.accuracy }));
+  const recommendations = getRecommendations({ limit: 3 });
+  const delta = getAccuracyDelta();
 
   const breakdown = {
     not_started: summary.notStartedContents,
@@ -152,6 +166,36 @@ export default function EvolutionScreen({ isPremium, onOpenContent, onOpenLibrar
                 Ver revisões
               </Button>
             </Card>
+
+            <StrengthsCard subjects={strongSubjects} />
+
+            <SectionLabel>Insights</SectionLabel>
+            <PlusPaywall
+              locked={!isPremium}
+              compact
+              title="Ver insights da sua evolução"
+              onStartTrial={onVisionPlus}
+            >
+              <Card style={{ padding: "18px 20px", margin: "0 0 20px", display: "flex", flexDirection: "column", gap: 10 }}>
+                {delta && (
+                  <p style={{ fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, color: delta.deltaPoints >= 0 ? "#16A34A" : "#DC2626", margin: 0 }}>
+                    {delta.deltaPoints >= 0 ? "+" : ""}{delta.deltaPoints} p.p. nas últimas semanas ({delta.from}% → {delta.to}%)
+                  </p>
+                )}
+                {recommendations.length === 0 ? (
+                  <p style={{ fontFamily: "Inter,sans-serif", fontSize: 13, color: "#64748B", margin: 0 }}>
+                    Continue estudando para desbloquear insights sobre sua evolução.
+                  </p>
+                ) : (
+                  recommendations.map((r) => (
+                    <div key={r.id}>
+                      <p style={{ fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, color: "#111827", margin: "0 0 2px" }}>{r.title}</p>
+                      <p style={{ fontFamily: "Inter,sans-serif", fontSize: 12.5, color: "#64748B", margin: 0, lineHeight: 1.5 }}>{r.message}</p>
+                    </div>
+                  ))
+                )}
+              </Card>
+            </PlusPaywall>
           </>
         )}
       </div>
