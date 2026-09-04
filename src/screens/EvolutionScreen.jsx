@@ -6,7 +6,8 @@ import ProgressRing from "../components/ui/ProgressRing";
 import EmptyState from "../components/ui/EmptyState";
 import PerformanceChart from "../components/plus/PerformanceChart";
 import SubjectProgress from "../components/plus/SubjectProgress";
-import { getEvolutionSummary, getSubjectPerformances } from "../services/evolutionService";
+import SparkChart from "../components/ui/SparkChart";
+import { getEvolutionSummary, getSubjectPerformances, getProgressHistory } from "../services/evolutionService";
 
 function StatCard({ value, label, delay = 0 }) {
   return (
@@ -23,6 +24,7 @@ function StatCard({ value, label, delay = 0 }) {
 export default function EvolutionScreen({ isPremium, onOpenContent, onOpenLibrary, onOpenReview, onVisionPlus }) {
   const summary = getEvolutionSummary();
   const subjectRows = getSubjectPerformances().map((s) => ({ id: s.subjectId, name: s.name, accuracyRate: s.accuracy }));
+  const history = getProgressHistory({ weeks: 8 });
 
   const breakdown = {
     not_started: summary.notStartedContents,
@@ -80,6 +82,31 @@ export default function EvolutionScreen({ isPremium, onOpenContent, onOpenLibrar
             <PerformanceChart breakdown={breakdown} hasActivity={summary.hasActivity} locked={false} />
 
             <SubjectProgress subjects={subjectRows} locked={false} onSelect={onOpenLibrary} />
+
+            <SectionLabel>Evolução</SectionLabel>
+            {history.length === 0 ? (
+              <Card style={{ padding: "22px 20px", margin: "0 0 20px", textAlign: "center" }}>
+                <p style={{ fontFamily: "Inter,sans-serif", fontSize: 13, color: "#64748B", margin: 0 }}>
+                  Responda questões para acompanhar sua evolução ao longo do tempo.
+                </p>
+              </Card>
+            ) : (
+              <Card style={{ padding: "18px 20px", margin: "0 0 20px" }}>
+                {history.length >= 2 && (
+                  <SparkChart
+                    points={history.map((h) => h.accuracy ?? 0)}
+                    labels={history.map((h) => h.label)}
+                  />
+                )}
+                <ul style={{ listStyle: "none", margin: history.length >= 2 ? "14px 0 0" : 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+                  {history.map((h) => (
+                    <li key={h.weekStart} style={{ fontFamily: "Inter,sans-serif", fontSize: 12, color: "#64748B" }}>
+                      Semana {h.label} — {h.answered} {h.answered === 1 ? "questão" : "questões"}, {h.accuracy}% de acerto
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            )}
           </>
         )}
       </div>
