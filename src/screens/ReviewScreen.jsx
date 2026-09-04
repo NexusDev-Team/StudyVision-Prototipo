@@ -6,12 +6,15 @@ import ReviewCard from "../components/study/ReviewCard";
 import UpcomingReviewRow from "../components/study/UpcomingReviewRow";
 import CalendarMonth from "../components/study/CalendarMonth";
 import DayEventsModal from "../components/study/DayEventsModal";
+import EventFormModal from "../components/study/EventFormModal";
 import { useContentStore } from "../context/ContentStoreContext.jsx";
+import { createEventEntry } from "../services/eventService";
 import { endOfTodayIso, DAY_MS } from "../utils/date";
 
-export default function ReviewScreen({ onReview, onOpenContent }) {
-  const { contents, reviews, events } = useContentStore();
+export default function ReviewScreen({ onReview, onOpenContent, onToast }) {
+  const { contents, reviews, events, mutate } = useContentStore();
   const [selectedDate, setSelectedDate] = useState(null);
+  const [creatingEvent, setCreatingEvent] = useState(false);
 
   const contentById = useMemo(() => new Map(contents.map((c) => [c.id, c])), [contents]);
 
@@ -57,6 +60,16 @@ export default function ReviewScreen({ onReview, onOpenContent }) {
 
   const selectedEntries = selectedDate ? eventsByDate[selectedDate] || [] : [];
 
+  const handleCreateEvent = async (payload) => {
+    try {
+      mutate(() => createEventEntry(payload));
+      setCreatingEvent(false);
+      onToast?.("✓ Compromisso criado");
+    } catch (err) {
+      onToast?.(err.message || "Não foi possível criar o compromisso.");
+    }
+  };
+
   return (
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#F8FAFC", fontFamily: "Inter,sans-serif", overflow: "hidden" }}>
       <div style={{ background: "white", padding: "52px 20px 16px", borderBottom: "1px solid #F1F5F9", flexShrink: 0 }}>
@@ -90,7 +103,13 @@ export default function ReviewScreen({ onReview, onOpenContent }) {
           ))}
         </div>
 
-        <p style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: 1.2, marginBottom: 10 }}>CALENDÁRIO ACADÊMICO</p>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+          <p style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: 1.2, margin: 0 }}>CALENDÁRIO ACADÊMICO</p>
+          <button onClick={() => setCreatingEvent(true)}
+            style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", padding: 0, color: "#2563EB", fontSize: 12, fontWeight: 700, fontFamily: "Inter,sans-serif" }}>
+            <Plus size={14} /> Novo compromisso
+          </button>
+        </div>
         <CalendarMonth eventsByDate={eventsByDate} onSelectDate={setSelectedDate} />
         {Object.keys(eventsByDate).length === 0 && (
           <p style={{ fontSize: 12, color: "#94A3B8", textAlign: "center", margin: "10px 0 0", fontFamily: "Inter,sans-serif" }}>
@@ -107,6 +126,13 @@ export default function ReviewScreen({ onReview, onOpenContent }) {
             contentById={contentById}
             onViewContent={onOpenContent}
             onClose={() => setSelectedDate(null)}
+          />
+        )}
+        {creatingEvent && (
+          <EventFormModal
+            contents={contents}
+            onSave={handleCreateEvent}
+            onClose={() => setCreatingEvent(false)}
           />
         )}
       </AnimatePresence>
