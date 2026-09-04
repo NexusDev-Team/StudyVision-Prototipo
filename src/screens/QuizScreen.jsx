@@ -10,6 +10,11 @@ import { newId } from "../utils/id";
 // Questão V/F gerada aleatoriamente para o "gerar mais" do Vision+: metade das
 // vezes a afirmação é verdadeira (um conceito real do conteúdo), metade falsa
 // (o conceito trocado por um genérico), para não cair sempre no mesmo padrão.
+//
+// ephemeral: true — existe só nesta sessão (placeholder de UI até a geração
+// real por IA), nunca persistida em quiz.questions. Respostas a ela contam
+// no placar exibido na tela, mas não entram na tentativa gravada: gravar
+// apontaria para um questionId inexistente.
 function generateQuizQuestion(content) {
   const concepts = content?.keyConcepts?.length ? content.keyConcepts : [content?.title || "este conteúdo"];
   const isTrue = Math.random() < 0.5;
@@ -17,7 +22,7 @@ function generateQuizQuestion(content) {
   const affirmation = isTrue
     ? `${concept} é um dos pontos centrais de "${content?.title}".`
     : `${concept} não tem nenhuma relação com "${content?.title}".`;
-  return { id: newId("qs"), type: "vf", question: affirmation, correctAnswer: isTrue };
+  return { id: newId("qs"), type: "vf", question: affirmation, correctAnswer: isTrue, ephemeral: true };
 }
 
 export default function QuizScreen({ content, onBack, isPlus = false, onVisionPlus }) {
@@ -44,8 +49,10 @@ export default function QuizScreen({ content, onBack, isPlus = false, onVisionPl
     setSelected(optionIndex);
     const correct = isCorrectOption(q, optionIndex, options);
     if (correct) setScore((s) => s + 1);
-    const selectedAnswer = q.type === "vf" ? options[optionIndex] : optionIndex;
-    answersRef.current.push({ questionId: q.id, selectedAnswer, correct });
+    if (!q.ephemeral) {
+      const selectedAnswer = q.type === "vf" ? options[optionIndex] : optionIndex;
+      answersRef.current.push({ questionId: q.id, selectedAnswer, correctAnswer: q.correctAnswer, correct });
+    }
   };
 
   const next = () => { setSelected(null); setIndex((i) => i + 1); };

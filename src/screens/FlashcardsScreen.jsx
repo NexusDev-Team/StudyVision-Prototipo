@@ -8,6 +8,9 @@ import { recordFlashcardAttempt, registerActivity } from "../services/studyServi
 import { useContentStore } from "../context/ContentStoreContext.jsx";
 import { newId } from "../utils/id";
 
+// ephemeral: true — carta existe só nesta sessão (placeholder de UI até a
+// geração real por IA), nunca persistida em content.flashcards. Respostas a
+// ela não viram tentativa: gravar apontaria para um flashcardId inexistente.
 function generateFlashcard(content, n) {
   const concepts = content?.keyConcepts?.length ? content.keyConcepts : [content?.title || "este conteúdo"];
   const concept = concepts[n % concepts.length];
@@ -15,6 +18,7 @@ function generateFlashcard(content, n) {
     id: newId("fc"),
     front: `O que você lembra sobre ${concept}?`,
     back: `Revise o material de "${content?.title}" para aprofundar em ${concept}.`,
+    ephemeral: true,
   };
 }
 
@@ -53,7 +57,7 @@ export default function FlashcardsScreen({ content, onBack, onVisionPlus, isPlus
   const grade = (remembered) => {
     const card = cards[index];
     const responseTimeMs = shownAtRef.current ? Date.now() - shownAtRef.current : null;
-    if (card?.id && contentId) {
+    if (card?.id && contentId && !card.ephemeral) {
       const result = mutate(() => {
         recordFlashcardAttempt({ flashcardId: card.id, contentId, correct: remembered, responseTimeMs });
         // Ao terminar o deck, recalcula domínio/dificuldade/revisão uma única vez.
@@ -64,6 +68,12 @@ export default function FlashcardsScreen({ content, onBack, onVisionPlus, isPlus
         return null;
       });
       if (result) setContentPerformance(result.performance);
+    } else if (index + 1 >= cards.length && !recordedRef.current && contentId) {
+      // Deck terminou só com cartas efêmeras respondidas — ainda assim garante
+      // que domínio/dificuldade/revisão reflitam qualquer tentativa real já feita.
+      recordedRef.current = true;
+      const result = mutate(() => registerActivity(contentId));
+      setContentPerformance(result.performance);
     }
     setGrades(g => [...g, remembered]);
     setFlipped(false);
