@@ -14,6 +14,7 @@ import {
 } from "../services/reviewService";
 import { getEventsForContent } from "../services/eventService";
 import { scheduleCommitment } from "../services/calendarService";
+import { getContentPerformance } from "../services/performanceService";
 import { CANONICAL_TO_LEGACY_EVENT_TYPE } from "../data/adapters/legacyEventType";
 import { getSubjectVisual, getMasteryMeta } from "../constants";
 
@@ -29,6 +30,7 @@ export default function ContentDetailScreen({ content, onBack, onFlashcards, onQ
   const mastery = getMasteryMeta(content.mastery?.level);
   const masteryScore = content.mastery?.score ?? 0;
   const hasMastery = (content.mastery?.level || "not_started") !== "not_started";
+  const performance = getContentPerformance(content.id);
 
   // Um conteúdo pode ter N eventos; a seção de planejamento confirma o mais
   // recente e cada "Salvar Compromisso" agenda um novo, sem sobrescrever.
@@ -79,6 +81,30 @@ export default function ContentDetailScreen({ content, onBack, onFlashcards, onQ
             </p>
           </div>
           <span style={{ fontSize: 11, fontWeight: 700, color: mastery.color, background: mastery.bg, borderRadius: 8, padding: "4px 10px" }}>{mastery.label}</span>
+        </motion.div>
+
+        {/* Desempenho */}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+          style={{ background: "white", borderRadius: 20, padding: "12px 16px", marginBottom: 12, boxShadow: "0 1px 8px rgba(0,0,0,0.05)", border: "1px solid #E2E8F0" }}>
+          <p style={{ fontSize: 10, fontWeight: 700, color: "#94A3B8", letterSpacing: 1.2, margin: "0 0 8px" }}>DESEMPENHO</p>
+          {!performance.hasActivity ? (
+            <p style={{ fontSize: 12, color: "#94A3B8", margin: 0, fontFamily: "Inter,sans-serif" }}>Ainda não há dados suficientes.</p>
+          ) : (
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+              <div style={{ textAlign: "center", flex: 1 }}>
+                <p style={{ fontSize: 16, fontWeight: 800, color: "#111827", margin: 0 }}>{performance.quiz.accuracyRate != null ? `${performance.quiz.accuracyRate}%` : "—"}</p>
+                <p style={{ fontSize: 10, color: "#94A3B8", margin: "2px 0 0" }}>Quiz</p>
+              </div>
+              <div style={{ textAlign: "center", flex: 1, borderLeft: "1px solid #F1F5F9", borderRight: "1px solid #F1F5F9" }}>
+                <p style={{ fontSize: 16, fontWeight: 800, color: "#111827", margin: 0 }}>{performance.flashcards.accuracyRate != null ? `${performance.flashcards.accuracyRate}%` : "—"}</p>
+                <p style={{ fontSize: 10, color: "#94A3B8", margin: "2px 0 0" }}>Flashcards</p>
+              </div>
+              <div style={{ textAlign: "center", flex: 1 }}>
+                <p style={{ fontSize: 16, fontWeight: 800, color: "#111827", margin: 0 }}>{performance.overall != null ? `${performance.overall}%` : "—"}</p>
+                <p style={{ fontSize: 10, color: "#94A3B8", margin: "2px 0 0" }}>Geral</p>
+              </div>
+            </div>
+          )}
         </motion.div>
 
         {/* Review status */}
