@@ -40,11 +40,11 @@ export default function CommitmentsSection({ content, events, contents, onCreate
                   <p style={{ fontSize: 11, color: "#94A3B8", margin: "1px 0 0" }}>{meta.label} · {formatEventDate(event.date)}{event.time ? ` · ${event.time}` : ""}</p>
                 </div>
                 <button onClick={() => setMode(event)} aria-label={`Editar ${event.title}`}
-                  style={{ background: "none", border: "none", cursor: "pointer", padding: 4, flexShrink: 0 }}>
+                  style={{ width: 44, height: 44, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   <Pencil size={14} color="#64748B" />
                 </button>
                 <button onClick={() => onUnlink(event)} aria-label={`Desvincular ${event.title}`}
-                  style={{ background: "none", border: "none", cursor: "pointer", padding: 4, flexShrink: 0 }}>
+                  style={{ width: 44, height: 44, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   <Link2Off size={14} color="#DC2626" />
                 </button>
               </div>

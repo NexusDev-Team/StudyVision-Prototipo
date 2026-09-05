@@ -46,7 +46,7 @@ export default function ExportSection({ content, onToast }) {
               <Upload size={18} color="#2563EB" />
               <span style={{ fontSize: 16, fontWeight: 800, color: "#111827" }}>Exportar</span>
             </div>
-            <button onClick={() => setOpen(false)} aria-label="Fechar" style={{ background: "#F1F5F9", border: "none", borderRadius: "50%", width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+            <button onClick={() => setOpen(false)} aria-label="Fechar" style={{ background: "#F1F5F9", border: "none", borderRadius: "50%", width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
               <X size={16} color="#64748B" />
             </button>
           </div>

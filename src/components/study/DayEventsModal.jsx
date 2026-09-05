@@ -23,7 +23,7 @@ export default function DayEventsModal({ date, entries, contentById, onClose, on
           <Calendar size={18} color="#2563EB" />
           <span style={{ fontSize: 16, fontWeight: 800, color: "#111827" }}>{formatDate(date)}</span>
         </div>
-        <button onClick={onClose} aria-label="Fechar" style={{ background: "#F1F5F9", border: "none", borderRadius: "50%", width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+        <button onClick={onClose} aria-label="Fechar" style={{ background: "#F1F5F9", border: "none", borderRadius: "50%", width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
           <X size={16} color="#64748B" />
         </button>
       </div>
@@ -43,13 +43,13 @@ export default function DayEventsModal({ date, entries, contentById, onClose, on
                 <span style={{ fontSize: 10, fontWeight: 700, color: meta.color, background: `${meta.color}1A`, borderRadius: 8, padding: "3px 8px", flexShrink: 0 }}>{meta.label}</span>
                 {onEditEvent && (
                   <button onClick={() => onEditEvent(event)} aria-label={`Editar ${event.title}`}
-                    style={{ background: "none", border: "none", cursor: "pointer", padding: 4, flexShrink: 0 }}>
+                    style={{ width: 44, height: 44, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <Pencil size={14} color="#64748B" />
                   </button>
                 )}
                 {onDeleteEvent && (
                   <button onClick={() => onDeleteEvent(event)} aria-label={`Excluir ${event.title}`}
-                    style={{ background: "none", border: "none", cursor: "pointer", padding: 4, flexShrink: 0 }}>
+                    style={{ width: 44, height: 44, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <Trash2 size={14} color="#DC2626" />
                   </button>
                 )}
