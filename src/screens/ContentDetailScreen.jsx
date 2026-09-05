@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, CalendarClock, CreditCard, ListChecks, HelpCircle, ChevronRight, Trash2 } from "lucide-react";
 import CapturedPageVisual from "../components/brand/CapturedPageVisual";
 import ContentBlocks from "../components/study/ContentBlocks";
+import PhotosSection from "../components/study/PhotosSection";
 import ExportSection from "../components/study/ExportSection";
 import CommitmentsSection from "../components/study/CommitmentsSection";
 import SubjectPickerModal from "../components/study/SubjectPickerModal";
@@ -16,11 +17,11 @@ import {
   reviewReasonLabel,
 } from "../services/reviewService";
 import { getEventsForContent, createEventEntry, updateEvent, unlinkContentFromEvent } from "../services/eventService";
-import { moveContentToSubject, deleteContent } from "../services/contentService";
+import { moveContentToSubject, deleteContent, removeImageFromContent } from "../services/contentService";
 import { getContentPerformance } from "../services/performanceService";
 import { getSubjectVisual, getMasteryMeta, UNASSIGNED_SUBJECT_LABEL } from "../constants";
 
-export default function ContentDetailScreen({ content, onBack, onDeleted, onFlashcards, onQuestions, onQuiz, onVisionPlus, onToast }) {
+export default function ContentDetailScreen({ content, onBack, onDeleted, onFlashcards, onQuestions, onQuiz, onVisionPlus, onToast, onAddPhoto, onViewPhoto }) {
   const { mutate, subjects, contents } = useContentStore();
   const [subjectPickerOpen, setSubjectPickerOpen] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
@@ -78,6 +79,11 @@ export default function ContentDetailScreen({ content, onBack, onDeleted, onFlas
     onToast?.("✓ Matéria atualizada");
   };
 
+  const handleRemovePhoto = (imageId) => {
+    mutate(() => removeImageFromContent(content.id, imageId));
+    onToast?.("✓ Foto removida");
+  };
+
   const handleDelete = () => {
     try {
       mutate(() => deleteContent(content.id));
@@ -121,6 +127,13 @@ export default function ContentDetailScreen({ content, onBack, onDeleted, onFlas
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 12 }}>
           <CapturedPageVisual content={content} height={120} />
         </motion.div>
+
+        <PhotosSection
+          content={content}
+          onAddPhoto={onAddPhoto}
+          onRemovePhoto={handleRemovePhoto}
+          onSelectPhoto={(index) => onViewPhoto?.(content, index)}
+        />
 
         {/* Domínio */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}

@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useContentStore } from "./context/ContentStoreContext.jsx";
 import { nextPendingReview, markReviewDone } from "./services/reviewService";
+import { addImageToContent } from "./services/contentService";
 import { useNavigation } from "./hooks/useNavigation";
 import { useToast } from "./hooks/useToast";
 import { useSubscription } from "./hooks/useSubscription";
@@ -27,6 +28,7 @@ export default function App() {
   const { screen, setScreen, prevScreens, setPrevScreens, reviewMode, setReviewMode, go, goBack, goTo } = useNavigation("camera");
   const [selectedContentId, setSelectedContentId] = useState(null);
   const [libraryFilterSubjectId, setLibraryFilterSubjectId] = useState(null);
+  const [attachTargetId, setAttachTargetId] = useState(null);
   const { toast, showToast, clearToast } = useToast();
   const analysis = useAnalysis();
   const { contents, dueCount, reload: refreshDueCount, mutate } = useContentStore();
@@ -39,6 +41,20 @@ export default function App() {
   // subjectId opcional: drill-down da Evolução chega já filtrado; qualquer
   // outra entrada na Biblioteca (nav, salvar conteúdo, excluir) limpa o filtro.
   const openLibrary = (subjectId = null) => { setLibraryFilterSubjectId(subjectId); goTo("library"); };
+
+  const openAttachCamera = (contentId) => { setAttachTargetId(contentId); go("camera"); };
+
+  const handleAttachCapture = (dataUrl) => {
+    const targetId = attachTargetId;
+    setAttachTargetId(null);
+    const { result } = mutate(() => addImageToContent(targetId, { dataUrl }));
+    if (result && result.ok === false) {
+      showToast("Não foi possível salvar a foto — armazenamento cheio.");
+    } else {
+      showToast("✓ Foto adicionada");
+    }
+    goBack();
+  };
 
   const handleStartTrial = () => { startTrial(); showToast("✓ Study Vision+ ativado"); };
   const handleResetToFree = () => { resetToFree(); showToast("Demonstração reiniciada"); };
@@ -79,8 +95,10 @@ export default function App() {
           style={{ position: "absolute", inset: 0, paddingBottom: showNav ? 80 : 0 }}>
           {screen === "camera" && (
             <CameraScreen
-              onCapture={(dataUrl) => { analysis.run(dataUrl); go("analysis"); }}
+              mode={attachTargetId ? "attach" : "capture"}
+              onCapture={attachTargetId ? handleAttachCapture : (dataUrl) => { analysis.run(dataUrl); go("analysis"); }}
               onLibraryNav={() => openLibrary()}
+              onClose={() => { setAttachTargetId(null); goBack(); }}
             />
           )}
           {screen === "analysis" && (
@@ -119,6 +137,7 @@ export default function App() {
               onQuiz={() => go("quiz")}
               onVisionPlus={() => go("visionplus")}
               onToast={showToast}
+              onAddPhoto={() => openAttachCamera(selectedContent.id)}
             />
           )}
           {screen === "flashcards" && selectedContent && (
