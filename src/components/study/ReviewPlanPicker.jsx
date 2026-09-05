@@ -11,13 +11,6 @@ const OPTIONS = [
   { value: "monthly", label: "Mensal" },
 ];
 
-const HINT = {
-  none: "Sem revisões automáticas. Só compromissos (prova, trabalho) geram revisão.",
-  weekly: "Uma revisão a cada 7 dias, sempre em dia útil.",
-  biweekly: "Uma revisão a cada 15 dias, sempre em dia útil.",
-  monthly: "Uma revisão a cada 30 dias, sempre em dia útil.",
-};
-
 export default function ReviewPlanPicker({ value = "none", onChange, delay = 0.58 }) {
   return (
     <Card initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay }}>
@@ -49,9 +42,6 @@ export default function ReviewPlanPicker({ value = "none", onChange, delay = 0.5
           );
         })}
       </div>
-      <p style={{ fontFamily: "Inter,sans-serif", fontSize: 11.5, color: "#94A3B8", margin: "8px 0 0", lineHeight: 1.5 }}>
-        {HINT[value] || HINT.none}
-      </p>
     </Card>
   );
 }
