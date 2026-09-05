@@ -74,6 +74,34 @@ export function addDaysIso(value, days) {
   return new Date(ms + days * DAY_MS).toISOString();
 }
 
+// Início do dia local de hoje (00:00) — corte para decidir se uma revisão
+// está atrasada (scheduledFor anterior a isto).
+export function startOfTodayIso() {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString();
+}
+
+// true se `value` cai num sábado ou domingo no fuso local.
+export function isWeekendIso(value) {
+  const ms = toMs(value);
+  if (ms === null) return false;
+  const day = new Date(ms).getDay();
+  return day === 0 || day === 6;
+}
+
+// Se `value` cair em fim de semana, avança para a segunda-feira seguinte
+// (meio-dia local); caso contrário, devolve o próprio dia ao meio-dia local.
+// Usado só pelas revisões de plano — as de compromisso seguem o evento.
+export function nextWeekdayIso(value) {
+  const ms = toMs(value);
+  if (ms === null) return null;
+  const d = new Date(ms);
+  const day = d.getDay();
+  const add = day === 6 ? 2 : day === 0 ? 1 : 0;
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() + add, 12, 0, 0, 0).toISOString();
+}
+
 // Fim do dia local (23:59:59.999) — uma revisão marcada para daqui a algumas
 // horas ainda conta como "hoje", não como próxima.
 export function endOfTodayIso() {

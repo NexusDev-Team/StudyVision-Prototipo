@@ -6,6 +6,13 @@ import { readDb, withDb } from "../data/storage/index.js";
 import { createEvent } from "../data/models/event.js";
 import { validateEvent } from "../data/models/validate.js";
 import { nowIso } from "../utils/date.js";
+import { syncCommitmentReviews } from "./reviewService.js";
+
+// Reconstrói a série de revisões de compromisso dos conteúdos afetados por
+// uma mutação de evento (criar/editar/excluir/desvincular). Idempotente.
+function syncReviewsForContents(contentIds) {
+  for (const id of new Set(contentIds.filter(Boolean))) syncCommitmentReviews(id);
+}
 
 // Normaliza um evento lido do db para o formato atual — cobre eventos criados
 // antes da Fase 4 (sem notes/updatedAt).
@@ -40,6 +47,7 @@ export function createEventEntry(input) {
   const { valid, errors } = validateEvent(event);
   if (!valid) throw new EventValidationError(`Evento inválido: ${errors.join(", ")}`, errors);
   withDb((db) => ({ ...db, events: [...db.events, event] }));
+  syncReviewsForContents(event.contentIds);
   return event;
 }
 
@@ -47,6 +55,7 @@ export function createEventEntry(input) {
 // persistir, para uma edição não deixar o evento num estado inconsistente.
 export function updateEvent(id, patch = {}) {
   const { id: _ignored, createdAt: _ignoredCreatedAt, ...safePatch } = patch;
+  const beforeContentIds = getEvent(id)?.contentIds || [];
   let updated = null;
   let validationError = null;
   withDb((db) => {
@@ -64,16 +73,23 @@ export function updateEvent(id, patch = {}) {
     return validationError ? db : { ...db, events };
   });
   if (validationError) throw validationError;
+  // Datas/tipo/conteúdos podem ter mudado — resincroniza os conteúdos do
+  // evento antes e depois da edição.
+  syncReviewsForContents([...beforeContentIds, ...(updated?.contentIds || [])]);
   return updated;
 }
 
 // Retorna true se um evento existia e foi removido, false caso contrário.
 export function deleteEvent(id) {
   let removed = false;
+  let affected = [];
   withDb((db) => {
-    removed = db.events.some((e) => e.id === id);
+    const existing = db.events.find((e) => e.id === id);
+    removed = !!existing;
+    affected = existing ? existing.contentIds : [];
     return { ...db, events: db.events.filter((e) => e.id !== id) };
   });
+  if (removed) syncReviewsForContents(affected);
   return removed;
 }
 
@@ -91,6 +107,7 @@ export function linkContentToEvent(eventId, contentId) {
       return updated;
     }),
   }));
+  if (updated) syncCommitmentReviews(contentId);
   return updated;
 }
 
@@ -104,6 +121,7 @@ export function unlinkContentFromEvent(eventId, contentId) {
       return updated;
     }),
   }));
+  if (updated) syncCommitmentReviews(contentId);
   return updated;
 }
 

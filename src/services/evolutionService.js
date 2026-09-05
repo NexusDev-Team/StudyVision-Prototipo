@@ -24,7 +24,7 @@ import {
   getCompletedReviews,
   getOverdueReviews,
   getDueReviews,
-  reviewReasonLabel,
+  reviewLabel,
 } from "./reviewService.js";
 import { getMasteryMeta, UNASSIGNED_SUBJECT_LABEL } from "../constants.js";
 import { readDb } from "../data/storage/index.js";
@@ -291,7 +291,7 @@ export function getReviewProgress() {
         title: getContent(r.contentId)?.title ?? "",
         scheduledFor: r.scheduledFor,
         reason: r.reason,
-        reasonLabel: reviewReasonLabel(r.reason),
+        reasonLabel: reviewLabel(r),
       })),
   };
 }

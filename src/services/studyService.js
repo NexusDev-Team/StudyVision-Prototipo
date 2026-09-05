@@ -6,7 +6,7 @@ import { createFlashcardAttempt } from "../data/models/flashcard.js";
 import { createQuizAttempt } from "../data/models/quiz.js";
 import { nowIso } from "../utils/date.js";
 import { getContentPerformance } from "./performanceService.js";
-import { scheduleReviewFromPerformance } from "./reviewService.js";
+import { advanceReviewsAfterActivity } from "./reviewService.js";
 
 export function recordFlashcardAttempt({ flashcardId, contentId, correct, responseTimeMs }) {
   const attempt = createFlashcardAttempt({ flashcardId, contentId, correct, responseTimeMs });
@@ -112,6 +112,8 @@ export function registerActivity(contentId) {
   const mastery = updateMastery(contentId);
   const recommendedDifficulty = updateRecommendedDifficulty(contentId);
   const performance = getContentPerformance(contentId);
-  const review = scheduleReviewFromPerformance(contentId, performance.overall);
+  // Só antecipa a revisão de compromisso pendente quando o desempenho pede —
+  // nunca cria revisão nova nem mexe na revisão de plano.
+  const review = advanceReviewsAfterActivity(contentId, performance.overall);
   return { mastery, recommendedDifficulty, review, performance };
 }

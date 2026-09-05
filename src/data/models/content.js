@@ -3,6 +3,8 @@ import { nowIso } from "../../utils/date.js";
 import { createFlashcard } from "./flashcard.js";
 import { createQuiz } from "./quiz.js";
 
+export const REVIEW_PLANS = ["none", "weekly", "biweekly", "monthly"];
+
 export function createImage({ contentId, dataUrl, order, createdAt } = {}) {
   return {
     id: newId(ID_PREFIX.image),
@@ -80,6 +82,10 @@ export function createContent(input = {}) {
     quizzes,
     openQuestions,
     mastery: createMastery(input.mastery),
+    // Cadência de revisão escolhida pelo usuário na captura. "none" = sem
+    // revisão de plano. Conteúdo legado (sem o campo) é tratado como "none"
+    // por reconcileReviews.
+    reviewPlan: REVIEW_PLANS.includes(input.reviewPlan) ? input.reviewPlan : "none",
     createdAt,
     updatedAt: input.updatedAt || now,
   };

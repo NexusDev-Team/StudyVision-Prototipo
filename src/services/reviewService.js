@@ -1,19 +1,50 @@
-// Repetição espaçada orientada a desempenho real: no máximo UMA revisão
-// pendente por conteúdo. Cada atividade (quiz ou flashcards) recalcula o
-// desempenho e reagenda essa pendente única — nunca cria uma segunda.
+// Revisões atreladas a uma intenção — nunca repetição espaçada infinita.
+// Toda revisão pendente tem um `kind`:
 //
-// Ordem crítica usada pelas telas de estudo (ver studyService.registerActivity
-// e FlashcardsScreen/QuizScreen): a tela registra as tentativas da sessão
-// (o que reagenda a pendente ATUAL para uma nova data, via
-// scheduleReviewFromPerformance) e só DEPOIS, se estiver em modo revisão,
-// chama markReviewDone sobre essa mesma pendente já reagendada. markReviewDone
-// então chama ensureNextReview para o conteúdo nunca ficar sem próxima revisão.
+//   plan       — cadência escolhida no conteúdo (content.reviewPlan):
+//                semanal / quinzenal / mensal. Exatamente UMA pendente por
+//                conteúdo, sempre em dia útil, com a carga distribuída para
+//                nenhum dia ficar lotado.
+//   commitment — contagem regressiva rumo a um evento acadêmico futuro
+//                (Prova/Trabalho/Entrega): marcos em D-7, D-3, D-1. Pode
+//                cair em fim de semana (segue o compromisso). O desempenho
+//                recente só ANTECIPA, nunca posterga.
+//   manual     — evento do tipo "Revisão" agendado pelo usuário.
+//
+// Este serviço lê eventos só via readDb() — nunca importa eventService, para
+// não criar ciclo. É o eventService que chama syncCommitmentReviews aqui.
 
 import { readDb, withDb } from "../data/storage/index.js";
 import { createReview } from "../data/models/review.js";
-import { nowIso, addDaysIso, endOfTodayIso, formatDueIso, toMs } from "../utils/date.js";
+import {
+  nowIso,
+  addDaysIso,
+  endOfTodayIso,
+  startOfTodayIso,
+  formatDueIso,
+  toMs,
+  toDayKey,
+  fromDayKey,
+  todayKey,
+  nextWeekdayIso,
+} from "../utils/date.js";
 
-// dias e motivo agendados a partir do desempenho (0-100) do conteúdo.
+// Teto de revisões pendentes por dia (somando todos os conteúdos) antes de
+// empurrar uma revisão de plano para o próximo dia útil.
+export const REVIEW_DAY_CAP = 3;
+
+const PLAN_INTERVAL_DAYS = { weekly: 7, biweekly: 15, monthly: 30 };
+export function reviewPlanIntervalDays(plan) {
+  return PLAN_INTERVAL_DAYS[plan] ?? null;
+}
+
+// Eventos acadêmicos que geram revisão de compromisso (Aula/Outro não geram).
+const COMMITMENT_EVENT_TYPES = new Set(["exam", "assignment", "deadline"]);
+const COMMITMENT_OFFSETS = [7, 3, 1]; // D-7, D-3, D-1
+
+// Intervalo em dias a partir do desempenho real (0-100). Usado só para
+// antecipar a revisão de compromisso mais próxima. Mantém os mesmos cortes
+// de masteryLevelFromScore.
 export const REVIEW_INTERVALS = [
   { max: 60, days: 1, reason: "low_performance" },
   { max: 80, days: 3, reason: "reinforcement" },
@@ -21,111 +52,51 @@ export const REVIEW_INTERVALS = [
   { max: Infinity, days: 14, reason: "long_term" },
 ];
 
-// Rótulo exibido na UI para cada motivo de revisão — substitui o antigo rótulo
-// por stage fixo (D+1..D+30), que não refletia mais o agendamento real.
-export const REVIEW_REASON_META = {
-  first_study: { label: "Primeiro estudo" },
-  low_performance: { label: "Reforço urgente" },
-  reinforcement: { label: "Reforço" },
-  consolidation: { label: "Consolidação" },
-  long_term: { label: "Longo prazo" },
-  manual: { label: "Agendada" },
-};
-
-export function reviewReasonLabel(reason) {
-  return REVIEW_REASON_META[reason]?.label || "Revisão";
-}
-
-// performance: número 0-100, ou null/undefined quando ainda não há dados.
 export function resolveReviewInterval(performance) {
   if (performance === null || performance === undefined) return { days: 1, reason: "first_study" };
   const bucket = REVIEW_INTERVALS.find((b) => performance < b.max);
   return { days: bucket.days, reason: bucket.reason };
 }
 
-// Cria a revisão inicial (D+1) ao salvar um conteúdo novo — antes de qualquer
-// atividade, não há desempenho para basear o intervalo.
-export function scheduleInitialReview(contentId, fromIso = nowIso()) {
-  const review = createReview({
-    contentId,
-    stage: 1,
-    scheduledFor: addDaysIso(fromIso, 1),
-    status: "pending",
-    reason: "first_study",
-  });
-  withDb((db) => ({ ...db, reviews: [...db.reviews, review] }));
-  return review;
+// ─── rótulos ────────────────────────────────────────────────────────────────
+
+export const REVIEW_REASON_META = {
+  plan: { label: "Revisão programada" },
+  commitment: { label: "Revisão de compromisso" },
+  manual: { label: "Agendada" },
+};
+
+const COMMITMENT_LABEL = {
+  exam: "Revisão para prova",
+  assignment: "Revisão para trabalho",
+  deadline: "Revisão para entrega",
+};
+
+// Rótulo de uma revisão para a UI. "Atrasada" tem prioridade sobre o tipo.
+export function reviewLabel(review) {
+  if (!review) return "Revisão";
+  if (review.overdue) return "Atrasada";
+  if (review.kind === "commitment") {
+    const event = review.eventId ? readDb().events.find((e) => e.id === review.eventId) : null;
+    return COMMITMENT_LABEL[event?.type] || REVIEW_REASON_META.commitment.label;
+  }
+  return REVIEW_REASON_META[review.kind]?.label || "Revisão";
 }
+
+// Alias fino para quem ainda passa review.reason (ReviewCard antigo etc).
+export function reviewReasonLabel(reason) {
+  return REVIEW_REASON_META[reason]?.label || "Revisão";
+}
+
+// ─── leituras ───────────────────────────────────────────────────────────────
 
 export function getReviewsForContent(contentId) {
   return readDb().reviews.filter((r) => r.contentId === contentId);
 }
 
-function pendingReviewsFor(contentId) {
-  return getReviewsForContent(contentId).filter((r) => r.status === "pending");
-}
-
-// Revisão avulsa, fora do cálculo automático — usada quando o usuário agenda
-// manualmente um compromisso do tipo "Revisão" (ver services/calendarService.js).
-// reason: "manual" nunca é sobrescrito por scheduleReviewFromPerformance.
-export function scheduleManualReview(contentId, scheduledForIso) {
-  const stage = getReviewsForContent(contentId).length + 1;
-  const review = createReview({ contentId, stage, scheduledFor: scheduledForIso, status: "pending", reason: "manual" });
-  withDb((db) => ({ ...db, reviews: [...db.reviews, review] }));
-  return review;
-}
-
-// Garante no máximo UMA revisão pendente por conteúdo, reagendada pelo
-// desempenho real. Uma pendente "manual" nunca é alterada automaticamente.
-export function scheduleReviewFromPerformance(contentId, performance) {
-  const pending = pendingReviewsFor(contentId);
-  const manual = pending.find((r) => r.reason === "manual");
-  if (manual) return manual;
-
-  const { days, reason } = resolveReviewInterval(performance);
-  const scheduledFor = addDaysIso(nowIso(), days);
-  const now = nowIso();
-
-  const existing = pending[0];
-  if (existing) {
-    let updated = null;
-    withDb((db) => ({
-      ...db,
-      reviews: db.reviews.map((r) => {
-        if (r.id !== existing.id) return r;
-        updated = { ...r, scheduledFor, reason, updatedAt: now };
-        return updated;
-      }),
-    }));
-    return updated;
-  }
-
-  const completedCount = getReviewsForContent(contentId).filter((r) => r.status !== "pending").length;
-  const review = createReview({ contentId, stage: completedCount + 1, scheduledFor, status: "pending", reason });
-  withDb((db) => ({ ...db, reviews: [...db.reviews, review] }));
-  return review;
-}
-
-// Cria a próxima pendente apenas se o conteúdo estiver sem nenhuma — usado
-// após concluir uma revisão para o conteúdo nunca ficar "sem próxima".
-export function ensureNextReview(contentId, performance = null) {
-  if (pendingReviewsFor(contentId).length > 0) return null;
-  return scheduleReviewFromPerformance(contentId, performance);
-}
-
-export function nextPendingReview(contentId) {
-  return pendingReviewsFor(contentId).sort((a, b) => new Date(a.scheduledFor) - new Date(b.scheduledFor))[0] || null;
-}
-
-export function isContentDueForReview(contentId) {
-  const next = nextPendingReview(contentId);
-  return !!next && new Date(next.scheduledFor).getTime() <= new Date(endOfTodayIso()).getTime();
-}
-
-export function getDueReviews() {
-  const endOfToday = new Date(endOfTodayIso()).getTime();
-  return readDb().reviews.filter(
-    (r) => r.status === "pending" && new Date(r.scheduledFor).getTime() <= endOfToday
+function pendingFor(contentId, kind) {
+  return getReviewsForContent(contentId).filter(
+    (r) => r.status === "pending" && (!kind || r.kind === kind)
   );
 }
 
@@ -137,12 +108,212 @@ export function getCompletedReviews() {
   return readDb().reviews.filter((r) => r.status === "completed");
 }
 
-export function getOverdueReviews() {
-  const startOfToday = new Date();
-  startOfToday.setHours(0, 0, 0, 0);
-  const startMs = startOfToday.getTime();
-  return readDb().reviews.filter((r) => r.status === "pending" && (toMs(r.scheduledFor) ?? Infinity) < startMs);
+export function getDueReviews() {
+  const end = toMs(endOfTodayIso());
+  return getPendingReviews().filter((r) => (toMs(r.scheduledFor) ?? Infinity) <= end);
 }
+
+export function getOverdueReviews() {
+  const start = toMs(startOfTodayIso());
+  return getPendingReviews().filter(
+    (r) => r.overdue === true || (toMs(r.scheduledFor) ?? Infinity) < start
+  );
+}
+
+export function nextPendingReview(contentId) {
+  return pendingFor(contentId).sort((a, b) => toMs(a.scheduledFor) - toMs(b.scheduledFor))[0] || null;
+}
+
+export function isContentDueForReview(contentId) {
+  const next = nextPendingReview(contentId);
+  return !!next && (toMs(next.scheduledFor) ?? Infinity) <= toMs(endOfTodayIso());
+}
+
+// ─── revisão de plano ───────────────────────────────────────────────────────
+
+// Revisões pendentes agendadas para o mesmo dia-chave, somando todos os
+// conteúdos — base da distribuição de carga.
+function pendingCountOnDay(dayKey, ignoreId) {
+  return getPendingReviews().filter(
+    (r) => r.id !== ignoreId && toDayKey(r.scheduledFor) === dayKey
+  ).length;
+}
+
+// A partir de um ISO qualquer: normaliza para dia útil e, se o dia já tem
+// REVIEW_DAY_CAP ou mais revisões pendentes, empurra para o próximo dia útil
+// com espaço (até 10 saltos; se todos cheios, fica no último).
+function balancedWeekday(iso, ignoreId) {
+  let cur = nextWeekdayIso(iso);
+  for (let i = 0; i < 10; i++) {
+    if (pendingCountOnDay(toDayKey(cur), ignoreId) < REVIEW_DAY_CAP) return cur;
+    cur = nextWeekdayIso(addDaysIso(cur, 1));
+  }
+  return cur;
+}
+
+// Garante o estado correto das revisões de plano de UM conteúdo:
+// - reviewPlan "none": remove as pendentes de plano;
+// - senão: mantém a pendente existente ou cria uma no próximo intervalo,
+//   em dia útil e com carga distribuída.
+export function applyReviewPlan(contentId, fromIso = nowIso()) {
+  const content = readDb().contents.find((c) => c.id === contentId);
+  const intervalDays = reviewPlanIntervalDays(content?.reviewPlan || "none");
+
+  if (!intervalDays) {
+    const remove = new Set(pendingFor(contentId, "plan").map((r) => r.id));
+    if (remove.size) withDb((db) => ({ ...db, reviews: db.reviews.filter((r) => !remove.has(r.id)) }));
+    return null;
+  }
+
+  const existing = pendingFor(contentId, "plan")[0];
+  if (existing) return existing;
+
+  const scheduledFor = balancedWeekday(addDaysIso(fromIso, intervalDays));
+  const completed = getReviewsForContent(contentId).filter((r) => r.status !== "pending").length;
+  const review = createReview({
+    contentId,
+    kind: "plan",
+    reason: "plan",
+    stage: completed + 1,
+    scheduledFor,
+    status: "pending",
+  });
+  withDb((db) => ({ ...db, reviews: [...db.reviews, review] }));
+  return review;
+}
+
+// ─── revisão de compromisso ─────────────────────────────────────────────────
+
+// Eventos elegíveis (tipo certo, com data hoje ou no futuro) ligados ao
+// conteúdo, do mais próximo ao mais distante.
+function futureCommitmentEvents(contentId) {
+  const startKey = todayKey();
+  return readDb()
+    .events.filter(
+      (e) =>
+        e.contentIds.includes(contentId) &&
+        COMMITMENT_EVENT_TYPES.has(e.type) &&
+        e.date &&
+        e.date >= startKey
+    )
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+}
+
+// Dias-chave da série regressiva rumo a `eventDate` ("YYYY-MM-DD"):
+// D-7/D-3/D-1 que ainda não passaram e não ultrapassam o evento. Se o evento
+// é hoje/amanhã e nenhum marco sobra, usa hoje.
+function commitmentCheckpointDays(eventDate) {
+  const eventMs = toMs(fromDayKey(eventDate));
+  const todayMs = toMs(startOfTodayIso());
+  const days = [];
+  for (const off of COMMITMENT_OFFSETS) {
+    const iso = addDaysIso(fromDayKey(eventDate), -off);
+    if (toMs(iso) >= todayMs && toMs(iso) <= eventMs) days.push(toDayKey(iso));
+  }
+  if (days.length === 0) days.push(todayKey());
+  return [...new Set(days)];
+}
+
+// Reconcilia as revisões de compromisso pendentes de UM conteúdo com o evento
+// futuro mais próximo. Sem evento elegível: remove todas as pendentes de
+// compromisso (o histórico concluído fica).
+export function syncCommitmentReviews(contentId) {
+  const events = futureCommitmentEvents(contentId);
+  const pending = pendingFor(contentId, "commitment");
+
+  if (events.length === 0) {
+    if (pending.length) {
+      const ids = new Set(pending.map((r) => r.id));
+      withDb((db) => ({ ...db, reviews: db.reviews.filter((r) => !ids.has(r.id)) }));
+    }
+    return [];
+  }
+
+  const target = events[0];
+  const wantDays = commitmentCheckpointDays(target.date);
+  const wantSet = new Set(wantDays);
+
+  const staleIds = new Set(
+    pending
+      .filter((r) => r.eventId !== target.id || !wantSet.has(toDayKey(r.scheduledFor)))
+      .map((r) => r.id)
+  );
+  const haveDays = new Set(
+    pending
+      .filter((r) => r.eventId === target.id && !staleIds.has(r.id))
+      .map((r) => toDayKey(r.scheduledFor))
+  );
+
+  const additions = wantDays
+    .filter((d) => !haveDays.has(d))
+    .map((d, i) =>
+      createReview({
+        contentId,
+        kind: "commitment",
+        reason: "commitment",
+        eventId: target.id,
+        stage: i + 1,
+        scheduledFor: fromDayKey(d),
+        status: "pending",
+      })
+    );
+
+  if (staleIds.size || additions.length) {
+    withDb((db) => ({
+      ...db,
+      reviews: [...db.reviews.filter((r) => !staleIds.has(r.id)), ...additions],
+    }));
+  }
+  return pendingFor(contentId, "commitment");
+}
+
+// ─── desempenho: só antecipa a revisão de compromisso ──────────────────────
+
+// Chamada pelas telas de estudo após uma sessão. Se o desempenho recente
+// pede reforço (intervalo curto), antecipa a revisão de compromisso pendente
+// mais próxima — nunca posterga, nunca cria revisão, nunca toca no plano.
+export function advanceReviewsAfterActivity(contentId, performance) {
+  const next = pendingFor(contentId, "commitment").sort(
+    (a, b) => toMs(a.scheduledFor) - toMs(b.scheduledFor)
+  )[0];
+  if (!next) return null;
+
+  const { days } = resolveReviewInterval(performance);
+  const candidate = Math.max(
+    toMs(addDaysIso(nowIso(), days)),
+    toMs(addDaysIso(startOfTodayIso(), 1))
+  );
+  if (candidate >= toMs(next.scheduledFor)) return next;
+
+  let updated = null;
+  withDb((db) => ({
+    ...db,
+    reviews: db.reviews.map((r) => {
+      if (r.id !== next.id) return r;
+      updated = { ...r, scheduledFor: new Date(candidate).toISOString(), updatedAt: nowIso() };
+      return updated;
+    }),
+  }));
+  return updated;
+}
+
+// ─── revisão manual (evento tipo "Revisão") ────────────────────────────────
+
+export function scheduleManualReview(contentId, scheduledForIso) {
+  const stage = getReviewsForContent(contentId).length + 1;
+  const review = createReview({
+    contentId,
+    stage,
+    scheduledFor: scheduledForIso,
+    status: "pending",
+    kind: "manual",
+    reason: "manual",
+  });
+  withDb((db) => ({ ...db, reviews: [...db.reviews, review] }));
+  return review;
+}
+
+// ─── concluir / pular ──────────────────────────────────────────────────────
 
 export function markReviewDone(reviewId) {
   let updated = null;
@@ -154,7 +325,7 @@ export function markReviewDone(reviewId) {
       return updated;
     }),
   }));
-  if (updated) ensureNextReview(updated.contentId);
+  if (updated?.kind === "plan") applyReviewPlan(updated.contentId, updated.completedAt);
   return updated;
 }
 
@@ -168,7 +339,64 @@ export function skipReview(reviewId) {
       return updated;
     }),
   }));
+  if (updated?.kind === "plan") applyReviewPlan(updated.contentId, updated.skippedAt);
   return updated;
+}
+
+// ─── boot: reconcilia tudo ─────────────────────────────────────────────────
+
+// Roda uma vez ao abrir o app (ContentStoreContext), depois de sweepOrphans.
+// Idempotente. Limpa o backlog de revisões sem intenção, garante plano e
+// série de compromisso, e rola atrasadas para hoje marcando `overdue`.
+export function reconcileReviews() {
+  // 1. conteúdo legado sem reviewPlan → "none"
+  if (readDb().contents.some((c) => c.reviewPlan == null)) {
+    withDb((db) => ({
+      ...db,
+      contents: db.contents.map((c) => (c.reviewPlan == null ? { ...c, reviewPlan: "none" } : c)),
+    }));
+  }
+
+  const contents = readDb().contents;
+  const contentIds = new Set(contents.map((c) => c.id));
+  const planById = new Map(contents.map((c) => [c.id, c.reviewPlan || "none"]));
+  const targetEventByContent = new Map();
+  for (const c of contents) {
+    const evs = futureCommitmentEvents(c.id);
+    if (evs.length) targetEventByContent.set(c.id, evs[0].id);
+  }
+
+  // 2. remove pendentes sem intenção válida
+  withDb((db) => ({
+    ...db,
+    reviews: db.reviews.filter((r) => {
+      if (r.status !== "pending") return true;
+      if (!contentIds.has(r.contentId)) return false;
+      if (r.kind === "manual" || r.reason === "manual") return true;
+      if (r.kind === "plan") return (planById.get(r.contentId) || "none") !== "none";
+      if (r.kind === "commitment") return targetEventByContent.get(r.contentId) === r.eventId;
+      return false; // kind ausente / motivo antigo (spaced_repetition, first_study, ...)
+    }),
+  }));
+
+  // 3 + 4. garante plano e série de compromisso por conteúdo
+  for (const c of readDb().contents) {
+    applyReviewPlan(c.id);
+    syncCommitmentReviews(c.id);
+  }
+
+  // 5. rola atrasadas para hoje, marcando overdue
+  const startMs = toMs(startOfTodayIso());
+  const todayNoon = fromDayKey(todayKey());
+  withDb((db) => ({
+    ...db,
+    reviews: db.reviews.map((r) => {
+      if (r.status !== "pending") return r;
+      if ((toMs(r.scheduledFor) ?? Infinity) >= startMs) return r;
+      const rolled = r.kind === "plan" ? nextWeekdayIso(todayNoon) : todayNoon;
+      return { ...r, scheduledFor: rolled, overdue: true, updatedAt: nowIso() };
+    }),
+  }));
 }
 
 export { formatDueIso as formatDue };
