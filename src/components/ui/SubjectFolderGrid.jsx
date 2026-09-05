@@ -88,7 +88,7 @@ export default function SubjectFolderGrid({ options, activeId, onSelect, onAdd }
         })}
         {onAdd && (
           <motion.button className={styles.folder} whileTap={{ scale: 0.95 }} onClick={onAdd}
-            aria-label="Gerenciar matéria"
+            aria-label="Gerenciar matérias"
             style={{
               display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
               gap: 4, width: 72, height: 64, borderRadius: 14, cursor: "pointer",
@@ -99,7 +99,7 @@ export default function SubjectFolderGrid({ options, activeId, onSelect, onAdd }
             <span style={{
               fontFamily: "Inter,sans-serif", fontSize: 9, fontWeight: 700, color: "#64748B",
               whiteSpace: "normal", lineHeight: 1.2, textAlign: "center", maxWidth: 62,
-            }}>Gerenciar<br />Matéria</span>
+            }}>Gerenciar<br />Matérias</span>
           </motion.button>
         )}
       </div>
