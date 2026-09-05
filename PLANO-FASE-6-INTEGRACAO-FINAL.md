@@ -22,7 +22,7 @@ Ao final desta fase, o fluxo câmera → IA → Content → Biblioteca → estud
 |---|---|
 | 1 | **Moldura de protótipo permanece.** O app continua em 375×812 centralizado; a Fase 6 pole 320/375/430px reais e apenas garante que nada é cortado em tablet/desktop. Sem layout fluido, sem redesenho das 11 telas. |
 | 2 | **`notionService` continua como está.** O botão "Enviar ao Notion" e o toast de sucesso ficam no produto como parte da demo do pitch. Fica sendo a **única exceção declarada** ao item 27 do briefing, registrada em `MOCKS.md` e no README. |
-| 3 | **Controles falsos da câmera saem.** HDR, Flip, 4:3, Settings e o botão de Flash (que nunca aciona a lanterna) são removidos. Não se implementa flip nem torch. |
+| 3 | **Controles decorativos da câmera permanecem.** HDR, Flip, 4:3, Settings e Flash ficam na tela inicial da câmera para deixar a interface mais realista (decisão revista durante a execução — T9 foi cancelada). Não se implementa a função real de nenhum deles. |
 | 4 | **Long-press de reset do PLUS permanece.** É o gesto usado para demonstrar o trial na apresentação. |
 | 5 | **StatusBar mantém 9:41.** Faz parte da moldura decorativa do protótipo, não é métrica. |
 | 6 | **Vision+ ganha entradas novas.** O botão "Vision+" do header da Biblioteca (`LibraryScreen.jsx:122-126`) passa a existir também no header de Revisão e de Evolução; a Evolução ganha, no fim do scroll, o CTA de assinatura (`PlusFinalCta`) como era na antiga tela do Study Vision+. |
@@ -188,13 +188,9 @@ Auditar e blindar os pontos do briefing §34: duplo toque em "Salvar" (`SummaryS
 
 ---
 
-### T9 — Limpar controles decorativos da câmera
+### T9 — CANCELADA (decisão revista)
 
-Corrigir B13 conforme a decisão 3: remover HDR, Settings, 4:3, Flip e o botão de Flash junto com o estado `flash` não utilizado. Preservar o obturador, o atalho para a Biblioteca, o overlay de erro com "Tentar novamente" e o cleanup das tracks no unmount (`CameraScreen.jsx:49-55`).
-
-**Verificação (browser):** abrir a câmera e confirmar que todo botão visível tem função; negar a permissão e conferir o overlay de erro; sair da tela e confirmar que a luz da câmera apaga.
-
-**Commit:** `refactor(fase-6): remove controles decorativos sem funcao da camera`
+B13 deixou de ser um bug a corrigir: por decisão do usuário durante a execução, HDR, Settings, 4:3, Flip e Flash permanecem na tela inicial da câmera como controles decorativos, para manter uma interface de câmera mais realista. Nenhuma função real foi implementada para eles. O modo "attach" (T3) já tem sua própria barra superior simplificada, sem esses controles.
 
 ---
 
