@@ -1,16 +1,11 @@
 import { useEffect } from "react";
 import { motion } from "framer-motion";
-import { CheckCircle, AlertTriangle } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import LogoSVG from "../components/brand/LogoSVG";
 
-const STEPS = [
-  { key: "uploading", text: "Enviando imagem" },
-  { key: "analyzing", text: "Analisando conteúdo" },
-  { key: "generating", text: "Gerando material de estudo" },
-];
-
-// Progresso refletindo o status real da requisição a /api/analyze — sem timeouts
-// artificiais fingindo processamento.
+// Progresso refletindo o status real da requisição a /api/analyze — uma única
+// mensagem honesta enquanto a IA processa (a requisição não expõe fases
+// intermediárias reais, então nada de lista de passos fingindo etapas).
 export default function AnalysisScreen({ status, error, errorKind, onRetry, onCancel, onDone }) {
   useEffect(() => {
     if (status === "done") onDone();
@@ -43,8 +38,6 @@ export default function AnalysisScreen({ status, error, errorKind, onRetry, onCa
     );
   }
 
-  const activeIndex = status === "uploading" ? 0 : status === "analyzing" ? 1 : 2;
-
   return (
     <div style={{ width: "100%", height: "100%", background: "linear-gradient(160deg,#030712 0%,#0f172a 55%,#1e1b4b 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
       {/* Rings */}
@@ -62,36 +55,20 @@ export default function AnalysisScreen({ status, error, errorKind, onRetry, onCa
 
       <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
         style={{ fontFamily: "Inter,sans-serif", fontSize: 22, fontWeight: 800, color: "white", marginBottom: 8, zIndex: 10, textAlign: "center" }}>
-        Analisando conteúdo
+        Analisando seu conteúdo
+      </motion.p>
+      <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+        style={{ fontFamily: "Inter,sans-serif", fontSize: 14, color: "rgba(255,255,255,0.6)", marginBottom: 36, zIndex: 10, textAlign: "center" }}>
+        A IA está identificando a matéria e gerando seu material de estudo
       </motion.p>
 
       {/* Dots */}
-      <div style={{ display: "flex", gap: 5, marginBottom: 36, zIndex: 10 }}>
+      <div style={{ display: "flex", gap: 5, zIndex: 10 }}>
         {[0, 1, 2].map(i => (
           <motion.div key={i} animate={{ scale: [1, 1.6, 1], opacity: [0.35, 1, 0.35] }}
             transition={{ duration: 0.9, repeat: Infinity, delay: i * 0.22 }}
             style={{ width: 6, height: 6, borderRadius: "50%", background: "#2563EB" }} />
         ))}
-      </div>
-
-      {/* Steps — refletem o status real da requisição */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 12, zIndex: 10, width: 260 }}>
-        {STEPS.map((s, i) => {
-          const done = i < activeIndex;
-          const current = i === activeIndex;
-          return (
-            <motion.div key={s.key} initial={{ opacity: 0, x: -16 }} animate={{ opacity: done || current ? 1 : 0.35, x: 0 }}
-              style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 24, height: 24, borderRadius: "50%", background: done ? "rgba(20,184,166,0.15)" : "rgba(255,255,255,0.08)", border: `1.5px solid ${done ? "#14B8A6" : "rgba(255,255,255,0.25)"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                {done ? <CheckCircle size={13} color="#14B8A6" /> : current ? (
-                  <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                    style={{ width: 10, height: 10, borderRadius: "50%", border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "white" }} />
-                ) : null}
-              </div>
-              <span style={{ fontFamily: "Inter,sans-serif", fontSize: 14, fontWeight: 500, color: "rgba(255,255,255,0.88)" }}>{s.text}</span>
-            </motion.div>
-          );
-        })}
       </div>
     </div>
   );

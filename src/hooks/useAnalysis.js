@@ -9,7 +9,7 @@ import { makeThumbnail } from "../utils/image";
 // `content` é o Content normalizado, ainda NÃO persistido — quem salva de
 // verdade é a SummaryScreen, ao clicar em "Salvar".
 export function useAnalysis() {
-  const [status, setStatus] = useState("idle"); // idle | uploading | analyzing | done | error
+  const [status, setStatus] = useState("idle"); // idle | analyzing | done | error
   const [content, setContent] = useState(null);
   const [error, setError] = useState(null);
   const [errorKind, setErrorKind] = useState(null); // "technical" | "not_academic"
@@ -25,10 +25,9 @@ export function useAnalysis() {
     setError(null);
     setErrorKind(null);
     setContent(null);
-    setStatus("uploading");
+    setStatus("analyzing");
 
     try {
-      setStatus("analyzing");
       const [result, thumbnail] = await Promise.all([
         analyzeImage(photoDataUrl, { signal: controller.signal }),
         makeThumbnail(photoDataUrl).catch(() => photoDataUrl),
