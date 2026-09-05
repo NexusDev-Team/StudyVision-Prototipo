@@ -298,6 +298,16 @@ Verificar e registrar: nenhuma chave, token ou credencial em `src/`; zero `impor
 
 **Commit:** `chore(fase-6): audita ausencia de segredos no frontend e no historico`
 
+**Resultado da auditoria (nenhum código precisou mudar):**
+- `grep -rni "api[_-]\?key\|secret\|token" src` — zero ocorrências.
+- `grep -rn "import.meta.env" src` — zero ocorrências; a chave nunca é lida pelo bundle do Vite.
+- `GEMINI_API_KEY` só é lida em `lib/gemini.js` (`process.env`), nunca em `src/`.
+- `git ls-files | grep '^\.env'` — só `.env.example` está versionado.
+- `git log --all --oneline -- .env .env.local` — vazio, nenhum segredo já commitado no histórico.
+- `.gitignore` ignora `.env*` com exceção explícita de `!.env.example`.
+- `grep -r "AIza" dist` e `grep -r "GEMINI" dist` (após `npm run build`) — zero ocorrências.
+- Mensagens de erro do endpoint (`api/analyze.js`) permanecem genéricas para o cliente; detalhes (código do `GeminiError`, stack) só vão para `console.error` no servidor.
+
 ---
 
 ### T20 — Responsividade final (mobile primeiro)
