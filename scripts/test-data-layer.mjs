@@ -1350,6 +1350,40 @@ test("F6-4. excluir conteudo inexistente nao quebra e retorna false", () => {
   assert.equal(contentService.deleteContent("cnt_never_existed"), false);
 });
 
+test("F6-5. ciclo completo: editar titulo resumo nota foto materia e registrar atividades mantem todas as relacoes", () => {
+  const { content, subject: subjectA } = seedContent();
+  const subjectB = subjectService.createSubjectEntry("Historia");
+
+  contentService.updateContent(content.id, { title: "Novo titulo", summary: "Novo resumo" });
+  contentService.updateNotes(content.id, "Minha nota de estudo");
+  const { image } = contentService.addImageToContent(content.id, { dataUrl: "data:image/jpeg;base64,BBB" });
+  contentService.moveContentToSubject(content.id, subjectB.id, subjectB.name);
+
+  const quiz = contentService.getContent(content.id).quizzes[0];
+  const fc = contentService.getContent(content.id).flashcards[0];
+  studyService.recordQuizAttempt({ quizId: quiz.id, contentId: content.id, answers: buildAnswers(2, 2) });
+  studyService.recordFlashcardAttempt({ flashcardId: fc.id, contentId: content.id, correct: true });
+  studyService.registerActivity(content.id);
+
+  const review = reviewService.nextPendingReview(content.id);
+  reviewService.markReviewDone(review.id);
+
+  const event = eventService.createEventEntry({ type: "exam", title: "Prova final", date: "2026-12-15", contentIds: [content.id] });
+
+  const final = contentService.getContent(content.id);
+  assert.equal(final.title, "Novo titulo");
+  assert.equal(final.summary, "Novo resumo");
+  assert.equal(final.notes, "Minha nota de estudo");
+  assert.equal(final.images.some((i) => i.id === image.id), true);
+  assert.equal(final.subjectId, subjectB.id);
+  assert.equal(final.flashcards.length, 2); // nenhum flashcard novo gerado
+  assert.equal(final.quizzes.length, 1); // nenhum quiz novo gerado
+  assert.ok(final.mastery.level !== "not_started");
+  assert.equal(reviewService.getReviewsForContent(content.id).some((r) => r.id === review.id && r.status === "completed"), true);
+  assert.equal(eventService.getEventsForContent(content.id).some((e) => e.id === event.id), true);
+  assert.notEqual(subjectA.id, subjectB.id);
+});
+
 // ─── relatório ───────────────────────────────────────────────────────────────
 console.log(`\n${passed} passaram, ${failed} falharam`);
 if (failed > 0) {
