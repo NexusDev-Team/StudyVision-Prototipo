@@ -100,7 +100,6 @@ export function normalizeAnalysisResult(geminiResponse, thumbnailDataUrl) {
           ]
         : [],
     openQuestions: Array.isArray(result.openQuestions) ? result.openQuestions : [],
-    isSample: false,
   });
 
   return { content, validation: validateContent(content) };

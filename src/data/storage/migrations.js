@@ -4,7 +4,7 @@
 // Não apaga o dado antigo: quem chamar migrate() é responsável por manter
 // "sv_items" como backup (ver LEGACY_KEY / BACKUP_KEY em index.js).
 
-import { newId, ID_PREFIX } from "../../utils/id.js";
+import { ID_PREFIX } from "../../utils/id.js";
 import { nowIso, toIso, addDaysIso } from "../../utils/date.js";
 import { createContent } from "../models/content.js";
 import { createSubject } from "../models/subject.js";
@@ -79,7 +79,6 @@ function migrateItem(item, subjectsByName) {
       ? [{ source: "ai", questions: item.quiz.map(migrateQuizQuestion) }]
       : [],
     openQuestions: Array.isArray(item.questions) ? item.questions : [],
-    isSample: false,
     createdAt,
   });
 

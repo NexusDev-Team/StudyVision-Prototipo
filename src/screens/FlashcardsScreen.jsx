@@ -57,6 +57,9 @@ export default function FlashcardsScreen({ content, onBack, onVisionPlus, isPrem
 
   const grade = (remembered) => {
     const card = cards[index];
+    // Gravado desde a Fase 3 e sem consumidor de UI ainda (decisão da Fase 6:
+    // manter gravando como base para uma futura métrica de tempo de resposta
+    // por flashcard, e não expor "horas estudadas" nem nada agregado agora).
     const responseTimeMs = shownAtRef.current ? Date.now() - shownAtRef.current : null;
     if (card?.id && contentId && !card.ephemeral) {
       const result = mutate(() => {

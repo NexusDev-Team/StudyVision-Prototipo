@@ -4,7 +4,7 @@
 // já limpa tudo no momento da exclusão; isto é uma rede de segurança extra,
 // rodada uma vez ao iniciar o app.
 
-import { readDb, withDb } from "../data/storage/index.js";
+import { withDb } from "../data/storage/index.js";
 
 export function sweepOrphans() {
   const removed = { reviews: 0, flashcardAttempts: 0, quizAttempts: 0, eventContentRefs: 0, contentSubjectRefs: 0 };

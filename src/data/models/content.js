@@ -80,7 +80,6 @@ export function createContent(input = {}) {
     quizzes,
     openQuestions,
     mastery: createMastery(input.mastery),
-    isSample: Boolean(input.isSample),
     createdAt,
     updatedAt: input.updatedAt || now,
   };
