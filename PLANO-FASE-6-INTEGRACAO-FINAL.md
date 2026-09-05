@@ -316,7 +316,9 @@ Decisão 1. Percorrer as 11 telas em 320, 375, 430 e 768px, além de desktop, el
 
 **Verificação (browser):** cada tela nas quatro larguras; nenhuma barra de rolagem horizontal; todo modal contido na moldura.
 
-**Commit:** `fix(fase-6): corrige responsividade das telas em telas pequenas`
+**Commit:** `test(fase-6): verifica responsividade das telas em 320 430 768 e 1280px`
+
+**Resultado da verificação (nenhum ajuste de CSS foi necessário):** varredura automatizada (`getBoundingClientRect` de todo elemento vs. viewport) em Câmera, Biblioteca, Detalhe (com bloco de fotos e visualizador ampliado aberto), Quiz, Revisão + Calendário e Evolução em 320px e 430px — zero elementos ultrapassando a borda do viewport nas duas larguras. Em 768px e 1280px a moldura de 375×812 permanece centralizada e intacta, sem overflow horizontal na página (`document.documentElement.scrollWidth === clientWidth` em todos os casos). O único breakpoint do app (`max-width: 480px`, `global.css:57`) já cobre a transição para tela cheia sem bezel, e o layout baseado em `padding` relativo + `flex-wrap` absorve a diferença entre 320 e 430px sem quebrar. Não foi necessário nenhum ajuste de CSS.
 
 ---
 
