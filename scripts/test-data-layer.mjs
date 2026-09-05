@@ -246,13 +246,17 @@ test("12. desempenho agrega tentativas reais", () => {
   assert.equal(summary.flashcardAccuracyRate, 100);
 });
 
-test("13. agendar revisão inicial cria uma única pendente em D+1", () => {
+test("13. applyReviewPlan cria uma única revisão de plano pendente em dia útil", () => {
   const { content } = seedContent();
-  const review = reviewService.scheduleInitialReview(content.id, "2026-01-01T12:00:00.000Z");
-  assert.equal(review.stage, 1);
-  assert.equal(review.reason, "first_study");
-  assert.equal(reviewService.getReviewsForContent(content.id).length, 1);
-  assert.equal(review.scheduledFor, "2026-01-02T12:00:00.000Z");
+  contentService.updateContent(content.id, { reviewPlan: "weekly" });
+  const review = reviewService.applyReviewPlan(content.id);
+  assert.equal(review.kind, "plan");
+  assert.equal(reviewService.getReviewsForContent(content.id).filter((r) => r.status === "pending").length, 1);
+  const day = new Date(review.scheduledFor).getDay();
+  assert.ok(day !== 0 && day !== 6, "revisão de plano nunca cai em fim de semana");
+  // idempotente: chamar de novo não cria uma segunda
+  reviewService.applyReviewPlan(content.id);
+  assert.equal(reviewService.getReviewsForContent(content.id).filter((r) => r.status === "pending").length, 1);
 });
 
 test("14. criar evento acadêmico", () => {
@@ -295,7 +299,7 @@ test("17. mover conteúdo de matéria mantém o mesmo id", () => {
 
 test("18. excluir conteúdo faz cascade em revisões/tentativas/eventos", () => {
   const { content } = seedContent();
-  reviewService.scheduleInitialReview(content.id);
+  reviewService.scheduleManualReview(content.id, nowIso());
   const fc = contentService.getContent(content.id).flashcards[0];
   studyService.recordFlashcardAttempt({ flashcardId: fc.id, contentId: content.id, correct: true });
   const event = eventService.createEventEntry({ type: "exam", title: "P1", date: "2026-03-10", contentIds: [content.id] });
@@ -313,8 +317,8 @@ test("18. excluir conteúdo faz cascade em revisões/tentativas/eventos", () => 
 test("19. varredura de referências órfãs volta vazia após exclusão", () => {
   const a = seedContent({ subjectName: "Matemática" });
   const b = seedContent({ subjectName: "História" });
-  reviewService.scheduleInitialReview(a.content.id);
-  reviewService.scheduleInitialReview(b.content.id);
+  reviewService.scheduleManualReview(a.content.id, nowIso());
+  reviewService.scheduleManualReview(b.content.id, nowIso());
   const evt = eventService.createEventEntry({
     type: "exam",
     title: "Prova conjunta",
@@ -344,7 +348,7 @@ test("19. varredura de referências órfãs volta vazia após exclusão", () => 
 
 test("20. round-trip de persistência (JSON estável)", () => {
   const { content } = seedContent();
-  reviewService.scheduleInitialReview(content.id);
+  reviewService.scheduleManualReview(content.id, nowIso());
   const raw = localStorage.getItem("sv_db");
   const roundTripped = JSON.parse(raw);
   assert.deepEqual(roundTripped, readDb());
@@ -482,33 +486,48 @@ test("F3-2. intervalo de revisão por faixa de desempenho", () => {
   assert.deepEqual(reviewService.resolveReviewInterval(95), { days: 14, reason: "long_term" });
 });
 
-test("F3-3. dez atividades seguidas -> exatamente uma revisão pendente", () => {
+test("F3-3. dez atividades seguidas nao criam revisao alguma sem plano nem compromisso", () => {
   const { content } = seedContent();
-  reviewService.scheduleInitialReview(content.id);
+  const quiz = contentService.getContent(content.id).quizzes[0];
   for (let i = 0; i < 10; i++) {
-    reviewService.scheduleReviewFromPerformance(content.id, i % 2 === 0 ? 40 : 90);
+    studyService.recordQuizAttempt({ quizId: quiz.id, contentId: content.id, answers: buildAnswers(4, i % 2 === 0 ? 1 : 4) });
+    studyService.registerActivity(content.id);
+  }
+  assert.equal(reviewService.getReviewsForContent(content.id).filter((r) => r.status === "pending").length, 0);
+});
+
+test("F3-3b. com plano semanal, dez atividades mantem exatamente uma revisao de plano pendente", () => {
+  const { content } = seedContent();
+  contentService.updateContent(content.id, { reviewPlan: "weekly" });
+  reviewService.applyReviewPlan(content.id);
+  const quiz = contentService.getContent(content.id).quizzes[0];
+  for (let i = 0; i < 10; i++) {
+    studyService.recordQuizAttempt({ quizId: quiz.id, contentId: content.id, answers: buildAnswers(4, i % 2 === 0 ? 1 : 4) });
+    studyService.registerActivity(content.id);
   }
   const pending = reviewService.getReviewsForContent(content.id).filter((r) => r.status === "pending");
   assert.equal(pending.length, 1);
-  assert.equal(pending[0].reason, "long_term");
+  assert.equal(pending[0].kind, "plan");
 });
 
-test("F3-4. revisão manual não é sobrescrita pelo desempenho", () => {
+test("F3-4. revisao manual nao e tocada por advanceReviewsAfterActivity", () => {
   const { content } = seedContent();
   const manual = reviewService.scheduleManualReview(content.id, "2026-06-01T12:00:00.000Z");
-  const result = reviewService.scheduleReviewFromPerformance(content.id, 20);
-  assert.equal(result.id, manual.id);
-  assert.equal(result.reason, "manual");
-  assert.equal(result.scheduledFor, "2026-06-01T12:00:00.000Z");
+  const result = reviewService.advanceReviewsAfterActivity(content.id, 20);
+  assert.equal(result, null); // so mexe em revisao de compromisso
+  const still = reviewService.getReviewsForContent(content.id).find((r) => r.id === manual.id);
+  assert.equal(still.scheduledFor, "2026-06-01T12:00:00.000Z");
 });
 
-test("F3-5. markReviewDone conclui e agenda a próxima com stage incrementado", () => {
+test("F3-5. markReviewDone de revisao de plano conclui e agenda a proxima", () => {
   const { content } = seedContent();
-  const first = reviewService.scheduleInitialReview(content.id);
+  contentService.updateContent(content.id, { reviewPlan: "weekly" });
+  const first = reviewService.applyReviewPlan(content.id);
   const done = reviewService.markReviewDone(first.id);
   assert.equal(done.status, "completed");
   const next = reviewService.nextPendingReview(content.id);
   assert.ok(next);
+  assert.equal(next.kind, "plan");
   assert.equal(next.stage, 2);
   assert.equal(reviewService.getReviewsForContent(content.id).filter((r) => r.status === "pending").length, 1);
 });
@@ -659,8 +678,15 @@ test("F3-12. dificuldade recomendada deriva do desempenho e persiste", () => {
   assert.equal(contentService.getContent(content.id).recommendedDifficulty, "easy");
 });
 
-test("F3-13. registerActivity com desempenho baixo -> needs_review, easy e revisao em D+1", () => {
+test("F3-13. registerActivity com desempenho baixo antecipa a revisao de compromisso", () => {
   const { content } = seedContent();
+  // evento distante -> serie D-7/D-3/D-1 bem no futuro
+  const future = new Date(Date.now() + 40 * 86400000).toISOString().slice(0, 10);
+  eventService.createEventEntry({ type: "exam", title: "P1", date: future, contentIds: [content.id] });
+  const nearestBefore = reviewService.getReviewsForContent(content.id)
+    .filter((r) => r.status === "pending" && r.kind === "commitment")
+    .sort((a, b) => new Date(a.scheduledFor) - new Date(b.scheduledFor))[0];
+
   const quiz = contentService.getContent(content.id).quizzes[0];
   studyService.recordQuizAttempt({
     quizId: quiz.id,
@@ -674,16 +700,16 @@ test("F3-13. registerActivity com desempenho baixo -> needs_review, easy e revis
   assert.equal(result.performance.overall, 0);
   assert.equal(result.mastery.level, "needs_review");
   assert.equal(result.recommendedDifficulty, "easy");
-  assert.equal(result.review.status, "pending");
-  assert.equal(result.review.reason, "low_performance");
-  assert.equal(reviewService.getReviewsForContent(content.id).filter((r) => r.status === "pending").length, 1);
+  assert.equal(result.review.kind, "commitment");
+  assert.ok(new Date(result.review.scheduledFor) < new Date(nearestBefore.scheduledFor), "desempenho baixo antecipa a revisao");
+  assert.equal(reviewService.getReviewsForContent(content.id).filter((r) => r.status === "pending").length, 3);
 });
 
 test("F3-15. sweepOrphans remove tentativas/revisoes sem conteudo, preserva o resto", () => {
   const { content } = seedContent();
   const fc = contentService.getContent(content.id).flashcards[0];
   studyService.recordFlashcardAttempt({ flashcardId: fc.id, contentId: content.id, correct: true });
-  reviewService.scheduleInitialReview(content.id);
+  reviewService.scheduleManualReview(content.id, nowIso());
 
   withDb((db) => ({
     ...db,
@@ -717,6 +743,8 @@ test("F3-16. reload (nova leitura do localStorage) preserva todo o historico", (
       { questionId: quiz.questions[1].id, selectedAnswer: true, correct: true },
     ],
   });
+  contentService.updateContent(content.id, { reviewPlan: "weekly" });
+  reviewService.applyReviewPlan(content.id);
   const fc = contentService.getContent(content.id).flashcards[0];
   for (let i = 0; i < 10; i++) {
     studyService.recordFlashcardAttempt({ flashcardId: fc.id, contentId: content.id, correct: i < 8 });
@@ -834,7 +862,7 @@ test("F4-22. excluir evento nao exclui o conteudo relacionado (teste 17)", () =>
 
 test("F4-23. eventos e revisoes permanecem em colecoes separadas apos fluxo completo (teste 23)", () => {
   const { content } = seedContent();
-  reviewService.scheduleInitialReview(content.id);
+  reviewService.scheduleManualReview(content.id, nowIso());
   const event = eventService.createEventEntry({ type: "exam", title: "Prova", date: "2026-11-06", contentIds: [content.id] });
   studyService.registerActivity(content.id);
 
@@ -859,7 +887,7 @@ test("F4-19. excluir conteudo com evento compartilhado preserva o evento para o 
     type: "exam", title: "Prova conjunta", date: "2026-03-10",
     contentIds: [a.content.id, b.content.id],
   });
-  reviewService.scheduleInitialReview(a.content.id);
+  reviewService.scheduleManualReview(a.content.id, nowIso());
   const fc = contentService.getContent(a.content.id).flashcards[0];
   studyService.recordFlashcardAttempt({ flashcardId: fc.id, contentId: a.content.id, correct: true });
 
@@ -882,7 +910,7 @@ test("F4-18. mover conteudo preserva id, fotos, flashcards, quizzes, notas, tent
   const { content } = seedContent();
   contentService.addImageToContent(content.id, { dataUrl: "data:image/jpeg;base64,AAA" });
   contentService.updateNotes(content.id, "minha anotação");
-  reviewService.scheduleInitialReview(content.id);
+  reviewService.scheduleManualReview(content.id, nowIso());
   const fc = contentService.getContent(content.id).flashcards[0];
   studyService.recordFlashcardAttempt({ flashcardId: fc.id, contentId: content.id, correct: true });
   const event = eventService.createEventEntry({ type: "exam", title: "Prova", date: "2026-03-10", contentIds: [content.id] });
@@ -1124,7 +1152,7 @@ test("F5-9. conteudo com 58% aparece em getWeakContents com reason low_accuracy"
 
 test("F5-10. conteudo com review atrasada e sem tentativas aparece com reason overdue_review", () => {
   const { content } = seedContent();
-  reviewService.scheduleInitialReview(content.id);
+  reviewService.scheduleManualReview(content.id, nowIso());
   const pending = reviewService.getPendingReviews().find((r) => r.contentId === content.id);
   withDb((db) => ({
     ...db,
@@ -1184,20 +1212,22 @@ test("F5-14. getAccuracyDelta retorna null com apenas 1 ponto no historico", () 
   assert.equal(evolutionService.getAccuracyDelta(), null);
 });
 
-test("F5-15. review criada aparece como pendente na evolucao", () => {
+test("F5-15. revisao de plano aparece como pendente na evolucao", () => {
   const { content } = seedContent();
-  reviewService.scheduleInitialReview(content.id);
+  contentService.updateContent(content.id, { reviewPlan: "weekly" });
+  reviewService.applyReviewPlan(content.id);
   const progress = evolutionService.getReviewProgress();
   assert.equal(progress.pending, 1);
   assert.equal(progress.completed, 0);
   assert.equal(progress.contentsInReview.length, 1);
   assert.equal(progress.contentsInReview[0].contentId, content.id);
-  assert.equal(progress.contentsInReview[0].reasonLabel, "Primeiro estudo");
+  assert.equal(progress.contentsInReview[0].reasonLabel, "Revisão programada");
 });
 
-test("F5-16. concluir review incrementa concluidas e ensureNextReview aparece pendente", () => {
+test("F5-16. concluir revisao de plano incrementa concluidas e agenda a proxima", () => {
   const { content } = seedContent();
-  const initial = reviewService.scheduleInitialReview(content.id);
+  contentService.updateContent(content.id, { reviewPlan: "weekly" });
+  const initial = reviewService.applyReviewPlan(content.id);
   reviewService.markReviewDone(initial.id);
   const progress = evolutionService.getReviewProgress();
   assert.equal(progress.completed, 1);
@@ -1207,7 +1237,7 @@ test("F5-16. concluir review incrementa concluidas e ensureNextReview aparece pe
 
 test("F5-17. review com scheduledFor no passado conta em overdue", () => {
   const { content } = seedContent();
-  const review = reviewService.scheduleInitialReview(content.id);
+  const review = reviewService.scheduleManualReview(content.id, nowIso());
   withDb((db) => ({
     ...db,
     reviews: db.reviews.map((r) => (r.id === review.id ? { ...r, scheduledFor: "2000-01-01T00:00:00.000Z" } : r)),
@@ -1259,7 +1289,7 @@ test("F5-29. materia com conteudo a 58% aparece com reason 'acerto baixo'", () =
 
 test("F5-30. materia com revisao atrasada aparece com reason 'revisao atrasada'", () => {
   const { subject, content } = seedContent();
-  const review = reviewService.scheduleInitialReview(content.id);
+  const review = reviewService.scheduleManualReview(content.id, nowIso());
   withDb((db) => ({
     ...db,
     reviews: db.reviews.map((r) => (r.id === review.id ? { ...r, scheduledFor: "2000-01-01T00:00:00.000Z" } : r)),
@@ -1282,7 +1312,7 @@ test("F5-32. acerto baixo + revisao atrasada no mesmo conteudo geram reason comb
   const quiz = contentService.getContent(content.id).quizzes[0];
   studyService.recordQuizAttempt({ quizId: quiz.id, contentId: content.id, answers: buildAnswers(100, 40) });
   studyService.registerActivity(content.id);
-  const review = reviewService.scheduleInitialReview(content.id);
+  const review = reviewService.scheduleManualReview(content.id, nowIso());
   withDb((db) => ({
     ...db,
     reviews: db.reviews.map((r) => (r.id === review.id ? { ...r, scheduledFor: "2000-01-01T00:00:00.000Z" } : r)),
@@ -1427,7 +1457,8 @@ test("F6-5. ciclo completo: editar titulo resumo nota foto materia e registrar a
   const { content, subject: subjectA } = seedContent();
   const subjectB = subjectService.createSubjectEntry("Historia");
 
-  contentService.updateContent(content.id, { title: "Novo titulo", summary: "Novo resumo" });
+  contentService.updateContent(content.id, { title: "Novo titulo", summary: "Novo resumo", reviewPlan: "weekly" });
+  reviewService.applyReviewPlan(content.id);
   contentService.updateNotes(content.id, "Minha nota de estudo");
   const { image } = contentService.addImageToContent(content.id, { dataUrl: "data:image/jpeg;base64,BBB" });
   contentService.moveContentToSubject(content.id, subjectB.id, subjectB.name);
@@ -1483,6 +1514,98 @@ test("F6-8. conteudo sem flashcards quiz reviews ou eventos nao quebra desempenh
   const summary = evolutionService.getEvolutionSummary();
   assert.equal(summary.overallAccuracy, null);
   assert.equal(summary.totalContents, 1);
+});
+
+// ─── Fase 7 — revisões atreladas a plano/compromisso ────────────────────────
+
+function futureDateKey(days) {
+  return new Date(Date.now() + days * 86400000).toISOString().slice(0, 10);
+}
+
+test("F7-1. syncCommitmentReviews monta a serie D-7/D-3/D-1 para um evento distante", () => {
+  const { content } = seedContent();
+  eventService.createEventEntry({ type: "exam", title: "Prova", date: futureDateKey(30), contentIds: [content.id] });
+  const pending = reviewService.getReviewsForContent(content.id).filter((r) => r.status === "pending" && r.kind === "commitment");
+  assert.equal(pending.length, 3);
+  assert.ok(pending.every((r) => r.eventId));
+});
+
+test("F7-2. marcos ja passados sao descartados (evento em 2 dias -> so D-1)", () => {
+  const { content } = seedContent();
+  eventService.createEventEntry({ type: "assignment", title: "Trabalho", date: futureDateKey(2), contentIds: [content.id] });
+  const pending = reviewService.getReviewsForContent(content.id).filter((r) => r.status === "pending" && r.kind === "commitment");
+  assert.equal(pending.length, 1);
+});
+
+test("F7-3. excluir o evento cancela as revisoes de compromisso pendentes", () => {
+  const { content } = seedContent();
+  const ev = eventService.createEventEntry({ type: "exam", title: "P1", date: futureDateKey(20), contentIds: [content.id] });
+  assert.ok(reviewService.getReviewsForContent(content.id).some((r) => r.kind === "commitment"));
+  eventService.deleteEvent(ev.id);
+  assert.equal(reviewService.getReviewsForContent(content.id).filter((r) => r.status === "pending" && r.kind === "commitment").length, 0);
+});
+
+test("F7-4. serie migra para o evento futuro mais proximo", () => {
+  const { content } = seedContent();
+  eventService.createEventEntry({ type: "exam", title: "Longe", date: futureDateKey(40), contentIds: [content.id] });
+  eventService.createEventEntry({ type: "exam", title: "Perto", date: futureDateKey(10), contentIds: [content.id] });
+  const pending = reviewService.getReviewsForContent(content.id).filter((r) => r.status === "pending" && r.kind === "commitment");
+  const eventIds = new Set(pending.map((r) => r.eventId));
+  assert.equal(eventIds.size, 1);
+});
+
+test("F7-5. tipo 'class' e 'other' nao geram revisao de compromisso", () => {
+  const { content } = seedContent();
+  eventService.createEventEntry({ type: "class", title: "Aula", date: futureDateKey(20), contentIds: [content.id] });
+  assert.equal(reviewService.getReviewsForContent(content.id).filter((r) => r.kind === "commitment").length, 0);
+});
+
+test("F7-6. reconcileReviews limpa revisoes pendentes sem intencao e e idempotente", () => {
+  const { content } = seedContent();
+  withDb((db) => ({
+    ...db,
+    reviews: [
+      ...db.reviews,
+      { id: "rev_legacy", contentId: content.id, stage: 1, scheduledFor: nowIso(), status: "pending", reason: "consolidation", completedAt: null, updatedAt: nowIso(), skippedAt: null },
+    ],
+  }));
+  reviewService.reconcileReviews();
+  assert.equal(readDb().reviews.some((r) => r.id === "rev_legacy"), false);
+  const after1 = readDb().reviews.length;
+  reviewService.reconcileReviews();
+  assert.equal(readDb().reviews.length, after1);
+});
+
+test("F7-7. reconcileReviews rola revisao vencida para hoje e marca overdue", () => {
+  const { content } = seedContent();
+  const manual = reviewService.scheduleManualReview(content.id, "2000-01-01T12:00:00.000Z");
+  reviewService.reconcileReviews();
+  const rolled = readDb().reviews.find((r) => r.id === manual.id);
+  assert.equal(rolled.overdue, true);
+  assert.ok(new Date(rolled.scheduledFor).getTime() >= new Date(new Date().setHours(0, 0, 0, 0)).getTime());
+  assert.equal(reviewService.reviewLabel(rolled), "Atrasada");
+});
+
+test("F7-8. reviewLabel distingue plano, compromisso e atrasada", () => {
+  const { content } = seedContent();
+  contentService.updateContent(content.id, { reviewPlan: "weekly" });
+  const plan = reviewService.applyReviewPlan(content.id);
+  assert.equal(reviewService.reviewLabel(plan), "Revisão programada");
+  eventService.createEventEntry({ type: "exam", title: "Prova", date: futureDateKey(20), contentIds: [content.id] });
+  const commit = reviewService.getReviewsForContent(content.id).find((r) => r.kind === "commitment");
+  assert.equal(reviewService.reviewLabel(commit), "Revisão para prova");
+});
+
+test("F7-9. carga: revisoes de plano nao empilham alem do teto no mesmo dia", () => {
+  const day = new Set();
+  for (let i = 0; i < 8; i++) {
+    const { content } = seedContent({ subjectName: `M${i}` });
+    contentService.updateContent(content.id, { reviewPlan: "weekly" });
+    const r = reviewService.applyReviewPlan(content.id);
+    day.add(r.scheduledFor.slice(0, 10));
+  }
+  // 8 revisoes, teto 3/dia -> pelo menos 3 dias distintos
+  assert.ok(day.size >= 3, `esperado >=3 dias distintos, veio ${day.size}`);
 });
 
 // ─── relatório ───────────────────────────────────────────────────────────────
