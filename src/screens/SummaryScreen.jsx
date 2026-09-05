@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { CheckCircle, Bookmark, BookMarked, GraduationCap, Camera } from "lucide-react";
 import LogoSVG from "../components/brand/LogoSVG";
@@ -19,6 +19,10 @@ import { fadeUp } from "../styles/motion";
 export default function SummaryScreen({ capturedContent, onSave, onLibrary, onToast, onBackToCamera }) {
   const [saving, setSaving] = useState(false);
   const [calendarEvent, setCalendarEvent] = useState(null);
+  // Ref, não state: um segundo clique físico chega como um novo evento depois
+  // que o handler síncrono do primeiro já terminou (e já resetou `saving`),
+  // então só o state não bastaria para bloquear o clique duplo.
+  const savedRef = useRef(false);
 
   if (!capturedContent) {
     return (
@@ -45,7 +49,8 @@ export default function SummaryScreen({ capturedContent, onSave, onLibrary, onTo
   };
 
   const handleSave = () => {
-    if (saving) return;
+    if (savedRef.current) return;
+    savedRef.current = true;
     setSaving(true);
 
     const subject = ensureSubject(capturedContent.subjectName);
