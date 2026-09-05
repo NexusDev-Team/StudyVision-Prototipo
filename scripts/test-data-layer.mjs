@@ -1384,6 +1384,34 @@ test("F6-5. ciclo completo: editar titulo resumo nota foto materia e registrar a
   assert.notEqual(subjectA.id, subjectB.id);
 });
 
+test("F6-6. banco vazio nao quebra leituras de content evento e review inexistentes", () => {
+  assert.equal(contentService.getContent("cnt_x"), null);
+  assert.equal(eventService.getEvent("evt_x"), null);
+  assert.equal(reviewService.nextPendingReview("cnt_x"), null);
+  assert.deepEqual(performanceService.getContentPerformance("cnt_x").hasActivity, false);
+});
+
+test("F6-7. sv_db corrompido no localStorage e tratado como banco vazio", () => {
+  localStorage.setItem("sv_db", "{ isso nao e json valido");
+  assert.deepEqual(contentService.getContents(), []);
+  assert.deepEqual(subjectService.getSubjects(), []);
+});
+
+test("F6-8. conteudo sem flashcards quiz reviews ou eventos nao quebra desempenho nem evolucao", () => {
+  const { content } = contentService.createContentEntry({
+    subjectId: null, subjectName: "", title: "Conteudo vazio", summary: "s",
+    flashcards: [], quizzes: [], openQuestions: [],
+  });
+  const performance = performanceService.getContentPerformance(content.id);
+  assert.equal(performance.hasActivity, false);
+  assert.equal(performance.overall, null);
+  assert.equal(reviewService.getReviewsForContent(content.id).length, 0);
+  assert.equal(eventService.getEventsForContent(content.id).length, 0);
+  const summary = evolutionService.getEvolutionSummary();
+  assert.equal(summary.overallAccuracy, null);
+  assert.equal(summary.totalContents, 1);
+});
+
 // ─── relatório ───────────────────────────────────────────────────────────────
 console.log(`\n${passed} passaram, ${failed} falharam`);
 if (failed > 0) {
