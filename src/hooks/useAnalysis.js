@@ -12,6 +12,7 @@ export function useAnalysis() {
   const [status, setStatus] = useState("idle"); // idle | uploading | analyzing | done | error
   const [content, setContent] = useState(null);
   const [error, setError] = useState(null);
+  const [errorKind, setErrorKind] = useState(null); // "technical" | "not_academic"
   const lastPhotoRef = useRef(null);
   const controllerRef = useRef(null);
 
@@ -22,6 +23,7 @@ export function useAnalysis() {
     controllerRef.current = controller;
 
     setError(null);
+    setErrorKind(null);
     setContent(null);
     setStatus("uploading");
 
@@ -39,6 +41,7 @@ export function useAnalysis() {
       if (controller.signal.aborted) return;
       const message = err instanceof AnalysisError ? err.message : "Não foi possível analisar a imagem agora. Tente novamente.";
       setError(message);
+      setErrorKind(err instanceof AnalysisError ? err.kind : "technical");
       setStatus("error");
     }
   }, []);
@@ -52,8 +55,9 @@ export function useAnalysis() {
     setStatus("idle");
     setContent(null);
     setError(null);
+    setErrorKind(null);
     lastPhotoRef.current = null;
   }, []);
 
-  return { status, content, error, run, retry, reset };
+  return { status, content, error, errorKind, run, retry, reset };
 }

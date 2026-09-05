@@ -11,23 +11,28 @@ const STEPS = [
 
 // Progresso refletindo o status real da requisição a /api/analyze — sem timeouts
 // artificiais fingindo processamento.
-export default function AnalysisScreen({ status, error, onRetry, onCancel, onDone }) {
+export default function AnalysisScreen({ status, error, errorKind, onRetry, onCancel, onDone }) {
   useEffect(() => {
     if (status === "done") onDone();
   }, [status, onDone]);
 
   if (status === "error") {
+    const isNotAcademic = errorKind === "not_academic";
+    const title = isNotAcademic ? "Sem conteúdo de estudo" : "Não foi possível analisar";
+    const description = isNotAcademic
+      ? (error || "Essa imagem não parece conter um conteúdo de estudo.")
+      : error;
     return (
       <div style={{ width: "100%", height: "100%", background: "linear-gradient(160deg,#030712 0%,#0f172a 55%,#1e1b4b 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 18, padding: 32, textAlign: "center" }}>
         <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(220,38,38,0.15)", border: "2px solid rgba(220,38,38,0.4)", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <AlertTriangle size={30} color="#F87171" />
         </div>
-        <p style={{ fontFamily: "Inter,sans-serif", fontSize: 18, fontWeight: 800, color: "white", margin: 0 }}>Não foi possível analisar</p>
-        <p style={{ fontFamily: "Inter,sans-serif", fontSize: 14, color: "rgba(255,255,255,0.7)", margin: 0, maxWidth: 280 }}>{error}</p>
+        <p style={{ fontFamily: "Inter,sans-serif", fontSize: 18, fontWeight: 800, color: "white", margin: 0 }}>{title}</p>
+        <p style={{ fontFamily: "Inter,sans-serif", fontSize: 14, color: "rgba(255,255,255,0.7)", margin: 0, maxWidth: 280 }}>{description}</p>
         <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
           <button onClick={onCancel}
             style={{ padding: "12px 20px", borderRadius: 30, background: "rgba(255,255,255,0.1)", border: "1.5px solid rgba(255,255,255,0.25)", color: "white", fontFamily: "Inter,sans-serif", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
-            Voltar à câmera
+            {isNotAcademic ? "Tirar outra foto" : "Voltar à câmera"}
           </button>
           <button onClick={onRetry}
             style={{ padding: "12px 20px", borderRadius: 30, background: "#2563EB", border: "none", color: "white", fontFamily: "Inter,sans-serif", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>

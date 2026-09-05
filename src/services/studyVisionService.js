@@ -3,7 +3,14 @@
 import { createContent } from "../data/models/content.js";
 import { validateContent } from "../data/models/validate.js";
 
-export class AnalysisError extends Error {}
+// kind: "technical" (rede, timeout, erro do servidor, resposta malformada) ou
+// "not_academic" (a IA rodou e concluiu que a imagem não tem conteúdo de estudo).
+export class AnalysisError extends Error {
+  constructor(message, kind = "technical") {
+    super(message);
+    this.kind = kind;
+  }
+}
 
 const GENERIC_ERROR = "Não foi possível analisar a imagem agora. Tente novamente.";
 
@@ -23,22 +30,24 @@ export async function analyzeImage(imageDataUrl, opts = {}) {
     });
   } catch (err) {
     if (err?.name === "AbortError") throw err;
-    throw new AnalysisError("Sem conexão com a internet. Verifique sua rede e tente novamente.");
+    throw new AnalysisError("Sem conexão com a internet. Verifique sua rede e tente novamente.", "technical");
   }
 
   let body;
   try {
     body = await response.json();
   } catch {
-    throw new AnalysisError(GENERIC_ERROR);
+    throw new AnalysisError(GENERIC_ERROR, "technical");
   }
 
   if (!response.ok) {
-    throw new AnalysisError(body?.error || GENERIC_ERROR);
+    throw new AnalysisError(body?.error || GENERIC_ERROR, "technical");
   }
 
+  // success:false com HTTP 200 = a IA rodou e decidiu que não há conteúdo
+  // acadêmico legível na imagem — não é uma falha técnica.
   if (body.success === false) {
-    throw new AnalysisError(body.error || "Não foi possível identificar o conteúdo da imagem com segurança.");
+    throw new AnalysisError(body.error || "Não foi possível identificar o conteúdo da imagem com segurança.", "not_academic");
   }
 
   return body;

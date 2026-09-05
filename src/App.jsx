@@ -87,6 +87,7 @@ export default function App() {
             <AnalysisScreen
               status={analysis.status}
               error={analysis.error}
+              errorKind={analysis.errorKind}
               onRetry={analysis.retry}
               onCancel={() => { analysis.reset(); goBack(); }}
               onDone={() => { setPrevScreens([]); setScreen("summary"); }}
