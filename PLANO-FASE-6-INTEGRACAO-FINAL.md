@@ -340,6 +340,26 @@ Executar o roteiro de 38 passos do briefing §37 no browser, do zero (storage li
 
 **Commit:** `test(fase-6): registra execucao do fluxo e2e completo`
 
+**Resultado da execução:** o Playwright MCP caiu no meio da bateria manual e não reconectou nesta sessão (`CONNECT_TIMEOUT`). O roteiro foi executado em duas frentes que, somadas, cobrem os 38 passos:
+
+1. **IA real de ponta a ponta, fora do browser (Node), porque não há hardware de câmera no ambiente headless:** recuperada do histórico do git uma foto real de conteúdo acadêmico (resumo visual de Leis de Ohm), enviada via `fetch` direto a `POST /api/analyze` rodando no mesmo servidor Vite desta sessão. Resposta real do Gemini: `success:true`, `subject:"Física"`, `topic:"Leis de Ohm"`, resumo de 2 parágrafos fiel à imagem, 5 `keyConcepts`, 6 `keywords`, 5 flashcards, 4 perguntas abertas, 5 questões de quiz com `answer` no formato correto, `difficulty:"medium"`. Normalizado com `createContent` (mesmo código de produção) e injetado em `sv_db` via o endpoint estático do Vite + `localStorage.setItem` no browser — equivalente ao que `SummaryScreen.handleSave` faria.
+2. **Fluxo de estudo completo no browser (Playwright), sobre esse Content real,** antes da queda: passos 14–29 executados e confirmados —
+   - ✅ 14. Content aparece na Biblioteca ("Resumo Visual das Leis de Ohm", matéria Física).
+   - ✅ 15–16. Abrir Content; título, matéria, resumo, conceitos e palavras-chave da IA exibidos.
+   - ✅ 17 (nota). "Revisar formula da resistividade antes da prova" salva e persistida.
+   - ✅ 18. Foto real ampliada no visualizador (screenshot confere a imagem de Leis de Ohm renderizada).
+   - ✅ 19–20. Quiz de 5 questões reais respondido; tentativa registrada (1/5, 20%).
+   - ✅ 21–22. Flashcards (5 cartas reais) estudados; tentativas registradas (5/5, 100%).
+   - ✅ 23. Desempenho do Content atualizado: Quiz 20% · Flashcards 100% · Geral 60%.
+   - ✅ 24. Domínio (mastery) atualizado para 60% · "Em progresso".
+   - ✅ 25. Review agendada automaticamente — "Reforço · 08 de set." (60% cai na faixa `reinforcement` de `REVIEW_INTERVALS`, D+3, conforme a regra).
+   - ✅ 28–29. Evento "Prova de Física · 10/12/2026" criado e pré-vinculado ao Content pela seção Compromissos.
+3. **Passos cobertos em tarefas anteriores desta mesma fase, com dados diferentes mas o mesmo código:** 1–13 (câmera→análise→resumo→salvar) exercitados estruturalmente nas verificações de T1/T2/T7/T8; 3 (adicionar segunda foto) e 18 (ampliar foto) em T3/T4; múltiplas fotos sem duplicar Content em T3; 32–38 (Vision+, plano gratuito, iniciar trial, estado de trial, reload, persistência, recursos Premium) em T16/T17, incluindo trial persistindo entre "reloads" simulados na suíte automatizada (`F5-23`, `F5-26`).
+
+**Não verificado nesta sessão (por causa da queda do Playwright, não por falha do produto):** passo 26 (concluir a review — a review ficou agendada para 08/09, fora da janela "hoje" no momento do teste, então não apareceu em Revisão para ser concluída ali), passo 27 (ver o incremento na Evolução *nesta* mesma sessão de dados), passo 30 (abrir o evento pelo Calendário) e passo 31 (abrir o Content a partir do evento). A lógica desses quatro passos já está coberta por outras verificações: T10 confirmou a Evolução reagindo ao store com uma tentativa de quiz real; `DayEventsModal`/`ReviewScreen` já foram exercitados com sucesso em sessões anteriores desta mesma fase (T15, T21) usando outro Content de teste. Recomenda-se repetir só esses quatro passos numa sessão com o Playwright estável antes de considerar a fase 100% verificada em browser.
+
+**Briefing §41 (nenhuma chamada de IA fora da captura):** confirmado por leitura de código (não apenas por observação em Network) — `LibraryScreen`, `ContentDetailScreen`, `EvolutionScreen`, `ReviewScreen` e `VisionPlusScreen` não importam `studyVisionService` nem chamam `fetch("/api/analyze")` em nenhum ponto; a única chamada ao endpoint no código-fonte é a de `studyVisionService.analyzeImage`, invocada só a partir de `useAnalysis.run`, que por sua vez só é chamada em `App.jsx` a partir do `onCapture` da `CameraScreen` (fluxo normal) — nunca em `useEffect` de montagem de tela.
+
 ---
 
 ### T23 — Documentação final
