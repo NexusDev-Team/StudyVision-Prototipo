@@ -173,8 +173,8 @@ export default function EvolutionScreen({ isPremium, onOpenContent, onOpenLibrar
                 </p>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
-                  {reviewProgress.contentsInReview.slice(0, 3).map((r) => (
-                    <div key={r.contentId} style={{ display: "flex", justifyContent: "space-between", fontFamily: "Inter,sans-serif", fontSize: 12.5 }}>
+                  {reviewProgress.contentsInReview.slice(0, 3).map((r, i) => (
+                    <div key={`${r.contentId}-${i}`} style={{ display: "flex", justifyContent: "space-between", fontFamily: "Inter,sans-serif", fontSize: 12.5 }}>
                       <span style={{ color: "#111827", fontWeight: 600 }}>{r.title}</span>
                       <span style={{ color: "#64748B" }}>{r.reasonLabel}</span>
                     </div>
