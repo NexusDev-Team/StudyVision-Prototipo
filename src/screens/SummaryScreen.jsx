@@ -6,10 +6,11 @@ import CapturedPageVisual from "../components/brand/CapturedPageVisual";
 import ContentBlocks from "../components/study/ContentBlocks";
 import ExportSection from "../components/study/ExportSection";
 import PlanningSection from "../components/study/PlanningSection";
+import ReviewPlanPicker from "../components/study/ReviewPlanPicker";
 import EmptyState from "../components/ui/EmptyState";
 import { createContentEntry } from "../services/contentService";
 import { ensureSubject } from "../services/subjectService";
-import { scheduleInitialReview } from "../services/reviewService";
+import { applyReviewPlan } from "../services/reviewService";
 import { scheduleCommitment } from "../services/calendarService";
 import { getSubjectVisual } from "../constants";
 import { fadeUp } from "../styles/motion";
@@ -19,6 +20,7 @@ import { fadeUp } from "../styles/motion";
 export default function SummaryScreen({ capturedContent, onSave, onLibrary, onToast, onBackToCamera }) {
   const [saving, setSaving] = useState(false);
   const [calendarEvent, setCalendarEvent] = useState(null);
+  const [reviewPlan, setReviewPlan] = useState("weekly");
   // Ref, não state: um segundo clique físico chega como um novo evento depois
   // que o handler síncrono do primeiro já terminou (e já resetou `saving`),
   // então só o state não bastaria para bloquear o clique duplo.
@@ -59,9 +61,11 @@ export default function SummaryScreen({ capturedContent, onSave, onLibrary, onTo
       ...capturedContent,
       subjectId: subject?.id || null,
       subjectName: subject?.name || "",
+      reviewPlan,
     });
-    scheduleInitialReview(saved.id, saved.createdAt);
+    applyReviewPlan(saved.id, saved.createdAt);
     if (calendarEvent) {
+      // scheduleCommitment cria o evento, que dispara syncCommitmentReviews.
       scheduleCommitment({ contentId: saved.id, title: saved.title, ...calendarEvent });
     }
 
@@ -114,6 +118,9 @@ export default function SummaryScreen({ capturedContent, onSave, onLibrary, onTo
 
         {/* Export content */}
         <ExportSection content={capturedContent} onToast={onToast} />
+
+        {/* Review plan */}
+        <ReviewPlanPicker value={reviewPlan} onChange={setReviewPlan} delay={0.5} />
 
         {/* Planning */}
         <PlanningSection calendarEvent={calendarEvent} onPlanned={handlePlanned} onToast={onToast} />

@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Calendar } from "lucide-react";
-import { reviewReasonLabel } from "../../services/reviewService";
+import { reviewLabel } from "../../services/reviewService";
 import { getSubjectVisual } from "../../constants";
 
 export default function ReviewCard({ content, nextReview, index, onReview }) {
@@ -14,7 +14,7 @@ export default function ReviewCard({ content, nextReview, index, onReview }) {
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{ fontSize: 14, fontWeight: 700, color: "#111827", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{content.title}</p>
-        <p style={{ fontSize: 12, color: "#64748B", margin: "2px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{content.subjectName} · {reviewReasonLabel(nextReview?.reason)}</p>
+        <p style={{ fontSize: 12, color: "#64748B", margin: "2px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{content.subjectName} · {reviewLabel(nextReview)}</p>
       </div>
       <Calendar size={16} color="#0F766E" style={{ flexShrink: 0 }} />
       <span style={{ fontSize: 11, fontWeight: 700, color: "white", background: "#DC2626", borderRadius: 10, padding: "5px 12px", fontFamily: "Inter,sans-serif", flexShrink: 0 }}>Revisar</span>

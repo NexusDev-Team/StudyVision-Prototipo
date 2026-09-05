@@ -7,6 +7,7 @@ import PhotosSection from "../components/study/PhotosSection";
 import NotesSection from "../components/study/NotesSection";
 import ExportSection from "../components/study/ExportSection";
 import CommitmentsSection from "../components/study/CommitmentsSection";
+import ReviewPlanPicker from "../components/study/ReviewPlanPicker";
 import SubjectPickerModal from "../components/study/SubjectPickerModal";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { useContentStore } from "../context/ContentStoreContext.jsx";
@@ -15,7 +16,8 @@ import {
   nextPendingReview,
   isContentDueForReview,
   formatDue,
-  reviewReasonLabel,
+  reviewLabel,
+  applyReviewPlan,
 } from "../services/reviewService";
 import { getEventsForContent, createEventEntry, updateEvent, unlinkContentFromEvent, deleteEvent } from "../services/eventService";
 import { moveContentToSubject, deleteContent, updateNotes, updateContent } from "../services/contentService";
@@ -72,6 +74,15 @@ export default function ContentDetailScreen({ content, onBack, onDeleted, onFlas
     } catch {
       onToast?.("Não foi possível desvincular o compromisso.");
     }
+  };
+
+  const handleReviewPlanChange = (plan) => {
+    if (plan === (content.reviewPlan || "none")) return;
+    mutate(() => {
+      updateContent(content.id, { reviewPlan: plan });
+      applyReviewPlan(content.id);
+    });
+    onToast?.("✓ Plano de revisão atualizado");
   };
 
   const handleDeleteEvent = (event) => {
@@ -234,12 +245,19 @@ export default function ContentDetailScreen({ content, onBack, onDeleted, onFlas
             <CalendarClock size={18} color={due ? "#DC2626" : "#64748B"} />
             <div>
               <p style={{ fontSize: 13, fontWeight: 700, color: due ? "#DC2626" : "#111827", margin: 0, fontFamily: "Inter,sans-serif" }}>
-                {due ? "Revisão pendente hoje" : `Próxima revisão: ${reviewReasonLabel(next.reason)} · ${formatDue(next.scheduledFor)}`}
+                {next.overdue
+                  ? `Revisão atrasada · ${reviewLabel(next)}`
+                  : due
+                  ? `Revisão pendente hoje · ${reviewLabel(next)}`
+                  : `Próxima revisão: ${reviewLabel(next)} · ${formatDue(next.scheduledFor)}`}
               </p>
               <p style={{ fontSize: 11, color: "#94A3B8", margin: "2px 0 0", fontFamily: "Inter,sans-serif" }}>{doneCount} {doneCount === 1 ? "revisão concluída" : "revisões concluídas"}</p>
             </div>
           </motion.div>
         )}
+
+        <ReviewPlanPicker value={content.reviewPlan || "none"} onChange={handleReviewPlanChange} delay={0.1} />
+        <div style={{ height: 12 }} />
 
         <ContentBlocks content={content} variant="detail" onSaveSummary={handleSaveSummary} />
         <NotesSection content={content} onSave={handleSaveNotes} />
