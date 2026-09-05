@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, CalendarClock, CreditCard, ListChecks, HelpCircle, ChevronRight, Trash2, Pencil, Check, X } from "lucide-react";
 import CapturedPageVisual from "../components/brand/CapturedPageVisual";
@@ -23,26 +23,29 @@ import { getContentPerformance } from "../services/performanceService";
 import { getSubjectVisual, getMasteryMeta, UNASSIGNED_SUBJECT_LABEL } from "../constants";
 
 export default function ContentDetailScreen({ content, onBack, onDeleted, onFlashcards, onQuestions, onQuiz, onVisionPlus, onToast, onAddPhoto, onViewPhoto }) {
-  const { mutate, subjects, contents } = useContentStore();
+  const { mutate, subjects, contents, reviews: allReviews, events: allEvents } = useContentStore();
   const [subjectPickerOpen, setSubjectPickerOpen] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(content.title);
   const visual = getSubjectVisual(content.subjectName);
 
-  const reviews = getReviewsForContent(content.id);
-  const next = nextPendingReview(content.id);
-  const due = isContentDueForReview(content.id);
+  // Presas ao snapshot do store (não a `content`, que também muda a cada
+  // mutação) para não recalcular a cada render sem necessidade — e nunca
+  // disparam a IA, só leem dados já persistidos.
+  const reviews = useMemo(() => getReviewsForContent(content.id), [content.id, allReviews]);
+  const next = useMemo(() => nextPendingReview(content.id), [content.id, allReviews]);
+  const due = useMemo(() => isContentDueForReview(content.id), [content.id, allReviews]);
   const doneCount = reviews.filter((r) => r.status !== "pending").length;
 
   const mastery = getMasteryMeta(content.mastery?.level);
   const masteryScore = content.mastery?.score ?? 0;
   const hasMastery = (content.mastery?.level || "not_started") !== "not_started";
-  const performance = getContentPerformance(content.id);
+  const performance = useMemo(() => getContentPerformance(content.id), [content.id, content.flashcards, content.quizzes]);
 
   // Um conteúdo pode ter N eventos; a seção de compromissos lista todos, não
   // só o mais recente.
-  const events = getEventsForContent(content.id);
+  const events = useMemo(() => getEventsForContent(content.id), [content.id, allEvents]);
 
   const handleCreateEvent = async (payload) => {
     try {
