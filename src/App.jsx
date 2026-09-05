@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useContentStore } from "./context/ContentStoreContext.jsx";
 import { nextPendingReview, markReviewDone } from "./services/reviewService";
-import { addImageToContent } from "./services/contentService";
+import { addImageToContent, removeImageFromContent } from "./services/contentService";
 import { useNavigation } from "./hooks/useNavigation";
 import { useToast } from "./hooks/useToast";
 import { useSubscription } from "./hooks/useSubscription";
@@ -30,7 +30,7 @@ export default function App() {
   const [selectedContentId, setSelectedContentId] = useState(null);
   const [libraryFilterSubjectId, setLibraryFilterSubjectId] = useState(null);
   const [attachTargetId, setAttachTargetId] = useState(null);
-  const [photoViewer, setPhotoViewer] = useState(null); // { images, index } | null
+  const [photoViewer, setPhotoViewer] = useState(null); // { contentId, index } | null
   const { toast, showToast, clearToast } = useToast();
   const analysis = useAnalysis();
   const { contents, dueCount, reload: refreshDueCount, mutate } = useContentStore();
@@ -46,9 +46,19 @@ export default function App() {
 
   const openAttachCamera = (contentId) => { setAttachTargetId(contentId); go("camera"); };
 
-  const openPhotoViewer = (content, index) => {
-    const images = [...content.images].sort((a, b) => a.order - b.order);
-    setPhotoViewer({ images, index });
+  const openPhotoViewer = (content, index) => setPhotoViewer({ contentId: content.id, index });
+
+  // Imagens derivadas do store a cada render — a exclusão dentro do
+  // visualizador reflete na hora, sem array congelado.
+  const photoViewerContent = photoViewer ? contents.find((c) => c.id === photoViewer.contentId) : null;
+  const photoViewerImages = photoViewerContent
+    ? [...photoViewerContent.images].sort((a, b) => a.order - b.order)
+    : [];
+
+  const handleRemoveViewerImage = (imageId) => {
+    if (!photoViewer) return;
+    mutate(() => removeImageFromContent(photoViewer.contentId, imageId));
+    showToast("✓ Foto removida");
   };
 
   const handleAttachCapture = (dataUrl) => {
@@ -216,11 +226,12 @@ export default function App() {
 
       {/* Visualização ampliada de foto */}
       <AnimatePresence>
-        {photoViewer && (
+        {photoViewer && photoViewerImages.length > 0 && (
           <PhotoViewerModal
-            images={photoViewer.images}
+            images={photoViewerImages}
             initialIndex={photoViewer.index}
             onClose={() => setPhotoViewer(null)}
+            onRemoveImage={handleRemoveViewerImage}
           />
         )}
       </AnimatePresence>

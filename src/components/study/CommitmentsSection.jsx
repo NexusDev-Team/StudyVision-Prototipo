@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { AnimatePresence } from "framer-motion";
-import { Calendar, Plus, Pencil, Link2Off } from "lucide-react";
+import { Calendar, Plus, Pencil, Link2Off, Trash2 } from "lucide-react";
 import Card from "../ui/Card";
 import SectionLabel from "../ui/SectionLabel";
+import ConfirmDialog from "../ui/ConfirmDialog";
 import EventFormModal from "./EventFormModal";
 import { EVENT_TYPE_META } from "../../data/models/event.js";
 
@@ -15,8 +16,9 @@ function formatEventDate(dateStr) {
 // Lista TODOS os compromissos acadêmicos do conteúdo (não só o mais recente),
 // com edição in-place e desvincular (o evento continua no calendário, só
 // deixa de referenciar este conteúdo).
-export default function CommitmentsSection({ content, events, contents, onCreate, onEdit, onUnlink }) {
+export default function CommitmentsSection({ content, events, contents, onCreate, onEdit, onUnlink, onDelete }) {
   const [mode, setMode] = useState(null); // null | "create" | event object (edição)
+  const [pendingDelete, setPendingDelete] = useState(null);
 
   const sorted = [...events].sort((a, b) => (a.date || "").localeCompare(b.date || ""));
 
@@ -45,7 +47,11 @@ export default function CommitmentsSection({ content, events, contents, onCreate
                 </button>
                 <button onClick={() => onUnlink(event)} aria-label={`Desvincular ${event.title}`}
                   style={{ width: 44, height: 44, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <Link2Off size={14} color="#DC2626" />
+                  <Link2Off size={14} color="#64748B" />
+                </button>
+                <button onClick={() => setPendingDelete(event)} aria-label={`Excluir ${event.title}`}
+                  style={{ width: 44, height: 44, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <Trash2 size={14} color="#DC2626" />
                 </button>
               </div>
             );
@@ -74,6 +80,15 @@ export default function CommitmentsSection({ content, events, contents, onCreate
             contents={contents}
             onSave={async (payload) => { await onEdit(mode.id, payload); setMode(null); }}
             onClose={() => setMode(null)}
+          />
+        )}
+        {pendingDelete && (
+          <ConfirmDialog
+            title="Excluir este compromisso?"
+            description={`"${pendingDelete.title}" será apagado do calendário para sempre, incluindo o vínculo com qualquer outro conteúdo. Para só tirar daqui, use "desvincular".`}
+            confirmLabel="Excluir compromisso"
+            onConfirm={() => { onDelete(pendingDelete); setPendingDelete(null); }}
+            onCancel={() => setPendingDelete(null)}
           />
         )}
       </AnimatePresence>

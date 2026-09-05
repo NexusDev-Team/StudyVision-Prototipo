@@ -17,8 +17,8 @@ import {
   formatDue,
   reviewReasonLabel,
 } from "../services/reviewService";
-import { getEventsForContent, createEventEntry, updateEvent, unlinkContentFromEvent } from "../services/eventService";
-import { moveContentToSubject, deleteContent, removeImageFromContent, updateNotes, updateContent } from "../services/contentService";
+import { getEventsForContent, createEventEntry, updateEvent, unlinkContentFromEvent, deleteEvent } from "../services/eventService";
+import { moveContentToSubject, deleteContent, updateNotes, updateContent } from "../services/contentService";
 import { getContentPerformance } from "../services/performanceService";
 import { getSubjectVisual, getMasteryMeta, UNASSIGNED_SUBJECT_LABEL } from "../constants";
 
@@ -74,6 +74,15 @@ export default function ContentDetailScreen({ content, onBack, onDeleted, onFlas
     }
   };
 
+  const handleDeleteEvent = (event) => {
+    try {
+      mutate(() => deleteEvent(event.id));
+      onToast?.("✓ Compromisso excluído");
+    } catch {
+      onToast?.("Não foi possível excluir o compromisso.");
+    }
+  };
+
   const handleSubjectSelect = (subjectId, subjectName) => {
     try {
       mutate(() => moveContentToSubject(content.id, subjectId, subjectName));
@@ -108,11 +117,6 @@ export default function ContentDetailScreen({ content, onBack, onDeleted, onFlas
   const handleSaveNotes = (notes) => {
     mutate(() => updateNotes(content.id, notes));
     onToast?.("✓ Nota salva");
-  };
-
-  const handleRemovePhoto = (imageId) => {
-    mutate(() => removeImageFromContent(content.id, imageId));
-    onToast?.("✓ Foto removida");
   };
 
   const handleDelete = () => {
@@ -184,7 +188,6 @@ export default function ContentDetailScreen({ content, onBack, onDeleted, onFlas
         <PhotosSection
           content={content}
           onAddPhoto={onAddPhoto}
-          onRemovePhoto={handleRemovePhoto}
           onSelectPhoto={(index) => onViewPhoto?.(content, index)}
         />
 
@@ -249,6 +252,7 @@ export default function ContentDetailScreen({ content, onBack, onDeleted, onFlas
           onCreate={handleCreateEvent}
           onEdit={handleEditEvent}
           onUnlink={handleUnlinkEvent}
+          onDelete={handleDeleteEvent}
         />
 
         {/* Action buttons */}
