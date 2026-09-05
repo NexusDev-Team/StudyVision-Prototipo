@@ -4,6 +4,7 @@ import { ChevronLeft, CalendarClock, CreditCard, ListChecks, HelpCircle, Chevron
 import CapturedPageVisual from "../components/brand/CapturedPageVisual";
 import ContentBlocks from "../components/study/ContentBlocks";
 import PhotosSection from "../components/study/PhotosSection";
+import NotesSection from "../components/study/NotesSection";
 import ExportSection from "../components/study/ExportSection";
 import CommitmentsSection from "../components/study/CommitmentsSection";
 import SubjectPickerModal from "../components/study/SubjectPickerModal";
@@ -17,7 +18,7 @@ import {
   reviewReasonLabel,
 } from "../services/reviewService";
 import { getEventsForContent, createEventEntry, updateEvent, unlinkContentFromEvent } from "../services/eventService";
-import { moveContentToSubject, deleteContent, removeImageFromContent } from "../services/contentService";
+import { moveContentToSubject, deleteContent, removeImageFromContent, updateNotes } from "../services/contentService";
 import { getContentPerformance } from "../services/performanceService";
 import { getSubjectVisual, getMasteryMeta, UNASSIGNED_SUBJECT_LABEL } from "../constants";
 
@@ -77,6 +78,11 @@ export default function ContentDetailScreen({ content, onBack, onDeleted, onFlas
     }
     setSubjectPickerOpen(false);
     onToast?.("✓ Matéria atualizada");
+  };
+
+  const handleSaveNotes = (notes) => {
+    mutate(() => updateNotes(content.id, notes));
+    onToast?.("✓ Nota salva");
   };
 
   const handleRemovePhoto = (imageId) => {
@@ -186,6 +192,7 @@ export default function ContentDetailScreen({ content, onBack, onDeleted, onFlas
         )}
 
         <ContentBlocks content={content} variant="detail" />
+        <NotesSection content={content} onSave={handleSaveNotes} />
 
         <ExportSection content={content} onToast={onToast} />
         <CommitmentsSection
