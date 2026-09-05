@@ -11,6 +11,7 @@ import StatusBar from "./components/layout/StatusBar";
 import BottomNav from "./components/layout/BottomNav";
 import PhoneFrame from "./components/layout/PhoneFrame";
 import Toast from "./components/ui/Toast";
+import PhotoViewerModal from "./components/study/PhotoViewerModal";
 import CameraScreen from "./screens/CameraScreen";
 import AnalysisScreen from "./screens/AnalysisScreen";
 import SummaryScreen from "./screens/SummaryScreen";
@@ -29,6 +30,7 @@ export default function App() {
   const [selectedContentId, setSelectedContentId] = useState(null);
   const [libraryFilterSubjectId, setLibraryFilterSubjectId] = useState(null);
   const [attachTargetId, setAttachTargetId] = useState(null);
+  const [photoViewer, setPhotoViewer] = useState(null); // { images, index } | null
   const { toast, showToast, clearToast } = useToast();
   const analysis = useAnalysis();
   const { contents, dueCount, reload: refreshDueCount, mutate } = useContentStore();
@@ -43,6 +45,11 @@ export default function App() {
   const openLibrary = (subjectId = null) => { setLibraryFilterSubjectId(subjectId); goTo("library"); };
 
   const openAttachCamera = (contentId) => { setAttachTargetId(contentId); go("camera"); };
+
+  const openPhotoViewer = (content, index) => {
+    const images = [...content.images].sort((a, b) => a.order - b.order);
+    setPhotoViewer({ images, index });
+  };
 
   const handleAttachCapture = (dataUrl) => {
     const targetId = attachTargetId;
@@ -138,6 +145,7 @@ export default function App() {
               onVisionPlus={() => go("visionplus")}
               onToast={showToast}
               onAddPhoto={() => openAttachCamera(selectedContent.id)}
+              onViewPhoto={openPhotoViewer}
             />
           )}
           {screen === "flashcards" && selectedContent && (
@@ -201,6 +209,17 @@ export default function App() {
       {/* Toast */}
       <AnimatePresence>
         {toast && <Toast key={toast} message={toast} onDone={clearToast} />}
+      </AnimatePresence>
+
+      {/* Visualização ampliada de foto */}
+      <AnimatePresence>
+        {photoViewer && (
+          <PhotoViewerModal
+            images={photoViewer.images}
+            initialIndex={photoViewer.index}
+            onClose={() => setPhotoViewer(null)}
+          />
+        )}
       </AnimatePresence>
     </PhoneFrame>
   );
