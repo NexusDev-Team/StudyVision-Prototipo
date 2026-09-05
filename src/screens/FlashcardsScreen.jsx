@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { ChevronLeft, CreditCard, ThumbsUp, ThumbsDown, CheckCircle, Lock, Sparkles } from "lucide-react";
 import Flashcard from "../components/study/Flashcard";
+import EmptyState from "../components/ui/EmptyState";
 import { FREE_FLASHCARD_LIMIT } from "../constants";
 import { shuffle } from "../services/reviewService";
 import { recordFlashcardAttempt, registerActivity } from "../services/studyService";
@@ -131,7 +132,22 @@ export default function FlashcardsScreen({ content, onBack, onVisionPlus, isPrem
           </>
         )}
 
-        {done && (
+        {done && cards.length === 0 && (
+          <>
+            <EmptyState
+              icon={<CreditCard size={32} color="#94A3B8" style={{ margin: "0 auto 12px" }} />}
+              title="Este conteúdo ainda não tem flashcards"
+              description="A IA não gerou flashcards para este material."
+              paddingTop={30}
+            />
+            <motion.button whileTap={{ scale: 0.96 }} onClick={handleFinishReview}
+              style={{ width: "100%", height: 50, borderRadius: 14, background: "linear-gradient(135deg,#2563EB,#7C3AED)", color: "white", fontFamily: "Inter,sans-serif", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer", marginTop: 8 }}>
+              {reviewMode ? "Concluir revisão" : "Voltar"}
+            </motion.button>
+          </>
+        )}
+
+        {done && cards.length > 0 && (
           <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
             style={{ background: "white", borderRadius: 20, padding: "24px 20px", textAlign: "center", border: "1px solid #E2E8F0", boxShadow: "0 1px 8px rgba(0,0,0,0.05)" }}>
             <CheckCircle size={30} color="#14B8A6" style={{ margin: "0 auto 12px" }} />

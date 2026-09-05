@@ -124,6 +124,7 @@ export default function App() {
               onSave={() => { showToast("✓ Conteúdo salvo com sucesso"); refreshDueCount(); setTimeout(() => openLibrary(), 500); }}
               onLibrary={() => openLibrary()}
               onToast={showToast}
+              onBackToCamera={() => goTo("camera")}
             />
           )}
           {screen === "library" && (

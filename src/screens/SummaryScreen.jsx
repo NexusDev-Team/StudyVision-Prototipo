@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { CheckCircle, Bookmark, BookMarked, GraduationCap } from "lucide-react";
+import { CheckCircle, Bookmark, BookMarked, GraduationCap, Camera } from "lucide-react";
 import LogoSVG from "../components/brand/LogoSVG";
 import CapturedPageVisual from "../components/brand/CapturedPageVisual";
 import ContentBlocks from "../components/study/ContentBlocks";
 import ExportSection from "../components/study/ExportSection";
 import PlanningSection from "../components/study/PlanningSection";
+import EmptyState from "../components/ui/EmptyState";
 import { createContentEntry } from "../services/contentService";
 import { ensureSubject } from "../services/subjectService";
 import { scheduleInitialReview } from "../services/reviewService";
@@ -15,11 +16,26 @@ import { fadeUp } from "../styles/motion";
 
 // capturedContent: Content normalizado ainda não persistido (vem de useAnalysis).
 // Quem salva de verdade é handleSave aqui, ao clicar em "Salvar".
-export default function SummaryScreen({ capturedContent, onSave, onLibrary, onToast }) {
+export default function SummaryScreen({ capturedContent, onSave, onLibrary, onToast, onBackToCamera }) {
   const [saving, setSaving] = useState(false);
   const [calendarEvent, setCalendarEvent] = useState(null);
 
-  if (!capturedContent) return null;
+  if (!capturedContent) {
+    return (
+      <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#F8FAFC", fontFamily: "Inter,sans-serif", padding: 32 }}>
+        <EmptyState
+          icon={<Camera size={32} color="#94A3B8" style={{ margin: "0 auto 12px" }} />}
+          title="Nenhum conteúdo para mostrar"
+          description="Volte à câmera e capture uma foto para gerar um resumo."
+          paddingTop={0}
+        />
+        <button onClick={onBackToCamera}
+          style={{ marginTop: 20, padding: "12px 24px", borderRadius: 14, background: "linear-gradient(135deg,#2563EB,#7C3AED)", color: "white", border: "none", fontFamily: "Inter,sans-serif", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+          Voltar à câmera
+        </button>
+      </div>
+    );
+  }
   const visual = getSubjectVisual(capturedContent.subjectName);
 
   // O agendamento fica só em memória até o usuário confirmar "Salvar" — não

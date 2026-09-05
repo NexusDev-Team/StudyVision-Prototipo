@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { ChevronLeft, HelpCircle, Sparkles } from "lucide-react";
+import EmptyState from "../components/ui/EmptyState";
 
 function generateQuestion(content, n) {
   const concepts = content?.keyConcepts?.length ? content.keyConcepts : [content?.title || "este conteúdo"];
@@ -30,6 +31,15 @@ export default function QuestionsScreen({ content, onBack, isPremium = false, on
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "14px 20px 20px" }}>
+        {qs.length === 0 && (
+          <EmptyState
+            icon={<HelpCircle size={32} color="#94A3B8" style={{ margin: "0 auto 12px" }} />}
+            title="Este conteúdo ainda não tem perguntas"
+            description="A IA não gerou questões abertas para este material."
+            paddingTop={30}
+          />
+        )}
+
         {qs.map((q, i) => (
           <motion.div key={q.id || i} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
             style={{ background: "white", borderRadius: 20, padding: "16px 18px", marginBottom: 10, boxShadow: "0 1px 8px rgba(0,0,0,0.06)", border: "1px solid #E2E8F0" }}>
