@@ -11,6 +11,7 @@ import SubjectProgress from "../components/plus/SubjectProgress";
 import AttentionCard from "../components/plus/AttentionCard";
 import StrengthsCard from "../components/plus/StrengthsCard";
 import PlusPaywall from "../components/plus/PlusPaywall";
+import PlusFinalCta from "../components/plus/PlusFinalCta";
 import SparkChart from "../components/ui/SparkChart";
 import Button from "../components/ui/Button";
 import { useContentStore } from "../context/ContentStoreContext.jsx";
@@ -38,7 +39,7 @@ function StatCard({ value, label, delay = 0 }) {
 // calculado aqui. Os cálculos ficam em useMemo presos ao snapshot do store
 // para a tela refletir mutações (quiz respondido, review concluída) sem
 // depender só do remount de navegação.
-export default function EvolutionScreen({ isPremium, onOpenContent, onOpenLibrary, onOpenReview, onVisionPlus }) {
+export default function EvolutionScreen({ isPremium, onOpenContent, onOpenLibrary, onOpenReview, onVisionPlus, onStartTrial }) {
   const { contents, reviews } = useContentStore();
 
   const summary = useMemo(() => getEvolutionSummary(), [contents, reviews]);
@@ -213,6 +214,12 @@ export default function EvolutionScreen({ isPremium, onOpenContent, onOpenLibrar
                 )}
               </Card>
             </PlusPaywall>
+
+            {!isPremium && (
+              <div style={{ marginTop: 8 }}>
+                <PlusFinalCta onStartTrial={onStartTrial} />
+              </div>
+            )}
           </>
         )}
       </div>

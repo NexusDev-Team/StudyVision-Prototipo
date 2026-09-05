@@ -180,6 +180,7 @@ export default function App() {
               onOpenLibrary={(subjectId) => openLibrary(subjectId)}
               onOpenReview={() => goTo("review")}
               onVisionPlus={() => go("visionplus")}
+              onStartTrial={handleStartTrial}
             />
           )}
           {screen === "visionplus" && (
