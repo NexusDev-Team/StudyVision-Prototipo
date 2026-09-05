@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, CalendarClock, CreditCard, ListChecks, HelpCircle, ChevronRight, Trash2 } from "lucide-react";
+import { ChevronLeft, CalendarClock, CreditCard, ListChecks, HelpCircle, ChevronRight, Trash2, Pencil, Check, X } from "lucide-react";
 import CapturedPageVisual from "../components/brand/CapturedPageVisual";
 import ContentBlocks from "../components/study/ContentBlocks";
 import PhotosSection from "../components/study/PhotosSection";
@@ -18,7 +18,7 @@ import {
   reviewReasonLabel,
 } from "../services/reviewService";
 import { getEventsForContent, createEventEntry, updateEvent, unlinkContentFromEvent } from "../services/eventService";
-import { moveContentToSubject, deleteContent, removeImageFromContent, updateNotes } from "../services/contentService";
+import { moveContentToSubject, deleteContent, removeImageFromContent, updateNotes, updateContent } from "../services/contentService";
 import { getContentPerformance } from "../services/performanceService";
 import { getSubjectVisual, getMasteryMeta, UNASSIGNED_SUBJECT_LABEL } from "../constants";
 
@@ -26,6 +26,8 @@ export default function ContentDetailScreen({ content, onBack, onDeleted, onFlas
   const { mutate, subjects, contents } = useContentStore();
   const [subjectPickerOpen, setSubjectPickerOpen] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState(content.title);
   const visual = getSubjectVisual(content.subjectName);
 
   const reviews = getReviewsForContent(content.id);
@@ -80,6 +82,26 @@ export default function ContentDetailScreen({ content, onBack, onDeleted, onFlas
     onToast?.("✓ Matéria atualizada");
   };
 
+  const handleStartEditTitle = () => {
+    setTitleDraft(content.title);
+    setEditingTitle(true);
+  };
+
+  const handleSaveTitle = () => {
+    const trimmed = titleDraft.trim();
+    if (!trimmed) {
+      onToast?.("O título não pode ficar em branco.");
+      return;
+    }
+    mutate(() => updateContent(content.id, { title: trimmed }));
+    setEditingTitle(false);
+  };
+
+  const handleSaveSummary = (summary) => {
+    mutate(() => updateContent(content.id, { summary }));
+    onToast?.("✓ Resumo atualizado");
+  };
+
   const handleSaveNotes = (notes) => {
     mutate(() => updateNotes(content.id, notes));
     onToast?.("✓ Nota salva");
@@ -117,7 +139,29 @@ export default function ContentDetailScreen({ content, onBack, onDeleted, onFlas
             {visual.emoji}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ fontSize: 20, fontWeight: 800, color: "#111827", margin: 0 }}>{content.title}</p>
+            {editingTitle ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <input autoFocus value={titleDraft} onChange={(e) => setTitleDraft(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleSaveTitle(); if (e.key === "Escape") setEditingTitle(false); }}
+                  style={{ flex: 1, minWidth: 0, fontSize: 18, fontWeight: 800, color: "#111827", border: "1.5px solid #2563EB", borderRadius: 8, padding: "4px 8px", fontFamily: "Inter,sans-serif", outline: "none" }} />
+                <button onClick={handleSaveTitle} aria-label="Salvar título"
+                  style={{ width: 32, height: 32, borderRadius: 8, background: "#2563EB", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <Check size={15} color="white" />
+                </button>
+                <button onClick={() => setEditingTitle(false)} aria-label="Cancelar edição do título"
+                  style={{ width: 32, height: 32, borderRadius: 8, background: "#F1F5F9", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <X size={15} color="#64748B" />
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <p style={{ fontSize: 20, fontWeight: 800, color: "#111827", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{content.title}</p>
+                <button onClick={handleStartEditTitle} aria-label="Editar título"
+                  style={{ width: 28, height: 28, borderRadius: 8, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <Pencil size={13} color="#94A3B8" />
+                </button>
+              </div>
+            )}
             <button onClick={() => setSubjectPickerOpen(true)}
               style={{ display: "flex", alignItems: "center", gap: 2, background: "none", border: "none", cursor: "pointer", padding: 0, marginTop: 2 }}>
               <span style={{ fontSize: 13, color: "#64748B" }}>{content.subjectName || UNASSIGNED_SUBJECT_LABEL} · {content.topic}</span>
@@ -191,7 +235,7 @@ export default function ContentDetailScreen({ content, onBack, onDeleted, onFlas
           </motion.div>
         )}
 
-        <ContentBlocks content={content} variant="detail" />
+        <ContentBlocks content={content} variant="detail" onSaveSummary={handleSaveSummary} />
         <NotesSection content={content} onSave={handleSaveNotes} />
 
         <ExportSection content={content} onToast={onToast} />
