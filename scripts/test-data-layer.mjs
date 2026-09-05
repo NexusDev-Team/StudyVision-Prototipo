@@ -1302,6 +1302,54 @@ test("F5-27. plano premium nao altera nenhum numero academico", () => {
   assert.deepEqual(summaryFree, summaryPremium);
 });
 
+// ─── Fase 6 — exclusao e integridade ────────────────────────────────────────
+
+test("F6-1. excluir conteudo remove reviews tentativas e o contentId dos eventos", () => {
+  const { content } = seedContent();
+  const quiz = contentService.getContent(content.id).quizzes[0];
+  const fc = contentService.getContent(content.id).flashcards[0];
+  reviewService.scheduleManualReview(content.id, nowIso());
+  studyService.recordFlashcardAttempt({ flashcardId: fc.id, contentId: content.id, correct: true });
+  studyService.recordQuizAttempt({ quizId: quiz.id, contentId: content.id, answers: buildAnswers(2, 2) });
+  const event = eventService.createEventEntry({ type: "exam", title: "Prova", date: "2026-12-01", contentIds: [content.id] });
+
+  contentService.deleteContent(content.id);
+
+  const db = readDb();
+  assert.equal(db.reviews.some((r) => r.contentId === content.id), false);
+  assert.equal(db.flashcardAttempts.some((a) => a.contentId === content.id), false);
+  assert.equal(db.quizAttempts.some((a) => a.contentId === content.id), false);
+  assert.equal(eventService.getEvent(event.id), null); // ficou sem nenhum content vinculado -> evento removido
+});
+
+test("F6-2. excluir conteudo preserva evento que ainda tem outro conteudo vinculado", () => {
+  const { content: c1 } = seedContent();
+  const { content: c2 } = seedContent({ title: "Outro conteudo" });
+  const event = eventService.createEventEntry({ type: "exam", title: "Prova", date: "2026-12-01", contentIds: [c1.id, c2.id] });
+
+  contentService.deleteContent(c1.id);
+
+  const stillThere = eventService.getEvent(event.id);
+  assert.ok(stillThere);
+  assert.deepEqual(stillThere.contentIds, [c2.id]);
+});
+
+test("F6-3. sweepOrphans limpa contentIds fantasmas do evento sem apagar o evento", () => {
+  const { content } = seedContent();
+  const event = eventService.createEventEntry({ type: "class", title: "Aula", date: "2026-12-01", contentIds: [content.id] });
+  withDb((db) => ({ ...db, contents: [] })); // simula conteudo removido por fora do fluxo normal
+
+  integrityService.sweepOrphans();
+
+  const swept = eventService.getEvent(event.id);
+  assert.ok(swept);
+  assert.deepEqual(swept.contentIds, []);
+});
+
+test("F6-4. excluir conteudo inexistente nao quebra e retorna false", () => {
+  assert.equal(contentService.deleteContent("cnt_never_existed"), false);
+});
+
 // ─── relatório ───────────────────────────────────────────────────────────────
 console.log(`\n${passed} passaram, ${failed} falharam`);
 if (failed > 0) {
