@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Star, Search, BookOpen, ArrowUpDown, Check } from "lucide-react";
+import { Search, BookOpen, ArrowUpDown, Check } from "lucide-react";
+import VisionPlusButton from "../components/plus/VisionPlusButton";
 import LogoSVG from "../components/brand/LogoSVG";
 import ContentCard from "../components/study/ContentCard";
 import SubjectFolderGrid from "../components/ui/SubjectFolderGrid";
@@ -119,11 +120,7 @@ export default function LibraryScreen({ onOpenItem, onVisionPlus, onToast, initi
                 </div>
               </>
             )}
-            <motion.button whileTap={{ scale: 0.94 }} onClick={onVisionPlus}
-              style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 20, background: "linear-gradient(135deg,#2563EB,#7C3AED)", border: "none", cursor: "pointer" }}>
-              <Star size={11} fill="white" color="white" />
-              <span style={{ fontFamily: "Inter,sans-serif", fontSize: 12, fontWeight: 700, color: "white" }}>Vision+</span>
-            </motion.button>
+            <VisionPlusButton onClick={onVisionPlus} />
           </div>
         </div>
         <h1 style={{ fontSize: 24, fontWeight: 800, color: "#111827", margin: 0 }}>Biblioteca</h1>

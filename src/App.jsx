@@ -170,6 +170,7 @@ export default function App() {
               onReview={(item) => { setSelectedContentId(item.id); setReviewMode(true); go("flashcards"); }}
               onOpenContent={(item) => { setSelectedContentId(item.id); go("detail"); }}
               onToast={showToast}
+              onVisionPlus={() => go("visionplus")}
             />
           )}
           {screen === "evolution" && (

@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { TrendingUp } from "lucide-react";
 import LogoSVG from "../components/brand/LogoSVG";
+import VisionPlusButton from "../components/plus/VisionPlusButton";
 import SectionLabel from "../components/ui/SectionLabel";
 import Card from "../components/ui/Card";
 import ProgressRing from "../components/ui/ProgressRing";
@@ -65,9 +66,12 @@ export default function EvolutionScreen({ isPremium, onOpenContent, onOpenLibrar
   return (
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#F8FAFC", fontFamily: "Inter,sans-serif", overflow: "hidden" }}>
       <div style={{ background: "white", padding: "52px 20px 16px", borderBottom: "1px solid #F1F5F9", flexShrink: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-          <LogoSVG size={24} />
-          <span style={{ fontSize: 11, fontWeight: 700, color: "#2563EB", letterSpacing: 1 }}>STUDY VISION</span>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <LogoSVG size={24} />
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#2563EB", letterSpacing: 1 }}>STUDY VISION</span>
+          </div>
+          <VisionPlusButton onClick={onVisionPlus} />
         </div>
         <h1 style={{ fontSize: 24, fontWeight: 800, color: "#111827", margin: 0 }}>Minha evolução</h1>
         <p style={{ fontSize: 13, color: "#64748B", margin: "2px 0 0" }}>Acompanhe como você está aprendendo.</p>
