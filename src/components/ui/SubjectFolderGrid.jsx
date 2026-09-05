@@ -95,11 +95,11 @@ export default function SubjectFolderGrid({ options, activeId, onSelect, onAdd }
               background: "rgba(100,116,139,0.08)", border: "1.5px dashed rgba(100,116,139,0.35)",
               opacity: 0.7,
             }}>
-            <Plus size={18} color="#64748B" />
+            <Plus size={16} color="#64748B" />
             <span style={{
-              fontFamily: "Inter,sans-serif", fontSize: 10.5, fontWeight: 700, color: "#64748B",
-              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 64,
-            }}>Adicionar matéria</span>
+              fontFamily: "Inter,sans-serif", fontSize: 9, fontWeight: 700, color: "#64748B",
+              whiteSpace: "normal", lineHeight: 1.2, textAlign: "center", maxWidth: 62,
+            }}>Adicionar<br />Matéria</span>
           </motion.button>
         )}
       </div>
