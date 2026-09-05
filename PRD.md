@@ -1,6 +1,6 @@
 # PRD — Study Vision (JOVI Smartphones)
 
-> Documento vivo. Atualizar sempre que uma decisão de escopo, fluxo ou regra de negócio mudar. Baseado no que está implementado em `src/` + `api/` + `lib/` em **2026-09-04** (Fase 5).
+> Documento vivo. Atualizar sempre que uma decisão de escopo, fluxo ou regra de negócio mudar. Baseado no que está implementado em `src/` + `api/` + `lib/` em **2026-09-05** (Fase 6 — integração final).
 
 ## 1. Contexto
 
@@ -72,12 +72,11 @@ Fotos diferentes produzem resultados diferentes — testado com fotos reais de F
 - Em telas maiores (desktop/tablet), mantém a moldura de smartphone 375×812 centralizada, com `max-width`/`max-height` para não estourar viewports menores que isso.
 - Implementado via CSS (`PhoneFrame.module.css` / `src/styles`) com media query, em vez de estilos inline fixos.
 
-### 5.9 Integrações — Notion e Google Calendar (mock)
-- **Exportar Conteúdo** (`ExportSection`, na tela de Resumo, antes de "Salvar na Biblioteca") — **refatorado para modal dialog** (padrão `Modal` + `Button` do design system) em vez de botões inline. 3 opções: Notion (`notionService.exportToNotion`), Documento PDF/DOCX (`exportService.exportDocument`), Copiar Conteúdo (`exportService.copyContent`, usa `navigator.clipboard`). Cada uma simula latência de rede e mostra toast de sucesso. Estrutura exportada: título, data, imagem, resumo, conceitos-chave, flashcards, perguntas.
-- **Planejamento** (`PlanningSection` + `PlanningModal`, abaixo de Exportar Conteúdo) — modal com Tipo (Prova/Trabalho/Apresentação/Revisão), Data, Horário e checkboxes de revisões automáticas (7 dias, 3 dias, 1 dia, no dia). Botão "Salvar no Google Calendar" chama `calendarService.createEvent` + `calendarService.scheduleReviews` (mock) e mostra toasts `"✓ Evento criado com sucesso"` seguido de `"✓ Revisões adicionadas automaticamente"`. O evento fica anexado ao item (`item.calendarEvent`) quando ele é salvo na Biblioteca.
-- **Biblioteca** — item com `calendarEvent` mostra badge de calendário (ícone) na listagem.
-- **Revisão** (`ReviewScreen`) — botão "Agendar Revisão" (ícone `CalendarPlus`) em cada item pendente/próximo sem evento associado; dispara os mesmos mocks de `calendarService` e persiste `calendarEvent` no item.
-- Arquitetura: `src/services/notionService.js`, `src/services/exportService.js`, `src/services/calendarService.js` — todos mockados com `setTimeout`/Promise, sem chamadas de rede reais. Preparados para trocar por Notion API, Google Calendar API, geração real de PDF/DOCX e compartilhamento Android no futuro.
+### 5.9 Exportar conteúdo e calendário acadêmico
+- **Exportar Conteúdo** (`ExportSection`, na tela de Resumo e no Detalhe do conteúdo) — modal dialog (padrão `Modal` + `Button` do design system) com 3 opções: **Notion** (`notionService.exportToNotion` — **único mock do produto**, `setTimeout` que resolve uma URL falsa, mantido deliberadamente para a demonstração), **PDF real** (`exportService.exportDocument`, gerado sob demanda com `jsPDF` — resumo, itens relacionados e perguntas abertas; ainda sem quiz/flashcards) e **Copiar Conteúdo** (`exportService.copyContent`, `navigator.clipboard`, propaga erro em vez de engolir).
+- **Calendário acadêmico** (`ReviewScreen`, seção "Calendário acadêmico") — grid mensal só de eventos (`AcademicEvent`: Prova/Trabalho/Aula/Entrega/Outro), com CRUD completo real: `EventFormModal` (criar/editar, com `contentIds[]` opcional) e `DayEventsModal` (ver/editar/excluir por dia). Tudo persistido em `sv_db` via `eventService`/`calendarService` — sem OAuth, sem API do Google Calendar, sem sincronização externa; é um calendário acadêmico próprio do app, não uma integração.
+- **Revisão ≠ Evento** — `scheduleCommitment` (`calendarService`) roteia "Revisão" para `reviewService.scheduleManualReview` (entidade `Review`) e os demais tipos para `eventService.createEventEntry` (entidade `AcademicEvent`); as duas coleções nunca se misturam.
+- **Content ↔ Evento** — um Content pode ter N eventos vinculados (`CommitmentsSection`, lista todos, não só o mais recente); abrir o evento pelo calendário permite ir ao Content, e abrir o Content permite ver/criar/editar seus compromissos.
 
 ### 5.10 Imagem de conteúdo capturado
 - `CapturedPageVisual` (`src/components/brand/`) — renderização **data-driven**: se o item tem `photo`, mostra a foto real (agora a miniatura da foto capturada pela câmera, gerada em `src/utils/image.js`); senão cai na simulação visual (página inclinada com linhas de texto, ícone da matéria no canto, vinheta de câmera, cantos de enquadramento) — usado só pelos itens semente sem foto. Usado na tela de Resumo e no Detalhe do conteúdo.
@@ -122,8 +121,9 @@ Backend serverless (Vercel) para a análise de imagem via Gemini (ver 5.1); sem 
 - **Sem OCR dedicado** — a leitura de texto na imagem é feita pelo próprio Gemini multimodal (não usa Tesseract.js); previsto como possível camada de fallback futura (ver 12).
 - **Sem backend de dados/autenticação** — a IA roda em backend real (Serverless Function), mas a biblioteca continua em `localStorage`, local ao navegador; limpar dados do site apaga a biblioteca e o estado de plano.
 - **Study Vision+ sem cobrança** — `startTrial()` só faz o toggle local de plano (`sv_subscription`); não há checkout, gateway de pagamento, paywall real com cartão, nem conta de usuário. A trava/destrava das features funciona, o dinheiro não existe.
-- **Responsividade básica implementada** — em celulares reais (≤480px) o app ocupa a tela cheia sem a moldura; em telas maiores mantém a moldura centralizada (ver 5.7). Ainda não testado em todos os tamanhos/orientações (ex: landscape).
-- **Integrações Notion/Google Calendar são mockadas** (ver 5.8) — sem OAuth real, sem chamada de API real, sem geração real de PDF/DOCX; tudo simula latência com `setTimeout` e retorna dados fake.
+- **Responsividade verificada em 320/375/430/768px e desktop (Fase 6)**, sempre dentro da moldura de smartphone do protótipo (ver 5.7) — sem layout fluido de desktop e sem teste específico de orientação landscape.
+- **Exportar para o Notion continua mockado** (ver 5.9) — único mock restante do produto, mantido por decisão deliberada para a demonstração; PDF, cópia de texto e o calendário acadêmico já são reais desde a Fase 2/4.
+- **Sem resolução de exercícios pela IA** — o Gemini resume e gera material de estudo a partir do conteúdo capturado, mas não resolve passo a passo problemas matemáticos ou exercícios abertos.
 - **`getUserMedia` exige HTTPS** (ou `localhost`) — em produção funciona normalmente (Vercel serve HTTPS); só não funciona acessando por IP puro em rede local sem certificado.
 
 ## 8. Stack técnica
@@ -192,6 +192,18 @@ Ordem cronológica das principais entregas desde o baseline do PRD (2026-08-07).
 - **Segurança**: `GEMINI_API_KEY` só existe no backend (`process.env`), nunca em `VITE_*`/frontend; `.gitignore` corrigido para nunca versionar `.env*` (com exceção do `.env.example`, template sem segredo); build de produção auditado (`grep` no bundle) sem nenhum resquício de chave ou código de servidor.
 - Testado de ponta a ponta com fotos reais de Matemática, Física e História — cada uma corretamente identificada e resumida a partir do conteúdo real da imagem (inclusive quando o nome do arquivo dizia outra matéria).
 
+### 10.8 Fase 6 — integração final (2026-09-05)
+- **Erro de imagem sem conteúdo acadêmico** diferenciado de falha técnica: `AnalysisError` ganha `kind` (`"not_academic"` | `"technical"`), `AnalysisScreen` mostra copy e ações próprias para cada caso.
+- **Notas do estudante** — bloco "MINHAS NOTAS" no Detalhe do conteúdo (`NotesSection`), sempre separado do resumo da IA, gravando por `updateNotes`.
+- **Título e resumo editáveis** — edição inline no Detalhe do conteúdo, persistindo por `updateContent`.
+- **Múltiplas fotos por Content** — `PhotosSection` liga `addImageToContent`/`removeImageFromContent` à UI; a câmera ganha um modo "anexar" que não dispara análise de IA. `PhotoViewerModal` abre qualquer foto em tamanho maior, com navegação entre páginas.
+- **Estados vazios reais** em Quiz, Flashcards, Perguntas (sem placar/contagem falsa quando a IA não gerou aquele material) e no Resumo (sem tela em branco quando não há conteúdo capturado).
+- **Evolução reativa ao store** e derivações do Detalhe do conteúdo memoizadas — sem recomputar a cada re-render, sem nenhuma chamada de IA fora da captura.
+- **Vision+ com mais entradas** — atalho no header de Revisão e Evolução, além da Biblioteca; CTA de assinatura no fim da Evolução para quem não é premium.
+- **Limpeza**: campo `isSample` (lastro de seeds já removidos), componentes órfãos (`ScreenHeader`, `BackButton`, `FilterPills`), `data/models/attempt.js`, assets de exemplo não referenciados, `ANALYSIS_SCHEMA` não utilizado.
+- **Auditoria de segurança e responsividade** sem achados que exigissem mudança de código — resultado documentado em `PLANO-FASE-6-INTEGRACAO-FINAL.md`.
+- Suíte de testes: de 93 para 101 cenários (`F6-1` a `F6-8`), cobrindo exclusão em cascata, integridade de ciclo completo e estados de falha/dados inválidos.
+
 ## 11. Análise — concluído vs. pendente
 
 ### 11.1 Concluído
@@ -208,23 +220,30 @@ Ordem cronológica das principais entregas desde o baseline do PRD (2026-08-07).
 - [x] Responsividade básica (tela cheia ≤480px, moldura no desktop).
 - [x] Arquitetura modularizada (scaffold Vite + backend serverless).
 - [x] README com critérios de entrega + variáveis de ambiente + deploy na Vercel.
+- [x] Notas do estudante, edição de título/resumo, múltiplas fotos por conteúdo e visualização ampliada (Fase 6).
+- [x] Estados vazios reais em quiz/flashcards/perguntas/resumo, sem placar ou contagem fabricados (Fase 6).
+- [x] Auditoria de segurança e de responsividade sem segredo exposto e sem overflow em 320–768px+desktop (Fase 6).
 
 ### 11.2 Pendente / mockado (candidatos aos próximos passos)
 - [ ] Checkout / pagamento real do Study Vision+ (hoje é só toggle local).
 - [ ] OCR dedicado (Tesseract.js) como fallback quando o Gemini não conseguir ler a imagem.
 - [ ] Resolução de exercícios matemáticos (fórmulas, passo a passo) pela IA.
 - [ ] Backend de dados + autenticação + sincronização entre dispositivos (biblioteca ainda é só `localStorage`).
-- [ ] OAuth e APIs reais de Notion e Google Calendar.
-- [ ] Geração real de PDF/DOCX e compartilhamento nativo Android.
-- [ ] Teste de responsividade em mais tamanhos/orientações (landscape).
+- [ ] OAuth e API real do Notion (único mock restante do produto).
+- [ ] Geração de PDF com quiz e flashcards inclusos (hoje só resumo/itens/perguntas); compartilhamento nativo Android.
+- [ ] Teste de responsividade em orientação landscape.
 - [x] Expiração real do teste de 7 dias — resolvido na Fase 5: `subscriptionService.getSubscription()` deriva `status: "expired"` a partir de `trialEndsAt` a cada leitura.
 - [ ] Cache/retry mais sofisticado para instabilidade momentânea do Gemini (hoje é "tentar novamente" manual).
 
 ## 12. Próximos passos
 
-> A definir em conjunto na próxima sessão de planejamento. Preencher com as funcionalidades priorizadas a partir da lista 11.2.
+Priorizados a partir da lista 11.2, por ordem de valor percebido para uma próxima fase de pitch (não implementar sem nova sessão de planejamento — fora do escopo da Fase 6):
 
-- [ ] *(a definir)*
+1. **Checkout real do Study Vision+** — é o que falta para o modelo de negócio deixar de ser só uma simulação de estado local.
+2. **OAuth real do Notion** — reduz de 1 para 0 o número de mocks restantes no produto.
+3. **Backend de dados + contas de usuário** — pré-requisito para sincronização entre dispositivos e para qualquer forma de cobrança real.
+4. **OCR de fallback (Tesseract.js)** — rede de segurança para quando o Gemini não conseguir interpretar a imagem.
+5. **Resolução de exercícios passo a passo pela IA** — natural extensão do resumo/flashcards já existentes, maior esforço de prompt/validação.
 
 ## 13. Critério de "pronto" para o protótipo de pitch
 

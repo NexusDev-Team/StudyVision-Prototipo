@@ -1,12 +1,13 @@
 # Mocks e dados sintéticos restantes
 
 Inventário do que ainda **não** é medido/persistido de verdade no Study Vision.
-Após a Fase 5, sobra apenas a exportação para o Notion — Biblioteca, Calendário
-e Evolução não usam nenhum dado sintético.
+Após a Fase 6, sobra apenas a exportação para o Notion — Biblioteca, Calendário,
+Evolução, notas, edição de título/resumo e fotos múltiplas não usam nenhum dado
+sintético.
 
 | Mock | Arquivo | Quem consome | O que é | Substituto futuro |
 |---|---|---|---|---|
-| Exportar para o Notion | `src/services/notionService.js` | `src/components/study/ExportSection.jsx` | `setTimeout(900)` que resolve `https://notion.so/mock-<id>` | Integração real (OAuth + `pages.create`) — precisa de backend; **fica como demo por decisão do usuário** |
+| Exportar para o Notion | `src/services/notionService.js` | `src/components/study/ExportSection.jsx` | `setTimeout(900)` que resolve `https://notion.so/mock-<id>` | Integração real (OAuth + `pages.create`) — precisa de backend; **fica como demo por decisão explícita do usuário na Fase 6, registrada também no README** |
 
 ## Placeholders de UI — não são mocks de dado, não geram métrica
 
@@ -76,10 +77,24 @@ registrar eventos de início/fim de sessão — fora do escopo desta fase.
 | Vision+ era dashboard com paywall (`MetricCards`/`SubjectProgress`/`PerformanceChart`/`AttentionCard`/`InsightCard` borrados) | Vision+ virou tela de oferta (hero, benefícios, comparação Free×Plus, CTA); `MetricCards.jsx`/`InsightCard.jsx` removidos, superados pelas seções da Evolução |
 | Recomendações não existiam | `getRecommendations()` — regras fixas, determinísticas, zero IA |
 
-Nenhum dado sintético foi introduzido na Fase 5 — toda métrica de evolução deriva de `performanceService`/`reviewService`/`studyService`/`contentService`/`subjectService`, que por sua vez só leem tentativas reais. **A exportação para o Notion continua sendo o único mock do projeto.**
+Nenhum dado sintético foi introduzido na Fase 5 — toda métrica de evolução deriva de `performanceService`/`reviewService`/`studyService`/`contentService`/`subjectService`, que por sua vez só leem tentativas reais.
+
+## O que passou a ser real na Fase 6
+
+| Antes (lacuna) | Agora |
+|---|---|
+| `content.notes` existia no modelo e no service, sem nenhuma tela para ler/escrever | Bloco "MINHAS NOTAS" no Detalhe do conteúdo, sempre separado do resumo da IA |
+| Título e resumo só podiam vir da IA, sem edição | Edição inline persistindo por `updateContent` |
+| Captura sempre limitada a 1 foto por conteúdo | `PhotosSection` liga `addImageToContent`/`removeImageFromContent`; câmera ganha modo "anexar" sem disparar IA |
+| Imagem sem conteúdo acadêmico mostrava a mesma mensagem genérica de erro de rede/servidor | `AnalysisError.kind` distingue `"not_academic"` de `"technical"`, com copy e ações próprias |
+| Quiz/Flashcards/Perguntas sem material da IA mostravam placar ou contagem de zero | Estados vazios reais (`EmptyState`), nunca "0 de 0" |
+| `EvolutionScreen` recalculava tudo fora do store, sem reagir a mutações | Passa a consumir `useContentStore`, com os cálculos em `useMemo` |
+| `content.isSample`, componentes órfãos (`ScreenHeader`, `BackButton`, `FilterPills`), `data/models/attempt.js`, `ANALYSIS_SCHEMA` | Removidos — zero código morto relacionado |
+
+**A exportação para o Notion continua sendo o único mock do projeto** — mantida deliberadamente para a demonstração, e não por lacuna de implementação.
 
 ## Camadas reais desde a Fase 1
 
 - Captura de câmera (`getUserMedia`) → `api/analyze.js` → Gemini → `normalizeAnalysisResult`.
 - Persistência versionada `sv_db` (`src/data/storage/`), migração `v1 → v2`, poda por cota.
-- `contentService` / `subjectService` / `studyService` / `reviewService` / `eventService` / `performanceService` / `integrityService` / `evolutionService` / `subscriptionService` — cobertos por `npm run test:data` (93 cenários).
+- `contentService` / `subjectService` / `studyService` / `reviewService` / `eventService` / `performanceService` / `integrityService` / `evolutionService` / `subscriptionService` — cobertos por `npm run test:data` (101 cenários).
