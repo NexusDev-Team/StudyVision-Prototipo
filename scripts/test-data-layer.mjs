@@ -1608,6 +1608,30 @@ test("F7-9. carga: revisoes de plano nao empilham alem do teto no mesmo dia", ()
   assert.ok(day.size >= 3, `esperado >=3 dias distintos, veio ${day.size}`);
 });
 
+test("F7-10. trocar a cadencia reagenda a revisao de plano pendente para o novo periodo", () => {
+  const { content } = seedContent();
+  contentService.updateContent(content.id, { reviewPlan: "weekly" });
+  const weekly = reviewService.applyReviewPlan(content.id);
+
+  contentService.updateContent(content.id, { reviewPlan: "monthly" });
+  const monthly = reviewService.applyReviewPlan(content.id, undefined, { reschedule: true });
+
+  assert.equal(monthly.id, weekly.id); // mesma revisao, so mudou a data
+  assert.ok(new Date(monthly.scheduledFor) > new Date(weekly.scheduledFor), "mensal cai bem depois de semanal");
+  const daysOut = (new Date(monthly.scheduledFor) - Date.now()) / 86400000;
+  assert.ok(daysOut >= 27 && daysOut <= 34, `esperado ~30 dias, veio ${Math.round(daysOut)}`);
+  assert.equal(reviewService.getReviewsForContent(content.id).filter((r) => r.status === "pending").length, 1);
+});
+
+test("F7-11. sem reschedule, applyReviewPlan nao empurra a revisao ja agendada", () => {
+  const { content } = seedContent();
+  contentService.updateContent(content.id, { reviewPlan: "weekly" });
+  const first = reviewService.applyReviewPlan(content.id);
+  const again = reviewService.applyReviewPlan(content.id); // boot / idempotente
+  assert.equal(again.id, first.id);
+  assert.equal(again.scheduledFor, first.scheduledFor);
+});
+
 // ─── relatório ───────────────────────────────────────────────────────────────
 console.log(`\n${passed} passaram, ${failed} falharam`);
 if (failed > 0) {

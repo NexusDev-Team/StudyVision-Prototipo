@@ -80,7 +80,8 @@ export default function ContentDetailScreen({ content, onBack, onDeleted, onFlas
     if (plan === (content.reviewPlan || "none")) return;
     mutate(() => {
       updateContent(content.id, { reviewPlan: plan });
-      applyReviewPlan(content.id);
+      // reschedule: a revisão de plano pendente pula para o novo período.
+      applyReviewPlan(content.id, undefined, { reschedule: true });
     });
     onToast?.("✓ Plano de revisão atualizado");
   };

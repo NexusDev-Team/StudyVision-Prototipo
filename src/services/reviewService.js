@@ -153,9 +153,12 @@ function balancedWeekday(iso, ignoreId) {
 
 // Garante o estado correto das revisões de plano de UM conteúdo:
 // - reviewPlan "none": remove as pendentes de plano;
-// - senão: mantém a pendente existente ou cria uma no próximo intervalo,
-//   em dia útil e com carga distribuída.
-export function applyReviewPlan(contentId, fromIso = nowIso()) {
+// - senão: mantém (ou, com reschedule, reagenda) a pendente existente, ou
+//   cria uma no próximo intervalo, em dia útil e com carga distribuída.
+// `reschedule: true` é usado quando o usuário troca a cadência — a revisão de
+// plano pendente pula para o novo período. No boot / ao concluir uma revisão
+// fica false, para não empurrar uma revisão já agendada.
+export function applyReviewPlan(contentId, fromIso = nowIso(), { reschedule = false } = {}) {
   const content = readDb().contents.find((c) => c.id === contentId);
   const intervalDays = reviewPlanIntervalDays(content?.reviewPlan || "none");
 
@@ -166,7 +169,21 @@ export function applyReviewPlan(contentId, fromIso = nowIso()) {
   }
 
   const existing = pendingFor(contentId, "plan")[0];
-  if (existing) return existing;
+  if (existing && !reschedule) return existing;
+
+  if (existing && reschedule) {
+    const scheduledFor = balancedWeekday(addDaysIso(fromIso, intervalDays), existing.id);
+    let updated = null;
+    withDb((db) => ({
+      ...db,
+      reviews: db.reviews.map((r) => {
+        if (r.id !== existing.id) return r;
+        updated = { ...r, scheduledFor, overdue: false, updatedAt: nowIso() };
+        return updated;
+      }),
+    }));
+    return updated;
+  }
 
   const scheduledFor = balancedWeekday(addDaysIso(fromIso, intervalDays));
   const completed = getReviewsForContent(contentId).filter((r) => r.status !== "pending").length;
