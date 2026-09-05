@@ -113,9 +113,9 @@ export default function EvolutionScreen({ isPremium, onOpenContent, onOpenLibrar
                 </p>
               </div>
             </Card>
-            <PerformanceChart breakdown={breakdown} hasActivity={summary.hasActivity} locked={false} />
+            <PerformanceChart breakdown={breakdown} hasActivity={summary.hasActivity} />
 
-            <SubjectProgress subjects={subjectRows} locked={false} onSelect={onOpenLibrary} />
+            <SubjectProgress subjects={subjectRows} onSelect={onOpenLibrary} />
 
             <SectionLabel>Evolução</SectionLabel>
             {history.length === 0 ? (

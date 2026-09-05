@@ -1,7 +1,6 @@
 import Card from "../ui/Card";
 import SectionLabel from "../ui/SectionLabel";
 import ProgressBar from "../ui/ProgressBar";
-import PlusPaywall from "./PlusPaywall";
 import { SUBJECT_META } from "../../constants";
 
 function SubjectRows({ subjects, onSelect }) {
@@ -39,8 +38,9 @@ function SubjectRows({ subjects, onSelect }) {
 
 // Taxa de acerto real por matéria. Sem matéria ainda: estado vazio, não um card
 // em branco. `onSelect` (opcional) recebe o id da matéria tocada — usado pela
-// Evolução para abrir a Biblioteca já filtrada.
-export default function SubjectProgress({ subjects = [], locked, visibleCount = 2, onStartTrial, onSelect }) {
+// Evolução para abrir a Biblioteca já filtrada. Gratuito por decisão de
+// produto (Fase 5): sem paywall aqui.
+export default function SubjectProgress({ subjects = [], onSelect }) {
   if (subjects.length === 0) {
     return (
       <div style={{ marginBottom: 20 }}>
@@ -54,21 +54,11 @@ export default function SubjectProgress({ subjects = [], locked, visibleCount = 
     );
   }
 
-  const visible = locked ? subjects.slice(0, visibleCount) : subjects;
-  const rest = locked ? subjects.slice(visibleCount) : [];
-
   return (
     <div style={{ marginBottom: 20 }}>
       <SectionLabel>Evolução por matéria</SectionLabel>
       <Card style={{ padding: "18px 20px", margin: 0, display: "flex", flexDirection: "column", gap: 16 }}>
-        <SubjectRows subjects={visible} onSelect={onSelect} />
-        {rest.length > 0 && (
-          <PlusPaywall locked compact title="Ver evolução por tópico" onStartTrial={onStartTrial}>
-            <div style={{ marginTop: 4 }}>
-              <SubjectRows subjects={rest} onSelect={onSelect} />
-            </div>
-          </PlusPaywall>
-        )}
+        <SubjectRows subjects={subjects} onSelect={onSelect} />
       </Card>
     </div>
   );
