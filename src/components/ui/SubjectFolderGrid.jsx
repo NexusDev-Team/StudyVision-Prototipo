@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import {
   LayoutGrid, Calculator, Landmark, FlaskConical, Atom, BookA, Code2, ChevronLeft, ChevronRight,
-  Leaf, Globe2, BrainCircuit, Users, Languages, Palette, PenLine, BookOpen, FolderOpen,
+  Leaf, Globe2, BrainCircuit, Users, Languages, Palette, PenLine, BookOpen, FolderOpen, Plus,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { getSubjectMeta } from "../../constants";
@@ -16,7 +16,10 @@ const SCROLL_EDGE_SLACK = 4;
 // options: [{ id, label, count }]. id é o valor comparado/enviado ao selecionar
 // ("all" e "unassigned" são ids especiais para "Todos" e "Sem matéria"); label
 // decide o ícone/cor via getSubjectMeta (mesma matéria = mesma cor sempre).
-export default function SubjectFolderGrid({ options, activeId, onSelect }) {
+// `onAdd` (opcional): quando presente, acrescenta ao fim da fileira uma pasta
+// "+" semi-transparente para criar/gerenciar matérias — substitui o antigo
+// ícone de "gerenciar matérias" isolado no header.
+export default function SubjectFolderGrid({ options, activeId, onSelect, onAdd }) {
   const scrollRef = useRef(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -83,6 +86,22 @@ export default function SubjectFolderGrid({ options, activeId, onSelect }) {
             </motion.button>
           );
         })}
+        {onAdd && (
+          <motion.button className={styles.folder} whileTap={{ scale: 0.95 }} onClick={onAdd}
+            aria-label="Adicionar matéria"
+            style={{
+              display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+              gap: 4, width: 72, height: 64, borderRadius: 14, cursor: "pointer",
+              background: "rgba(100,116,139,0.08)", border: "1.5px dashed rgba(100,116,139,0.35)",
+              opacity: 0.7,
+            }}>
+            <Plus size={18} color="#64748B" />
+            <span style={{
+              fontFamily: "Inter,sans-serif", fontSize: 10.5, fontWeight: 700, color: "#64748B",
+              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 64,
+            }}>Adicionar matéria</span>
+          </motion.button>
+        )}
       </div>
 
       <motion.button animate={{ opacity: canScrollRight ? 1 : 0 }} transition={{ duration: 0.15 }}

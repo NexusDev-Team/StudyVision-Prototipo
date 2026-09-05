@@ -1,31 +1,20 @@
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Star, Search, BookOpen, FolderCog } from "lucide-react";
+import { Star, Search, BookOpen, ArrowUpDown, Check } from "lucide-react";
 import LogoSVG from "../components/brand/LogoSVG";
 import ContentCard from "../components/study/ContentCard";
 import SubjectFolderGrid from "../components/ui/SubjectFolderGrid";
-import FilterPills from "../components/ui/FilterPills";
 import SubjectManagerModal from "../components/study/SubjectManagerModal";
 import EmptyState from "../components/ui/EmptyState";
 import { useContentStore } from "../context/ContentStoreContext.jsx";
 import { endOfTodayIso } from "../utils/date";
 import { matchesQuery } from "../utils/search";
-import { UNASSIGNED_SUBJECT_LABEL, MASTERY_META } from "../constants";
+import { UNASSIGNED_SUBJECT_LABEL } from "../constants";
 
 const ALL_FILTER_ID = "all";
 const UNASSIGNED_FILTER_ID = "unassigned";
 
 const SORT_OPTIONS = ["Mais recentes", "Mais antigos", "Nome"];
-const MASTERY_FILTER_OPTIONS = [
-  "Todos",
-  MASTERY_META.mastered.label,
-  MASTERY_META.developing.label,
-  MASTERY_META.needs_review.label,
-  MASTERY_META.not_started.label,
-];
-const MASTERY_LABEL_TO_LEVEL = Object.fromEntries(
-  Object.entries(MASTERY_META).map(([level, meta]) => [meta.label, level])
-);
 
 // `initialSubjectId` (opcional) abre a tela já filtrada por uma matéria —
 // usado pelo drill-down da tela de Evolução.
@@ -33,7 +22,7 @@ export default function LibraryScreen({ onOpenItem, onVisionPlus, onToast, initi
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState(initialSubjectId || ALL_FILTER_ID);
   const [sortBy, setSortBy] = useState(SORT_OPTIONS[0]);
-  const [masteryFilter, setMasteryFilter] = useState(MASTERY_FILTER_OPTIONS[0]);
+  const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
   const { contents, subjects, reviews, events, mutate } = useContentStore();
 
@@ -78,12 +67,9 @@ export default function LibraryScreen({ onOpenItem, onVisionPlus, onToast, initi
     const matchFilter =
       activeFilter === ALL_FILTER_ID ||
       (activeFilter === UNASSIGNED_FILTER_ID ? !c.subjectId : c.subjectId === activeFilter);
-    const matchMastery =
-      masteryFilter === "Todos" || (c.mastery?.level || "not_started") === MASTERY_LABEL_TO_LEVEL[masteryFilter];
-    return matchSearch && matchFilter && matchMastery;
+    return matchSearch && matchFilter;
   });
   const hasQuery = search.trim().length > 0;
-  const hasNarrowingFilter = hasQuery || masteryFilter !== "Todos";
 
   const sorted = [...filtered].sort((a, b) => {
     if (sortBy === "Nome") return (a.title || "").localeCompare(b.title || "", "pt-BR");
@@ -100,11 +86,39 @@ export default function LibraryScreen({ onOpenItem, onVisionPlus, onToast, initi
             <LogoSVG size={22} />
             <span style={{ fontSize: 11, fontWeight: 700, color: "#2563EB", letterSpacing: 0.5 }}>JOVI · STUDY VISION</span>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <button onClick={() => setManageOpen(true)} aria-label="Gerenciar matérias"
-              style={{ width: 30, height: 30, borderRadius: 10, background: "#F1F5F9", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <FolderCog size={15} color="#475569" />
+          <div style={{ display: "flex", alignItems: "center", gap: 8, position: "relative" }}>
+            <button onClick={() => setSortMenuOpen((v) => !v)} aria-label="Ordenar" aria-haspopup="true" aria-expanded={sortMenuOpen}
+              style={{ width: 30, height: 30, borderRadius: 10, background: sortMenuOpen ? "#E2E8F0" : "#F1F5F9", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <ArrowUpDown size={15} color="#475569" />
             </button>
+            {sortMenuOpen && (
+              <>
+                <div onClick={() => setSortMenuOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+                <div role="menu" style={{
+                  position: "absolute", top: 36, right: 0, zIndex: 41, minWidth: 150,
+                  background: "white", borderRadius: 12, border: "1px solid #E2E8F0",
+                  boxShadow: "0 8px 24px rgba(15,23,42,0.12)", padding: 6,
+                }}>
+                  {SORT_OPTIONS.map((opt) => {
+                    const isActive = sortBy === opt;
+                    return (
+                      <button key={opt} role="menuitemradio" aria-checked={isActive}
+                        onClick={() => { setSortBy(opt); setSortMenuOpen(false); }}
+                        style={{
+                          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
+                          width: "100%", minHeight: 38, padding: "0 10px", borderRadius: 8, border: "none",
+                          background: isActive ? "#F1F5F9" : "transparent", cursor: "pointer",
+                          fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 600,
+                          color: isActive ? "#111827" : "#475569", textAlign: "left",
+                        }}>
+                        {opt}
+                        {isActive && <Check size={14} color="#2563EB" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
             <motion.button whileTap={{ scale: 0.94 }} onClick={onVisionPlus}
               style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 20, background: "linear-gradient(135deg,#2563EB,#7C3AED)", border: "none", cursor: "pointer" }}>
               <Star size={11} fill="white" color="white" />
@@ -124,15 +138,7 @@ export default function LibraryScreen({ onOpenItem, onVisionPlus, onToast, initi
         </div>
 
         {/* Filters */}
-        <SubjectFolderGrid options={subjectFilters} activeId={activeFilter} onSelect={setActiveFilter} />
-
-        {/* Ordenação e domínio */}
-        <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
-          <FilterPills options={SORT_OPTIONS} active={sortBy} onSelect={setSortBy}
-            padding="5px 12px" activeBg="#111827" activeColor="white" inactiveColor="#64748B" />
-          <FilterPills options={MASTERY_FILTER_OPTIONS} active={masteryFilter} onSelect={setMasteryFilter}
-            padding="5px 12px" activeBg="#7C3AED" activeColor="white" inactiveColor="#64748B" />
-        </div>
+        <SubjectFolderGrid options={subjectFilters} activeId={activeFilter} onSelect={setActiveFilter} onAdd={() => setManageOpen(true)} />
       </div>
 
       {/* List */}
@@ -146,8 +152,6 @@ export default function LibraryScreen({ onOpenItem, onVisionPlus, onToast, initi
               title="Você ainda não possui conteúdos"
               description="Capture uma matéria ou adicione seu primeiro conteúdo para começar."
             />
-          ) : hasNarrowingFilter ? (
-            <EmptyState icon={<BookOpen size={40} style={{ margin: "0 auto 12px", display: "block", color: "#94A3B8" }} />} message="Nenhum conteúdo corresponde aos filtros" />
           ) : (
             <EmptyState icon={<BookOpen size={40} style={{ margin: "0 auto 12px", display: "block", color: "#94A3B8" }} />} message="Nenhum conteúdo nesta matéria ainda" />
           )
