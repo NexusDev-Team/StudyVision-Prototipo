@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 
 // Minimalist line+area chart. viewBox scales to container width — no fixed px sizing,
 // so it never causes horizontal overflow on small screens.
-export default function SparkChart({ points, labels, color = "#2563EB", height = 120 }) {
+export default function SparkChart({ points, labels, color = "#2563EB", height = 120, yLabels = null }) {
   const w = 300;
   const h = 100;
   const padX = 12;
@@ -21,8 +21,20 @@ export default function SparkChart({ points, labels, color = "#2563EB", height =
   const areaPath = `${linePath} L ${coords[coords.length - 1].x} ${h - padY} L ${coords[0].x} ${h - padY} Z`;
   const gradientId = "sparkGradient";
 
+  // Coluna opcional de rótulos de eixo Y (min/max), alinhada às extremidades
+  // verticais do traçado. Não altera o viewBox — fica fora do svg.
+  const yAxis = yLabels && (
+    <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", padding: `${padY}px 0`, height, flexShrink: 0 }}>
+      <span style={{ fontFamily: "Inter,sans-serif", fontSize: 10, fontWeight: 700, color: "#94A3B8", lineHeight: 1 }}>{yLabels.max}</span>
+      <span style={{ fontFamily: "Inter,sans-serif", fontSize: 10, fontWeight: 700, color: "#94A3B8", lineHeight: 1 }}>{yLabels.min}</span>
+    </div>
+  );
+
   return (
     <div style={{ width: "100%" }}>
+      <div style={{ display: "flex", alignItems: "stretch", gap: 8 }}>
+        {yAxis}
+        <div style={{ flex: 1, minWidth: 0 }}>
       <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ width: "100%", height, display: "block" }}>
         <defs>
           <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
@@ -50,6 +62,8 @@ export default function SparkChart({ points, labels, color = "#2563EB", height =
           ))}
         </div>
       )}
+        </div>
+      </div>
     </div>
   );
 }

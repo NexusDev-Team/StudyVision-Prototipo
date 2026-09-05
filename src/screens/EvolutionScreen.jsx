@@ -6,10 +6,9 @@ import SectionLabel from "../components/ui/SectionLabel";
 import Card from "../components/ui/Card";
 import ProgressRing from "../components/ui/ProgressRing";
 import EmptyState from "../components/ui/EmptyState";
-import PerformanceChart from "../components/plus/PerformanceChart";
 import SubjectProgress from "../components/plus/SubjectProgress";
-import AttentionCard from "../components/plus/AttentionCard";
-import StrengthsCard from "../components/plus/StrengthsCard";
+import ReviewNeededCard from "../components/plus/ReviewNeededCard";
+import InsightsPanel from "../components/plus/InsightsPanel";
 import PlusPaywall from "../components/plus/PlusPaywall";
 import PlusFinalCta from "../components/plus/PlusFinalCta";
 import SparkChart from "../components/ui/SparkChart";
@@ -24,6 +23,7 @@ import {
   getStrongSubjects,
   getRecommendations,
   getAccuracyDelta,
+  getSubjectsToReview,
 } from "../services/evolutionService";
 
 function StatCard({ value, label, delay = 0 }) {
@@ -56,13 +56,12 @@ export default function EvolutionScreen({ isPremium, onOpenContent, onOpenLibrar
   );
   const recommendations = useMemo(() => getRecommendations({ limit: 3 }), [contents, reviews]);
   const delta = useMemo(() => getAccuracyDelta(), [contents]);
+  const subjectsToReview = useMemo(() => getSubjectsToReview(), [contents, reviews]);
 
-  const breakdown = {
-    not_started: summary.notStartedContents,
-    needs_review: summary.needsReviewContents,
-    developing: summary.developingContents,
-    mastered: summary.masteredContents,
-  };
+  const historyAccuracies = history.map((h) => h.accuracy ?? 0);
+  const yLabels = history.length >= 2
+    ? { max: `${Math.max(...historyAccuracies)}%`, min: `${Math.min(...historyAccuracies)}%` }
+    : null;
 
   return (
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#F8FAFC", fontFamily: "Inter,sans-serif", overflow: "hidden" }}>
@@ -113,38 +112,41 @@ export default function EvolutionScreen({ isPremium, onOpenContent, onOpenLibrar
                 </p>
               </div>
             </Card>
-            <PerformanceChart breakdown={breakdown} hasActivity={summary.hasActivity} />
+            <ReviewNeededCard subjects={subjectsToReview} onSelect={onOpenLibrary} />
 
             <SubjectProgress subjects={subjectRows} onSelect={onOpenLibrary} />
 
             <SectionLabel>Evolução</SectionLabel>
-            {history.length === 0 ? (
-              <Card style={{ padding: "22px 20px", margin: "0 0 20px", textAlign: "center" }}>
-                <p style={{ fontFamily: "Inter,sans-serif", fontSize: 13, color: "#64748B", margin: 0 }}>
-                  Responda questões para acompanhar sua evolução ao longo do tempo.
-                </p>
-              </Card>
-            ) : (
-              <Card style={{ padding: "18px 20px", margin: "0 0 20px" }}>
-                {history.length >= 2 && (
-                  <div aria-hidden="true">
-                    <SparkChart
-                      points={history.map((h) => h.accuracy ?? 0)}
-                      labels={history.map((h) => h.label)}
-                    />
-                  </div>
-                )}
-                <ul aria-label="Evolução semanal da taxa de acerto" style={{ listStyle: "none", margin: history.length >= 2 ? "14px 0 0" : 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
-                  {history.map((h) => (
-                    <li key={h.weekStart} style={{ fontFamily: "Inter,sans-serif", fontSize: 12, color: "#64748B" }}>
-                      Semana {h.label} — {h.answered} {h.answered === 1 ? "questão" : "questões"}, {h.accuracy}% de acerto
-                    </li>
-                  ))}
-                </ul>
-              </Card>
-            )}
-
-            <AttentionCard items={weakContents} onSelect={onOpenContent} />
+            <PlusPaywall
+              locked={!isPremium}
+              compact
+              title="Acompanhe sua evolução ao longo do tempo"
+              onStartTrial={onVisionPlus}
+            >
+              {history.length < 2 ? (
+                <Card style={{ padding: "22px 20px", margin: "0 0 20px", textAlign: "center" }}>
+                  <p style={{ fontFamily: "Inter,sans-serif", fontSize: 13, color: "#64748B", margin: 0 }}>
+                    Responda questões para acompanhar sua evolução ao longo do tempo.
+                  </p>
+                </Card>
+              ) : (
+                <Card style={{ padding: "18px 20px", margin: "0 0 20px" }}>
+                  <SparkChart
+                    points={historyAccuracies}
+                    labels={history.map((h) => h.label)}
+                    yLabels={yLabels}
+                    height={140}
+                  />
+                  <ul aria-label="Evolução semanal da taxa de acerto" style={{ listStyle: "none", margin: "14px 0 0", padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+                    {history.map((h) => (
+                      <li key={h.weekStart} style={{ fontFamily: "Inter,sans-serif", fontSize: 12, color: "#64748B" }}>
+                        Semana {h.label} — {h.answered} {h.answered === 1 ? "questão" : "questões"}, {h.accuracy}% de acerto
+                      </li>
+                    ))}
+                  </ul>
+                </Card>
+              )}
+            </PlusPaywall>
 
             <SectionLabel>Reviews</SectionLabel>
             <Card style={{ padding: "18px 20px", margin: "0 0 20px" }}>
@@ -185,8 +187,6 @@ export default function EvolutionScreen({ isPremium, onOpenContent, onOpenLibrar
               </Button>
             </Card>
 
-            <StrengthsCard subjects={strongSubjects} />
-
             <SectionLabel>Insights</SectionLabel>
             <PlusPaywall
               locked={!isPremium}
@@ -194,25 +194,13 @@ export default function EvolutionScreen({ isPremium, onOpenContent, onOpenLibrar
               title="Ver insights da sua evolução"
               onStartTrial={onVisionPlus}
             >
-              <Card style={{ padding: "18px 20px", margin: "0 0 20px", display: "flex", flexDirection: "column", gap: 10 }}>
-                {delta && (
-                  <p style={{ fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, color: delta.deltaPoints >= 0 ? "#16A34A" : "#DC2626", margin: 0 }}>
-                    {delta.deltaPoints >= 0 ? "+" : ""}{delta.deltaPoints} p.p. nas últimas semanas ({delta.from}% → {delta.to}%)
-                  </p>
-                )}
-                {recommendations.length === 0 ? (
-                  <p style={{ fontFamily: "Inter,sans-serif", fontSize: 13, color: "#64748B", margin: 0 }}>
-                    Continue estudando para desbloquear insights sobre sua evolução.
-                  </p>
-                ) : (
-                  recommendations.map((r) => (
-                    <div key={r.id}>
-                      <p style={{ fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, color: "#111827", margin: "0 0 2px" }}>{r.title}</p>
-                      <p style={{ fontFamily: "Inter,sans-serif", fontSize: 12.5, color: "#64748B", margin: 0, lineHeight: 1.5 }}>{r.message}</p>
-                    </div>
-                  ))
-                )}
-              </Card>
+              <InsightsPanel
+                delta={delta}
+                strongSubjects={strongSubjects}
+                weakContents={weakContents}
+                recommendations={recommendations}
+                onOpenContent={onOpenContent}
+              />
             </PlusPaywall>
 
             {!isPremium && (
