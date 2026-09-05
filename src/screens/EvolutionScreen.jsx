@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { TrendingUp } from "lucide-react";
 import LogoSVG from "../components/brand/LogoSVG";
 import SectionLabel from "../components/ui/SectionLabel";
@@ -11,6 +12,7 @@ import StrengthsCard from "../components/plus/StrengthsCard";
 import PlusPaywall from "../components/plus/PlusPaywall";
 import SparkChart from "../components/ui/SparkChart";
 import Button from "../components/ui/Button";
+import { useContentStore } from "../context/ContentStoreContext.jsx";
 import {
   getEvolutionSummary,
   getSubjectPerformances,
@@ -32,17 +34,26 @@ function StatCard({ value, label, delay = 0 }) {
 }
 
 // Tela de evolução (Fase 5) — todo valor vem de evolutionService, nunca
-// calculado aqui. RESUMO e DESEMPENHO (T11); demais seções nas próximas
-// tarefas.
+// calculado aqui. Os cálculos ficam em useMemo presos ao snapshot do store
+// para a tela refletir mutações (quiz respondido, review concluída) sem
+// depender só do remount de navegação.
 export default function EvolutionScreen({ isPremium, onOpenContent, onOpenLibrary, onOpenReview, onVisionPlus }) {
-  const summary = getEvolutionSummary();
-  const subjectRows = getSubjectPerformances().map((s) => ({ id: s.subjectId, name: s.name, accuracyRate: s.accuracy }));
-  const history = getProgressHistory({ weeks: 8 });
-  const weakContents = getWeakContents({ limit: 5 });
-  const reviewProgress = getReviewProgress();
-  const strongSubjects = getStrongSubjects({ limit: 3 }).map((s) => ({ id: s.subjectId, name: s.name, accuracyRate: s.accuracy }));
-  const recommendations = getRecommendations({ limit: 3 });
-  const delta = getAccuracyDelta();
+  const { contents, reviews } = useContentStore();
+
+  const summary = useMemo(() => getEvolutionSummary(), [contents, reviews]);
+  const subjectRows = useMemo(
+    () => getSubjectPerformances().map((s) => ({ id: s.subjectId, name: s.name, accuracyRate: s.accuracy })),
+    [contents]
+  );
+  const history = useMemo(() => getProgressHistory({ weeks: 8 }), [contents]);
+  const weakContents = useMemo(() => getWeakContents({ limit: 5 }), [contents, reviews]);
+  const reviewProgress = useMemo(() => getReviewProgress(), [reviews]);
+  const strongSubjects = useMemo(
+    () => getStrongSubjects({ limit: 3 }).map((s) => ({ id: s.subjectId, name: s.name, accuracyRate: s.accuracy })),
+    [contents]
+  );
+  const recommendations = useMemo(() => getRecommendations({ limit: 3 }), [contents, reviews]);
+  const delta = useMemo(() => getAccuracyDelta(), [contents]);
 
   const breakdown = {
     not_started: summary.notStartedContents,
