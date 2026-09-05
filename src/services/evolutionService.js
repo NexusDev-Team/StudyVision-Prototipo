@@ -26,7 +26,7 @@ import {
   getDueReviews,
   reviewReasonLabel,
 } from "./reviewService.js";
-import { getMasteryMeta } from "../constants.js";
+import { getMasteryMeta, UNASSIGNED_SUBJECT_LABEL } from "../constants.js";
 import { readDb } from "../data/storage/index.js";
 import { startOfWeekKey, fromDayKey, toMs } from "../utils/date.js";
 
@@ -174,6 +174,52 @@ export function getWeakContents({ limit = 5 } = {}) {
   return [...lowAccuracy, ...overdueOnly]
     .sort((a, b) => (a.accuracy ?? Infinity) - (b.accuracy ?? Infinity))
     .slice(0, limit);
+}
+
+// Matérias que precisam de revisão — agregação por matéria do mesmo critério
+// de getWeakContents (acerto real < WEAK_THRESHOLD OU revisão pendente
+// atrasada), no nível do conteúdo. Não persiste nada. Matéria sem subjectId
+// agrupa sob UNASSIGNED_SUBJECT_LABEL. Ordena por número de conteúdos
+// afetados (desc), empate pelo nome.
+export function getSubjectsToReview({ limit } = {}) {
+  const overdueContentIds = new Set(getOverdueReviews().map((r) => r.contentId));
+  const groups = new Map();
+
+  for (const content of getContents()) {
+    const perf = calculateContentPerformance(content.id);
+    const isLow = perf.hasActivity && perf.accuracy !== null && perf.accuracy < WEAK_THRESHOLD;
+    const isOverdue = overdueContentIds.has(content.id);
+    if (!isLow && !isOverdue) continue;
+
+    const key = content.subjectId || "__unassigned__";
+    const group = groups.get(key) || {
+      subjectId: content.subjectId ?? null,
+      name: content.subjectName || UNASSIGNED_SUBJECT_LABEL,
+      count: 0,
+      hasLow: false,
+      hasOverdue: false,
+    };
+    group.count += 1;
+    group.hasLow = group.hasLow || isLow;
+    group.hasOverdue = group.hasOverdue || isOverdue;
+    groups.set(key, group);
+  }
+
+  const rows = [...groups.values()]
+    .map((g) => ({
+      subjectId: g.subjectId,
+      name: g.name,
+      count: g.count,
+      reason:
+        g.hasLow && g.hasOverdue
+          ? "acerto baixo e revisão atrasada"
+          : g.hasLow
+          ? "acerto baixo"
+          : "revisão atrasada",
+    }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+
+  return limit != null ? rows.slice(0, limit) : rows;
 }
 
 // Única exceção a "não ler sv_db direto": a agregação temporal precisa

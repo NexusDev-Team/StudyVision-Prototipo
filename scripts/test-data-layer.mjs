@@ -1241,6 +1241,79 @@ test("F5-20. duas chamadas seguidas com o mesmo banco retornam recomendacoes ide
   assert.deepEqual(first, second);
 });
 
+test("F5-28. banco vazio: getSubjectsToReview fica vazio", () => {
+  assert.deepEqual(evolutionService.getSubjectsToReview(), []);
+});
+
+test("F5-29. materia com conteudo a 58% aparece com reason 'acerto baixo'", () => {
+  const { subject, content } = seedContent();
+  const quiz = contentService.getContent(content.id).quizzes[0];
+  studyService.recordQuizAttempt({ quizId: quiz.id, contentId: content.id, answers: buildAnswers(100, 58) });
+  studyService.registerActivity(content.id);
+  const rows = evolutionService.getSubjectsToReview();
+  const found = rows.find((r) => r.subjectId === subject.id);
+  assert.ok(found, "materia com conteudo fraco deveria aparecer");
+  assert.equal(found.reason, "acerto baixo");
+  assert.equal(found.count, 1);
+});
+
+test("F5-30. materia com revisao atrasada aparece com reason 'revisao atrasada'", () => {
+  const { subject, content } = seedContent();
+  const review = reviewService.scheduleInitialReview(content.id);
+  withDb((db) => ({
+    ...db,
+    reviews: db.reviews.map((r) => (r.id === review.id ? { ...r, scheduledFor: "2000-01-01T00:00:00.000Z" } : r)),
+  }));
+  const found = evolutionService.getSubjectsToReview().find((r) => r.subjectId === subject.id);
+  assert.ok(found, "materia com revisao atrasada deveria aparecer");
+  assert.equal(found.reason, "revisão atrasada");
+});
+
+test("F5-31. materia saudavel nao aparece em getSubjectsToReview", () => {
+  const { subject, content } = seedContent();
+  const quiz = contentService.getContent(content.id).quizzes[0];
+  studyService.recordQuizAttempt({ quizId: quiz.id, contentId: content.id, answers: buildAnswers(100, 95) });
+  studyService.registerActivity(content.id);
+  assert.equal(evolutionService.getSubjectsToReview().some((r) => r.subjectId === subject.id), false);
+});
+
+test("F5-32. acerto baixo + revisao atrasada no mesmo conteudo geram reason combinado", () => {
+  const { subject, content } = seedContent();
+  const quiz = contentService.getContent(content.id).quizzes[0];
+  studyService.recordQuizAttempt({ quizId: quiz.id, contentId: content.id, answers: buildAnswers(100, 40) });
+  studyService.registerActivity(content.id);
+  const review = reviewService.scheduleInitialReview(content.id);
+  withDb((db) => ({
+    ...db,
+    reviews: db.reviews.map((r) => (r.id === review.id ? { ...r, scheduledFor: "2000-01-01T00:00:00.000Z" } : r)),
+  }));
+  const found = evolutionService.getSubjectsToReview().find((r) => r.subjectId === subject.id);
+  assert.equal(found.reason, "acerto baixo e revisão atrasada");
+  assert.equal(found.count, 1);
+});
+
+test("F5-33. getSubjectsToReview ordena por contagem desc e respeita limit", () => {
+  const a = subjectService.createSubjectEntry("Historia");
+  const b = subjectService.createSubjectEntry("Geografia");
+  for (const [subj, n] of [[a, 2], [b, 1]]) {
+    for (let i = 0; i < n; i++) {
+      const { content } = contentService.createContentEntry({
+        subjectId: subj.id,
+        subjectName: subj.name,
+        title: `t${i}`,
+        quizzes: [{ questions: [{ type: "vf", question: "?", correctAnswer: true }] }],
+      });
+      const quiz = contentService.getContent(content.id).quizzes[0];
+      studyService.recordQuizAttempt({ quizId: quiz.id, contentId: content.id, answers: buildAnswers(100, 20) });
+      studyService.registerActivity(content.id);
+    }
+  }
+  const rows = evolutionService.getSubjectsToReview();
+  assert.equal(rows[0].subjectId, a.id);
+  assert.equal(rows[0].count, 2);
+  assert.equal(evolutionService.getSubjectsToReview({ limit: 1 }).length, 1);
+});
+
 test("F5-21. banco novo: assinatura comeca free/active", () => {
   const sub = subscriptionService.getSubscription();
   assert.equal(sub.plan, "free");
