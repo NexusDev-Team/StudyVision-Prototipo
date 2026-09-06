@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { Flame } from "lucide-react";
 import Card from "../ui/Card";
 import ProgressBar from "../ui/ProgressBar";
@@ -8,42 +9,70 @@ import ProgressBar from "../ui/ProgressBar";
 // exibe. A cor não é a única pista de estado: `state.srLabel` garante o
 // mesmo significado em texto puro.
 export default function KnowledgeFlameCard({ state }) {
+  const gradientId = useId().replace(/:/g, "");
   if (!state) return null;
 
   const { completed, target, streakWeeks, isFirstTime, message, srLabel } = state;
-  const flameColor = completed > 0 ? "#F97316" : "#CBD5E1";
-  const streakLabel = isFirstTime ? "Acenda sua Chama" : `${streakWeeks} ${streakWeeks === 1 ? "semana" : "semanas"}`;
+  const active = completed > 0;
+  const pct = (Math.min(completed, target) / target) * 100;
 
   return (
     <Card
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      style={{ padding: "18px 20px", margin: "0 0 20px", display: "flex", flexDirection: "column", gap: 12 }}
+      style={{ padding: "20px 20px 18px", margin: "0 0 20px", display: "flex", flexDirection: "column", gap: 14 }}
       aria-label={srLabel}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden="true">
+        <defs>
+          <linearGradient id={`flame-${gradientId}`} x1="0%" y1="0%" x2="20%" y2="100%">
+            <stop offset="0%" stopColor="#FB7185" />
+            <stop offset="100%" stopColor="#F97316" />
+          </linearGradient>
+        </defs>
+      </svg>
+
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+        <div>
+          {isFirstTime ? (
+            <p style={{ fontFamily: "Inter,sans-serif", fontSize: 19, fontWeight: 800, color: "#111827", margin: 0, letterSpacing: -0.3 }}>
+              Acenda sua Chama
+            </p>
+          ) : (
+            <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+              <span style={{ fontFamily: "Inter,sans-serif", fontSize: 34, fontWeight: 800, color: "#111827", lineHeight: 1, letterSpacing: -1 }}>
+                {streakWeeks}
+              </span>
+              <span style={{ fontFamily: "Inter,sans-serif", fontSize: 14, fontWeight: 700, color: "#111827" }}>
+                {streakWeeks === 1 ? "semana" : "semanas"}
+              </span>
+            </div>
+          )}
+          <p style={{ fontFamily: "Inter,sans-serif", fontSize: 11, fontWeight: 700, color: "#94A3B8", margin: "3px 0 0", textTransform: "uppercase", letterSpacing: 0.6 }}>
+            Chama do Conhecimento
+          </p>
+        </div>
+
         <div
           aria-hidden="true"
           style={{
-            width: 44,
-            height: 44,
-            borderRadius: 12,
-            background: completed > 0 ? "#FFF7ED" : "#F1F5F9",
+            width: 52,
+            height: 52,
+            borderRadius: 16,
+            flexShrink: 0,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            flexShrink: 0,
+            background: active ? "linear-gradient(155deg,#FFF1F2,#FFEDD5)" : "#F1F5F9",
+            boxShadow: active ? "0 6px 18px -6px rgba(249,115,22,0.45)" : "none",
           }}
         >
-          <Flame size={24} color={flameColor} fill={completed > 0 ? flameColor : "none"} />
-        </div>
-        <div>
-          <p style={{ fontFamily: "Inter,sans-serif", fontSize: 16, fontWeight: 800, color: "#111827", margin: 0 }}>
-            {streakLabel}
-          </p>
-          <p style={{ fontFamily: "Inter,sans-serif", fontSize: 12, color: "#64748B", margin: "2px 0 0" }}>
-            Chama do Conhecimento
-          </p>
+          <Flame
+            size={26}
+            color={active ? `url(#flame-${gradientId})` : "#CBD5E1"}
+            fill={active ? `url(#flame-${gradientId})` : "none"}
+            stroke={active ? `url(#flame-${gradientId})` : "#CBD5E1"}
+          />
         </div>
       </div>
 
@@ -53,10 +82,22 @@ export default function KnowledgeFlameCard({ state }) {
             {Math.min(completed, target)}/{target} atividades nesta semana
           </span>
         </div>
-        <ProgressBar value={(Math.min(completed, target) / target) * 100} color="#F97316" />
+        <ProgressBar value={pct} color="#F97316" />
       </div>
 
-      <p style={{ fontFamily: "Inter,sans-serif", fontSize: 12.5, color: "#64748B", margin: 0 }}>{message}</p>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          padding: "9px 12px",
+          borderRadius: 12,
+          background: "linear-gradient(135deg,#FFF7ED,#FFF1F2)",
+        }}
+      >
+        <Flame size={14} color="#F97316" fill="#F97316" aria-hidden="true" style={{ flexShrink: 0 }} />
+        <p style={{ fontFamily: "Inter,sans-serif", fontSize: 12.5, color: "#9A3412", margin: 0, fontWeight: 600 }}>{message}</p>
+      </div>
 
       {/* Reforço acessível: mesma informação da chama, só em texto, para quem
           não percebe cor/ícone. */}
