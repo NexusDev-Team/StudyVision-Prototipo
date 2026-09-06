@@ -1,17 +1,21 @@
 import { newId, ID_PREFIX } from "../../utils/id.js";
 import { nowIso } from "../../utils/date.js";
 
-export const EVENT_TYPES = ["exam", "assignment", "class", "deadline", "other"];
+export const EVENT_TYPES = ["exam", "assignment", "deadline", "other"];
 
-// Metadados de apresentação por tipo — nunca depender só de cor para
-// distinguir tipos (acessibilidade). shape é usado como marcador textual
-// simples (legenda, badges) sem precisar de biblioteca de ícones.
+// Tipo legado ("Aula"/"Apresentação"), removido dos compromissos mas ainda
+// aceito na validação para não invalidar dados já persistidos — renderiza
+// como "Outro" via getEventTypeMeta.
+export const LEGACY_EVENT_TYPES = ["class"];
+
+// Metadados de apresentação por tipo. No calendário a cor do dia vem da
+// matéria, então o tipo é distinguido pela FORMA do marcador (shape), não
+// pela cor: prova ● / trabalho ▲ / entrega ✕ / outro ✱.
 export const EVENT_TYPE_META = {
   exam: { label: "Prova", shortLabel: "Prova", icon: "GraduationCap", shape: "●", color: "#DC2626" },
-  assignment: { label: "Trabalho", shortLabel: "Trabalho", icon: "FileText", shape: "◆", color: "#D97706" },
-  class: { label: "Aula", shortLabel: "Aula", icon: "Presentation", shape: "▲", color: "#2563EB" },
-  deadline: { label: "Entrega", shortLabel: "Entrega", icon: "Clock", shape: "■", color: "#7C3AED" },
-  other: { label: "Outro", shortLabel: "Outro", icon: "CalendarDays", shape: "○", color: "#64748B" },
+  assignment: { label: "Trabalho", shortLabel: "Trabalho", icon: "FileText", shape: "▲", color: "#D97706" },
+  deadline: { label: "Entrega", shortLabel: "Entrega", icon: "Clock", shape: "✕", color: "#7C3AED" },
+  other: { label: "Outro", shortLabel: "Outro", icon: "CalendarDays", shape: "✱", color: "#64748B" },
 };
 
 export function getEventTypeMeta(type) {

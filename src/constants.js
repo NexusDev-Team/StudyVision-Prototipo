@@ -41,7 +41,7 @@ export const REVIEW_FLAG_META = {
   overdue: { label: "Revisão atrasada", color: "#B45309", bg: "rgba(180,83,9,0.1)" },
 };
 
-export const PLANNING_TYPES = ["Prova", "Trabalho", "Apresentação", "Revisão"];
+export const PLANNING_TYPES = ["Prova", "Trabalho", "Revisão"];
 
 export const REMINDER_OPTIONS = [
   { days: 7, label: "7 dias antes" },

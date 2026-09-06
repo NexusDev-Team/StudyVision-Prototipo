@@ -15,6 +15,7 @@ import { useContentStore } from "../context/ContentStoreContext.jsx";
 import { createEventEntry, updateEvent, deleteEvent } from "../services/eventService";
 import { getKnowledgeFlameState } from "../services/knowledgeFlameService";
 import { endOfTodayIso, DAY_MS } from "../utils/date";
+import { getSubjectVisual } from "../constants";
 
 export default function ReviewScreen({ onReview, onOpenContent, onToast, onVisionPlus }) {
   const { contents, reviews, events, mutate } = useContentStore();
@@ -54,17 +55,20 @@ export default function ReviewScreen({ onReview, onOpenContent, onToast, onVisio
     return { due, upcoming };
   }, [contentById, reviews]);
 
-  // Calendário acadêmico: só eventos (Prova/Trabalho/Aula/Entrega/Outro), um
-  // por dia — nunca revisões. Um evento sem contentIds ainda aparece: o
-  // agrupamento é por event.date, não por conteúdo vinculado.
+  // Calendário acadêmico: só eventos (Prova/Trabalho/Entrega/Outro), um por
+  // dia — nunca revisões. Um evento sem contentIds ainda aparece: o
+  // agrupamento é por event.date, não por conteúdo vinculado. A cor do dia
+  // vem da matéria do primeiro conteúdo vinculado (cinza se não houver).
   const eventsByDate = useMemo(() => {
     const byDate = {};
     for (const event of events) {
       if (!event.date) continue;
-      (byDate[event.date] ||= []).push({ id: event.id, type: event.type, event });
+      const firstContent = (event.contentIds || []).map((id) => contentById.get(id)).find(Boolean);
+      const subjectColor = getSubjectVisual(firstContent?.subjectName).color;
+      (byDate[event.date] ||= []).push({ id: event.id, type: event.type, subjectColor, event });
     }
     return byDate;
-  }, [events]);
+  }, [events, contentById]);
 
   const selectedEntries = selectedDate ? eventsByDate[selectedDate] || [] : [];
 

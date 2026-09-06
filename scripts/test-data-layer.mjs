@@ -318,7 +318,7 @@ test("14. criar evento acadêmico", () => {
 
 test("15. vincular e desvincular conteúdo de evento", () => {
   const { content } = seedContent();
-  const event = eventService.createEventEntry({ type: "class", title: "Aula", date: "2026-03-10" });
+  const event = eventService.createEventEntry({ type: "other", title: "Aula", date: "2026-03-10" });
   eventService.linkContentToEvent(event.id, content.id);
   assert.deepEqual(eventService.getEventsForContent(content.id).map((e) => e.id), [event.id]);
   eventService.unlinkContentFromEvent(event.id, content.id);
@@ -846,7 +846,7 @@ test("F4-7. updateEvent preserva eventId e createdAt, nao cria evento novo", () 
 });
 
 test("F4-8. deleteEvent retorna false para id inexistente e true ao remover", () => {
-  const event = eventService.createEventEntry({ type: "class", title: "Aula", date: "2026-03-10" });
+  const event = eventService.createEventEntry({ type: "other", title: "Aula", date: "2026-03-10" });
   assert.equal(eventService.deleteEvent("evt_inexistente"), false);
   assert.equal(eventService.deleteEvent(event.id), true);
   assert.equal(eventService.getEvents().length, 0);
@@ -884,16 +884,21 @@ test("F4-20. criar materia e recarregar preserva a materia (testes 1 e 2)", () =
 test("F4-21. criar evento de cada tipo canonico e recarregar preserva todos (testes 9-13)", () => {
   const exam = eventService.createEventEntry({ type: "exam", title: "Prova", date: "2026-11-01" });
   const assignment = eventService.createEventEntry({ type: "assignment", title: "Trabalho", date: "2026-11-02" });
-  const klass = eventService.createEventEntry({ type: "class", title: "Aula", date: "2026-11-03" });
+  const other = eventService.createEventEntry({ type: "other", title: "Outro", date: "2026-11-03" });
   const deadline = eventService.createEventEntry({ type: "deadline", title: "Entrega", date: "2026-11-04" });
 
   const reloaded = JSON.parse(localStorage.getItem("sv_db"));
   const byId = new Map(reloaded.events.map((e) => [e.id, e]));
   assert.equal(byId.get(exam.id)?.type, "exam");
   assert.equal(byId.get(assignment.id)?.type, "assignment");
-  assert.equal(byId.get(klass.id)?.type, "class");
+  assert.equal(byId.get(other.id)?.type, "other");
   assert.equal(byId.get(deadline.id)?.type, "deadline");
   assert.equal(reloaded.events.length, 4);
+});
+
+test("F4-21b. tipo legado 'class' e coagido para 'other' ao criar", () => {
+  const legacy = eventService.createEventEntry({ type: "other", title: "Aula", date: "2026-11-05" });
+  assert.equal(eventService.getEvent(legacy.id)?.type, "other");
 });
 
 test("F4-22. excluir evento nao exclui o conteudo relacionado (teste 17)", () => {
@@ -1483,7 +1488,7 @@ test("F6-2. excluir conteudo preserva evento que ainda tem outro conteudo vincul
 
 test("F6-3. sweepOrphans limpa contentIds fantasmas do evento sem apagar o evento", () => {
   const { content } = seedContent();
-  const event = eventService.createEventEntry({ type: "class", title: "Aula", date: "2026-12-01", contentIds: [content.id] });
+  const event = eventService.createEventEntry({ type: "other", title: "Aula", date: "2026-12-01", contentIds: [content.id] });
   withDb((db) => ({ ...db, contents: [] })); // simula conteudo removido por fora do fluxo normal
 
   integrityService.sweepOrphans();
@@ -1598,9 +1603,9 @@ test("F7-4. serie migra para o evento futuro mais proximo", () => {
   assert.equal(eventIds.size, 1);
 });
 
-test("F7-5. tipo 'class' e 'other' nao geram revisao de compromisso", () => {
+test("F7-5. tipo 'other' nao gera revisao de compromisso", () => {
   const { content } = seedContent();
-  eventService.createEventEntry({ type: "class", title: "Aula", date: futureDateKey(20), contentIds: [content.id] });
+  eventService.createEventEntry({ type: "other", title: "Aula", date: futureDateKey(20), contentIds: [content.id] });
   assert.equal(reviewService.getReviewsForContent(content.id).filter((r) => r.kind === "commitment").length, 0);
 });
 

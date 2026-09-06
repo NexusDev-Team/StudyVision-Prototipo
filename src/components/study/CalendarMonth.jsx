@@ -60,6 +60,8 @@ export default function CalendarMonth({ eventsByDate, onSelectDate }) {
           const isToday = dateStr === todayStr;
           const isPast = dateStr < todayStr;
           const types = [...new Set(dayEvents.map((e) => e.type))];
+          // Círculo preenchido com a cor da matéria do dia (1º evento).
+          const fillColor = dayEvents[0]?.subjectColor || "#64748B";
 
           let border = "1.5px solid transparent";
           if (isToday) border = "1.5px solid #2563EB";
@@ -81,11 +83,11 @@ export default function CalendarMonth({ eventsByDate, onSelectDate }) {
                 borderRadius: "50%",
                 cursor: hasAny ? "pointer" : "default",
                 border,
-                background: "white",
+                background: hasAny ? fillColor : "white",
                 fontFamily: "Inter,sans-serif",
                 fontSize: 12,
                 fontWeight: isToday || hasAny ? 800 : 600,
-                color: isToday ? "#2563EB" : "#111827",
+                color: hasAny ? "white" : isToday ? "#2563EB" : "#111827",
                 boxSizing: "border-box",
                 opacity: isPast ? 0.45 : 1,
                 display: "flex",
@@ -95,9 +97,11 @@ export default function CalendarMonth({ eventsByDate, onSelectDate }) {
               }}>
               {day}
               {hasAny && (
-                <span style={{ display: "flex", gap: 2, marginTop: 2 }}>
+                <span style={{ display: "flex", gap: 2, marginTop: 1, lineHeight: 1 }}>
                   {types.slice(0, 3).map((t) => (
-                    <span key={t} aria-hidden="true" style={{ width: 5, height: 5, borderRadius: "50%", background: EVENT_TYPE_META[t]?.color || "#64748B" }} />
+                    <span key={t} aria-hidden="true" style={{ fontSize: 8, color: "white" }}>
+                      {EVENT_TYPE_META[t]?.shape || "✱"}
+                    </span>
                   ))}
                 </span>
               )}
@@ -106,13 +110,13 @@ export default function CalendarMonth({ eventsByDate, onSelectDate }) {
         })}
       </div>
 
-      {/* Legenda — o tipo nunca depende só da cor, o rótulo sempre acompanha */}
+      {/* Legenda — a cor do dia é da matéria; o tipo é distinguido pela forma. */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 14px", marginTop: 14, paddingTop: 12, borderTop: "1px solid #F1F5F9" }}>
         {EVENT_TYPES.map((t) => {
           const meta = EVENT_TYPE_META[t];
           return (
             <span key={t} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "#64748B", fontFamily: "Inter,sans-serif" }}>
-              <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: "50%", background: meta.color }} />
+              <span aria-hidden="true" style={{ fontSize: 10, color: "#475569", width: 12, textAlign: "center" }}>{meta.shape}</span>
               {meta.label}
             </span>
           );
