@@ -13,6 +13,7 @@ import PlusPaywall from "../components/plus/PlusPaywall";
 import PlusFinalCta from "../components/plus/PlusFinalCta";
 import SparkChart from "../components/ui/SparkChart";
 import Button from "../components/ui/Button";
+import KnowledgeFlameCard from "../components/study/KnowledgeFlameCard";
 import { useContentStore } from "../context/ContentStoreContext.jsx";
 import {
   getEvolutionSummary,
@@ -25,6 +26,7 @@ import {
   getAccuracyDelta,
   getSubjectsToReview,
 } from "../services/evolutionService";
+import { getKnowledgeFlameState } from "../services/knowledgeFlameService";
 
 function StatCard({ value, label, delay = 0 }) {
   return (
@@ -57,6 +59,7 @@ export default function EvolutionScreen({ isPremium, onOpenContent, onOpenLibrar
   const recommendations = useMemo(() => getRecommendations({ limit: 3 }), [contents, reviews]);
   const delta = useMemo(() => getAccuracyDelta(), [contents]);
   const subjectsToReview = useMemo(() => getSubjectsToReview(), [contents, reviews]);
+  const flameState = useMemo(() => getKnowledgeFlameState(), [contents, reviews]);
 
   const historyAccuracies = history.map((h) => h.accuracy ?? 0);
   const yLabels = history.length >= 2
@@ -86,6 +89,8 @@ export default function EvolutionScreen({ isPremium, onOpenContent, onOpenLibrar
           />
         ) : (
           <>
+            <KnowledgeFlameCard state={flameState} />
+
             <SectionLabel>Resumo</SectionLabel>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
               <StatCard value={summary.contentsStudied} label="conteúdos estudados" />
