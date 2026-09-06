@@ -22,12 +22,15 @@ export default function ContentCard({ content, index, isDue = false, isOverdue =
           </div>
           <div>
             <p style={{ fontFamily: "Inter,sans-serif", fontSize: 15, fontWeight: 700, color: "#111827", margin: 0 }}>{content.title}</p>
-            <p style={{ fontFamily: "Inter,sans-serif", fontSize: 12, color: "#64748B", margin: "2px 0 0" }}>{content.subjectName || UNASSIGNED_SUBJECT_LABEL} · {content.topic}</p>
+            <p style={{ fontFamily: "Inter,sans-serif", fontSize: 12, color: "#64748B", margin: "2px 0 0" }}>{content.topic || "Conteúdo"}</p>
           </div>
         </div>
         <ChevronRight size={18} color="#CBD5E1" />
       </div>
       <div style={{ marginTop: 10, display: "flex", gap: 6, alignItems: "center" }}>
+        <Badge color={visual.color} background={visual.bg} fontSize={11} fontWeight={700} padding="3px 10px" radius={6}>
+          {content.subjectName || UNASSIGNED_SUBJECT_LABEL}
+        </Badge>
         {/* Uma única tag de reforço, por prioridade: revisar hoje > atrasada > rever. */}
         {isDue ? (
           <Badge color="#DC2626" background="rgba(220,38,38,0.1)" fontSize={11} fontWeight={700} padding="3px 10px" radius={6}>
