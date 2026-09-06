@@ -7,8 +7,7 @@ import { EVENT_TYPE_META } from "../../data/models/event.js";
 
 export default function ContentCard({ content, index, isDue = false, isOverdue = false, nextEvent = null, onClick }) {
   const visual = getSubjectVisual(content.subjectName);
-  const masteryLevel = content.mastery?.level || "not_started";
-  const needsReview = masteryLevel === "needs_review";
+  const needsReview = content.mastery?.level === "needs_review";
 
   return (
     <motion.button
@@ -29,22 +28,16 @@ export default function ContentCard({ content, index, isDue = false, isOverdue =
         <ChevronRight size={18} color="#CBD5E1" />
       </div>
       <div style={{ marginTop: 10, display: "flex", gap: 6, alignItems: "center" }}>
+        {/* Uma única tag de reforço, por prioridade: revisar hoje > atrasada > rever. */}
         {isDue ? (
           <Badge color="#DC2626" background="rgba(220,38,38,0.1)" fontSize={11} fontWeight={700} padding="3px 10px" radius={6}>
             <CalendarClock size={11} /> Revisar hoje
           </Badge>
-        ) : (
-          <Badge color="#14B8A6" background="rgba(20,184,166,0.1)" fontSize={11} fontWeight={600} padding="3px 10px" radius={6}>Resumo</Badge>
-        )}
-        {masteryLevel === "not_started" && (
-          <Badge color="#7C3AED" background="rgba(124,58,237,0.1)" fontSize={11} fontWeight={600} padding="3px 10px" radius={6}>Flashcards</Badge>
-        )}
-        {/* Uma única tag de reforço, por prioridade: revisar hoje > atrasada > rever. */}
-        {!isDue && isOverdue ? (
+        ) : isOverdue ? (
           <Badge color={REVIEW_FLAG_META.overdue.color} background={REVIEW_FLAG_META.overdue.bg} fontSize={11} fontWeight={700} padding="3px 10px" radius={6}>
             {REVIEW_FLAG_META.overdue.label}
           </Badge>
-        ) : !isDue && needsReview ? (
+        ) : needsReview ? (
           <Badge color={REVIEW_FLAG_META.needs_review.color} background={REVIEW_FLAG_META.needs_review.bg} fontSize={11} fontWeight={700} padding="3px 10px" radius={6}>
             {REVIEW_FLAG_META.needs_review.label}
           </Badge>
