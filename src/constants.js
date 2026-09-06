@@ -34,6 +34,13 @@ export function getMasteryMeta(level) {
   return MASTERY_META[level] || MASTERY_META.not_started;
 }
 
+// Tags de notificação de reforço — aparecem só quando o conteúdo precisa.
+// Não são estado permanente do conteúdo; somem quando a condição deixa de valer.
+export const REVIEW_FLAG_META = {
+  needs_review: { label: "Rever", color: "#DC2626", bg: "rgba(220,38,38,0.1)" },
+  overdue: { label: "Revisão atrasada", color: "#B45309", bg: "rgba(180,83,9,0.1)" },
+};
+
 export const PLANNING_TYPES = ["Prova", "Trabalho", "Apresentação", "Revisão"];
 
 export const REMINDER_OPTIONS = [

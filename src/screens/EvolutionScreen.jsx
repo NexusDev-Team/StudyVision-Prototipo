@@ -117,7 +117,9 @@ export default function EvolutionScreen({ isPremium, onOpenContent, onOpenLibrar
                 </p>
               </div>
             </Card>
-            <ReviewNeededCard subjects={subjectsToReview} onSelect={onOpenLibrary} />
+            {subjectsToReview.length > 0 && (
+              <ReviewNeededCard subjects={subjectsToReview} onSelect={onOpenLibrary} />
+            )}
 
             <SubjectProgress subjects={subjectRows} onSelect={onOpenLibrary} />
 

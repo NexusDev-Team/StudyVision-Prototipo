@@ -8,7 +8,7 @@ import SubjectFolderGrid from "../components/ui/SubjectFolderGrid";
 import SubjectManagerModal from "../components/study/SubjectManagerModal";
 import EmptyState from "../components/ui/EmptyState";
 import { useContentStore } from "../context/ContentStoreContext.jsx";
-import { endOfTodayIso } from "../utils/date";
+import { endOfTodayIso, startOfTodayIso } from "../utils/date";
 import { matchesQuery } from "../utils/search";
 import { UNASSIGNED_SUBJECT_LABEL } from "../constants";
 
@@ -29,11 +29,17 @@ export default function LibraryScreen({ onOpenItem, onVisionPlus, onToast, initi
 
   // Revisão pendente (para o selo "Revisar hoje") e próximo evento, indexados
   // por conteúdo — derivados uma vez do estado do store.
-  const { dueByContent, eventByContent } = useMemo(() => {
+  const { dueByContent, overdueByContent, eventByContent } = useMemo(() => {
     const endOfToday = new Date(endOfTodayIso()).getTime();
+    const startOfToday = new Date(startOfTodayIso()).getTime();
     const due = new Set(
       reviews
         .filter((r) => r.status === "pending" && new Date(r.scheduledFor).getTime() <= endOfToday)
+        .map((r) => r.contentId)
+    );
+    const overdue = new Set(
+      reviews
+        .filter((r) => r.status === "pending" && new Date(r.scheduledFor).getTime() < startOfToday)
         .map((r) => r.contentId)
     );
     const evt = new Map();
@@ -42,7 +48,7 @@ export default function LibraryScreen({ onOpenItem, onVisionPlus, onToast, initi
         if (!evt.has(cid)) evt.set(cid, e);
       }
     }
-    return { dueByContent: due, eventByContent: evt };
+    return { dueByContent: due, overdueByContent: overdue, eventByContent: evt };
   }, [reviews, events]);
 
   // Filtros por matéria a partir das matérias reais cadastradas — não do texto
@@ -160,6 +166,7 @@ export default function LibraryScreen({ onOpenItem, onVisionPlus, onToast, initi
                 content={content}
                 index={i}
                 isDue={dueByContent.has(content.id)}
+                isOverdue={overdueByContent.has(content.id)}
                 nextEvent={eventByContent.get(content.id) || null}
                 onClick={() => onOpenItem(content)}
               />

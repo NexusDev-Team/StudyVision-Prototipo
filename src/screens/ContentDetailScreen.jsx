@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, CalendarClock, CreditCard, ListChecks, HelpCircle, ChevronRight, Trash2, Pencil, Check, X } from "lucide-react";
+import { ChevronLeft, CalendarClock, CreditCard, ListChecks, HelpCircle, ChevronRight, Trash2, Pencil, Check, X, RotateCcw } from "lucide-react";
 import CapturedPageVisual from "../components/brand/CapturedPageVisual";
 import ContentBlocks from "../components/study/ContentBlocks";
 import PhotosSection from "../components/study/PhotosSection";
@@ -22,7 +22,7 @@ import {
 import { getEventsForContent, createEventEntry, updateEvent, unlinkContentFromEvent, deleteEvent } from "../services/eventService";
 import { moveContentToSubject, deleteContent, updateNotes, updateContent } from "../services/contentService";
 import { getContentPerformance } from "../services/performanceService";
-import { getSubjectVisual, getMasteryMeta, UNASSIGNED_SUBJECT_LABEL } from "../constants";
+import { getSubjectVisual, UNASSIGNED_SUBJECT_LABEL } from "../constants";
 
 export default function ContentDetailScreen({ content, onBack, onDeleted, onFlashcards, onQuestions, onQuiz, onVisionPlus, onToast, onAddPhoto, onViewPhoto }) {
   const { mutate, subjects, contents, reviews: allReviews, events: allEvents } = useContentStore();
@@ -40,9 +40,7 @@ export default function ContentDetailScreen({ content, onBack, onDeleted, onFlas
   const due = useMemo(() => isContentDueForReview(content.id), [content.id, allReviews]);
   const doneCount = reviews.filter((r) => r.status !== "pending").length;
 
-  const mastery = getMasteryMeta(content.mastery?.level);
-  const masteryScore = content.mastery?.score ?? 0;
-  const hasMastery = (content.mastery?.level || "not_started") !== "not_started";
+  const needsReview = content.mastery?.level === "needs_review";
   const performance = useMemo(() => getContentPerformance(content.id), [content.id, content.flashcards, content.quizzes]);
 
   // Um conteúdo pode ter N eventos; a seção de compromissos lista todos, não
@@ -203,17 +201,16 @@ export default function ContentDetailScreen({ content, onBack, onDeleted, onFlas
           onSelectPhoto={(index) => onViewPhoto?.(content, index)}
         />
 
-        {/* Domínio */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-          style={{ background: "white", borderRadius: 20, padding: "12px 16px", marginBottom: 12, boxShadow: "0 1px 8px rgba(0,0,0,0.05)", border: "1px solid #E2E8F0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div>
-            <p style={{ fontSize: 10, fontWeight: 700, color: "#94A3B8", letterSpacing: 1.2, margin: 0 }}>DOMÍNIO</p>
-            <p style={{ fontSize: 13, fontWeight: 700, color: "#111827", margin: "3px 0 0", fontFamily: "Inter,sans-serif" }}>
-              {hasMastery ? `${masteryScore}% · ${mastery.label}` : "Ainda sem tentativas"}
+        {/* Aviso de reforço — só quando o desempenho real ficou baixo. */}
+        {needsReview && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+            style={{ background: "rgba(180,83,9,0.08)", borderRadius: 20, padding: "12px 16px", marginBottom: 12, border: "1px solid rgba(180,83,9,0.2)", display: "flex", alignItems: "center", gap: 10 }}>
+            <RotateCcw size={18} color="#B45309" style={{ flexShrink: 0 }} />
+            <p style={{ fontSize: 13, fontWeight: 600, color: "#92400E", margin: 0, fontFamily: "Inter,sans-serif" }}>
+              Você não foi tão bem aqui — vale reestudar este conteúdo.
             </p>
-          </div>
-          <span style={{ fontSize: 11, fontWeight: 700, color: mastery.color, background: mastery.bg, borderRadius: 8, padding: "4px 10px" }}>{mastery.label}</span>
-        </motion.div>
+          </motion.div>
+        )}
 
         {/* Desempenho */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
