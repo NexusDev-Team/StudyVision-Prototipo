@@ -74,6 +74,31 @@ export function addDaysIso(value, days) {
   return new Date(ms + days * DAY_MS).toISOString();
 }
 
+// weekStartKey (segunda) → {weekStart, weekEnd} em ISO local: segunda 00:00
+// até domingo 23:59:59.999. Usado pela Chama do Conhecimento (Fase 8) para
+// exibir o intervalo da semana sem recalcular a regra de startOfWeekKey.
+export function weekRangeFromKey(weekStartKey) {
+  const mondayNoon = fromDayKey(weekStartKey);
+  if (mondayNoon === null) return null;
+  const ms = toMs(mondayNoon);
+  const monday = new Date(ms);
+  const weekStart = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate(), 0, 0, 0, 0);
+  const weekEnd = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6, 23, 59, 59, 999);
+  return { weekStart: weekStart.toISOString(), weekEnd: weekEnd.toISOString() };
+}
+
+// weekStartKey (segunda) da semana atual.
+export function currentWeekStartKey() {
+  return startOfWeekKey(nowIso());
+}
+
+// weekStartKey (segunda) da semana imediatamente anterior a `weekKey`.
+export function previousWeekKey(weekKey) {
+  const mondayNoon = fromDayKey(weekKey);
+  if (mondayNoon === null) return null;
+  return startOfWeekKey(addDaysIso(mondayNoon, -7));
+}
+
 // Início do dia local de hoje (00:00) — corte para decidir se uma revisão
 // está atrasada (scheduledFor anterior a isto).
 export function startOfTodayIso() {
