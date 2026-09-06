@@ -50,7 +50,7 @@ export default function KnowledgeFlameCard({ state }) {
       <div>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
           <span style={{ fontFamily: "Inter,sans-serif", fontSize: 12.5, color: "#374151", fontWeight: 600 }}>
-            {completed}/{target} atividades nesta semana
+            {Math.min(completed, target)}/{target} atividades nesta semana
           </span>
         </div>
         <ProgressBar value={(Math.min(completed, target) / target) * 100} color="#F97316" />

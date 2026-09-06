@@ -8,14 +8,17 @@ import UpcomingReviewRow from "../components/study/UpcomingReviewRow";
 import CalendarMonth from "../components/study/CalendarMonth";
 import DayEventsModal from "../components/study/DayEventsModal";
 import EventFormModal from "../components/study/EventFormModal";
+import FlameBadge from "../components/study/FlameBadge";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import EmptyState from "../components/ui/EmptyState";
 import { useContentStore } from "../context/ContentStoreContext.jsx";
 import { createEventEntry, updateEvent, deleteEvent } from "../services/eventService";
+import { getKnowledgeFlameState } from "../services/knowledgeFlameService";
 import { endOfTodayIso, DAY_MS } from "../utils/date";
 
 export default function ReviewScreen({ onReview, onOpenContent, onToast, onVisionPlus }) {
   const { contents, reviews, events, mutate } = useContentStore();
+  const flameState = useMemo(() => getKnowledgeFlameState(), [reviews, contents]);
   const [selectedDate, setSelectedDate] = useState(null);
   const [creatingEvent, setCreatingEvent] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
@@ -105,7 +108,10 @@ export default function ReviewScreen({ onReview, onOpenContent, onToast, onVisio
             <LogoSVG size={24} />
             <span style={{ fontSize: 11, fontWeight: 700, color: "#2563EB", letterSpacing: 1 }}>STUDY VISION</span>
           </div>
-          <VisionPlusButton onClick={onVisionPlus} />
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <FlameBadge state={flameState} />
+            <VisionPlusButton onClick={onVisionPlus} />
+          </div>
         </div>
         <h1 style={{ fontSize: 24, fontWeight: 800, color: "#111827", margin: 0 }}>Revisão Inteligente</h1>
         <p style={{ fontSize: 13, color: "#64748B", margin: "2px 0 0" }}>Repetição espaçada para combater o esquecimento</p>
