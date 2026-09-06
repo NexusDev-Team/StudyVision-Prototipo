@@ -2,6 +2,7 @@ import { useState } from "react";
 import { X, Calendar } from "lucide-react";
 import Modal from "../ui/Modal";
 import { EVENT_TYPES, EVENT_TYPE_META } from "../../data/models/event.js";
+import CommitmentShape from "./CommitmentShape.jsx";
 
 // Cria ou edita um AcademicEvent. Passe `event` para editar (preserva
 // eventId/createdAt no service); omita para criar. `lockedContentId`, quando
@@ -62,7 +63,7 @@ export default function EventFormModal({ event, contents, lockedContentId, onSav
           return (
             <button key={t} onClick={() => setType(t)} aria-pressed={isActive}
               style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", borderRadius: 20, background: isActive ? meta.color : "#F1F5F9", color: isActive ? "white" : "#64748B", fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer" }}>
-              <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: "50%", background: isActive ? "white" : meta.color }} />
+              <CommitmentShape type={t} size={10} color={isActive ? "white" : meta.color} />
               {meta.label}
             </button>
           );

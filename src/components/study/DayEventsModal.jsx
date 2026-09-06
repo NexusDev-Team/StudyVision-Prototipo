@@ -1,6 +1,7 @@
 import { X, Calendar, Pencil, Trash2 } from "lucide-react";
 import Modal from "../ui/Modal";
 import { EVENT_TYPE_META } from "../../data/models/event.js";
+import CommitmentShape from "./CommitmentShape.jsx";
 
 const MONTHS = [
   "janeiro", "fevereiro", "março", "abril", "maio", "junho",
@@ -35,7 +36,7 @@ export default function DayEventsModal({ date, entries, contentById, onClose, on
           return (
             <div key={id} style={{ padding: "12px 14px", borderRadius: 14, background: "#F8FAFC", border: "1px solid #E2E8F0" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: "50%", background: meta.color, flexShrink: 0 }} />
+                <CommitmentShape type={event.type} size={10} color={meta.color} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontSize: 13, fontWeight: 700, color: "#111827", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{event.title}</p>
                   <p style={{ fontSize: 11, color: "#94A3B8", margin: "1px 0 0" }}>{meta.label}{event.time ? ` · ${event.time}` : ""}</p>

@@ -6,6 +6,7 @@ import SectionLabel from "../ui/SectionLabel";
 import ConfirmDialog from "../ui/ConfirmDialog";
 import EventFormModal from "./EventFormModal";
 import { EVENT_TYPE_META } from "../../data/models/event.js";
+import CommitmentShape from "./CommitmentShape.jsx";
 
 function formatEventDate(dateStr) {
   if (!dateStr) return "";
@@ -36,7 +37,7 @@ export default function CommitmentsSection({ content, events, contents, onCreate
             const meta = EVENT_TYPE_META[event.type] || EVENT_TYPE_META.other;
             return (
               <div key={event.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 12, background: "#F8FAFC", border: "1px solid #E2E8F0" }}>
-                <span aria-hidden="true" style={{ width: 9, height: 9, borderRadius: "50%", background: meta.color, flexShrink: 0 }} />
+                <CommitmentShape type={event.type} size={10} color={meta.color} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontSize: 13, fontWeight: 700, color: "#111827", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{event.title}</p>
                   <p style={{ fontSize: 11, color: "#94A3B8", margin: "1px 0 0" }}>{meta.label} · {formatEventDate(event.date)}{event.time ? ` · ${event.time}` : ""}</p>
