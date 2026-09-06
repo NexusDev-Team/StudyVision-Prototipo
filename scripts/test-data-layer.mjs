@@ -78,9 +78,13 @@ const subscriptionService = await import("../src/services/subscriptionService.js
 const { readDb, withDb } = await import("../src/data/storage/index.js");
 const validate = await import("../src/data/models/validate.js");
 const integrityService = await import("../src/services/integrityService.js");
-const { nowIso } = await import("../src/utils/date.js");
+const { nowIso, startOfWeekKey, currentWeekStartKey, previousWeekKey, fromDayKey, addDaysIso } = await import("../src/utils/date.js");
 const { createEvent } = await import("../src/data/models/event.js");
 const { matchesQuery } = await import("../src/utils/search.js");
+const knowledgeFlameService = await import("../src/services/knowledgeFlameService.js");
+const { createQuizAttempt } = await import("../src/data/models/quiz.js");
+const { createFlashcardAttempt } = await import("../src/data/models/flashcard.js");
+const { createReview } = await import("../src/data/models/review.js");
 
 // helper: cria um conteúdo mínimo já com matéria
 // helper: gera `total` respostas de quiz com `correct` delas certas.
@@ -114,6 +118,46 @@ function seedContent(overrides = {}) {
     ...overrides,
   });
   return { subject, content };
+}
+
+// helpers da Chama do Conhecimento (F8): weekKey da semana atual deslocada
+// `weeksAgo` semanas para trás, e um ISO dentro dela em `dayOffset` dias após
+// a segunda (0=segunda .. 6=domingo), sempre ao meio-dia local.
+function weekKeyAgo(weeksAgo) {
+  let key = currentWeekStartKey();
+  for (let i = 0; i < weeksAgo; i++) key = previousWeekKey(key);
+  return key;
+}
+function isoInWeek(weeksAgo, dayOffset = 0) {
+  return addDaysIso(fromDayKey(weekKeyAgo(weeksAgo)), dayOffset);
+}
+function addQuizActivity(contentId, weeksAgo, dayOffset = 0) {
+  withDb((db) => ({
+    ...db,
+    quizAttempts: [
+      ...db.quizAttempts,
+      createQuizAttempt({ quizId: "qz_fake", contentId, answers: buildAnswers(3, 2), answeredAt: isoInWeek(weeksAgo, dayOffset) }),
+    ],
+  }));
+}
+function addFlashcardActivity(contentId, weeksAgo, dayOffset = 0, hourOffsetMs = 0) {
+  const at = new Date(new Date(isoInWeek(weeksAgo, dayOffset)).getTime() + hourOffsetMs).toISOString();
+  withDb((db) => ({
+    ...db,
+    flashcardAttempts: [
+      ...db.flashcardAttempts,
+      createFlashcardAttempt({ flashcardId: "fc_fake", contentId, correct: true, answeredAt: at }),
+    ],
+  }));
+}
+function addReviewActivity(contentId, weeksAgo, dayOffset = 0, status = "completed") {
+  withDb((db) => ({
+    ...db,
+    reviews: [
+      ...db.reviews,
+      createReview({ contentId, kind: "manual", status, completedAt: status === "completed" ? isoInWeek(weeksAgo, dayOffset) : null, scheduledFor: isoInWeek(weeksAgo, dayOffset) }),
+    ],
+  }));
 }
 
 // ─── cenários ────────────────────────────────────────────────────────────────
@@ -1630,6 +1674,148 @@ test("F7-11. sem reschedule, applyReviewPlan nao empurra a revisao ja agendada",
   const again = reviewService.applyReviewPlan(content.id); // boot / idempotente
   assert.equal(again.id, first.id);
   assert.equal(again.scheduledFor, first.scheduledFor);
+});
+
+// ─── Fase 8: Chama do Conhecimento ────────────────────────────────────────────
+
+test("F8-1. usuario novo: 0 semanas, 0/3, isFirstTime", () => {
+  const state = knowledgeFlameService.getKnowledgeFlameState();
+  assert.equal(state.streakWeeks, 0);
+  assert.equal(state.completed, 0);
+  assert.equal(state.isFirstTime, true);
+  assert.equal(state.weekCompleted, false);
+});
+
+test("F8-2. revisao concluida nesta semana conta 1/3", () => {
+  const { content } = seedContent();
+  addReviewActivity(content.id, 0, 0);
+  const state = knowledgeFlameService.getKnowledgeFlameState();
+  assert.equal(state.completed, 1);
+  assert.equal(state.isFirstTime, false);
+});
+
+test("F8-3. + quiz concluido conta 2/3", () => {
+  const { content } = seedContent();
+  addReviewActivity(content.id, 0, 0);
+  addQuizActivity(content.id, 0, 1);
+  const state = knowledgeFlameService.getKnowledgeFlameState();
+  assert.equal(state.completed, 2);
+  assert.equal(state.weekCompleted, false);
+});
+
+test("F8-4. + flashcards de outro conteudo fecha 3/3 e conclui a semana", () => {
+  const { content: c1 } = seedContent();
+  const { content: c2 } = seedContent({ subjectName: "Outra" });
+  addReviewActivity(c1.id, 0, 0);
+  addQuizActivity(c1.id, 0, 1);
+  addFlashcardActivity(c2.id, 0, 2);
+  const state = knowledgeFlameService.getKnowledgeFlameState();
+  assert.equal(state.completed, 3);
+  assert.equal(state.weekCompleted, true);
+  assert.equal(state.remaining, 0);
+});
+
+test("F8-5. reload (novo readDb) mantem o mesmo estado", () => {
+  const { content } = seedContent();
+  addReviewActivity(content.id, 0, 0);
+  addQuizActivity(content.id, 0, 1);
+  const before = knowledgeFlameService.getKnowledgeFlameState();
+  readDb(); // simula reload lendo o storage de novo
+  const after = knowledgeFlameService.getKnowledgeFlameState();
+  assert.deepEqual(after, before);
+});
+
+test("F8-6. um quiz com varias respostas internas conta 1 atividade, nao N", () => {
+  const { content } = seedContent();
+  withDb((db) => ({
+    ...db,
+    quizAttempts: [
+      ...db.quizAttempts,
+      createQuizAttempt({ quizId: "qz_fake", contentId: content.id, answers: buildAnswers(10, 7), answeredAt: isoInWeek(0, 0) }),
+    ],
+  }));
+  const state = knowledgeFlameService.getKnowledgeFlameState();
+  assert.equal(state.completed, 1);
+});
+
+test("F8-7. duas conclusoes validas do mesmo tipo contam separadamente", () => {
+  const { content: c1 } = seedContent();
+  const { content: c2 } = seedContent({ subjectName: "Outra" });
+  withDb((db) => ({
+    ...db,
+    quizAttempts: [
+      ...db.quizAttempts,
+      createQuizAttempt({ quizId: "qz_a", contentId: c1.id, answers: buildAnswers(2, 1), answeredAt: isoInWeek(0, 0) }),
+      createQuizAttempt({ quizId: "qz_b", contentId: c2.id, answers: buildAnswers(2, 2), answeredAt: isoInWeek(0, 1) }),
+    ],
+  }));
+  const state = knowledgeFlameService.getKnowledgeFlameState();
+  assert.equal(state.completed, 2);
+});
+
+test("F8-8. atividades so na semana anterior deixam a semana atual em 0/3", () => {
+  const { content } = seedContent();
+  addReviewActivity(content.id, 1, 0);
+  addQuizActivity(content.id, 1, 1);
+  addFlashcardActivity(content.id, 1, 2);
+  const state = knowledgeFlameService.getKnowledgeFlameState();
+  assert.equal(state.completed, 0);
+  assert.equal(state.weekCompleted, false);
+});
+
+test("F8-9. 3 semanas consecutivas completas -> streakWeeks 3", () => {
+  const { content } = seedContent();
+  for (const weeksAgo of [2, 1, 0]) {
+    addReviewActivity(content.id, weeksAgo, 0);
+    addQuizActivity(content.id, weeksAgo, 1);
+    addFlashcardActivity(content.id, weeksAgo, 2);
+  }
+  const state = knowledgeFlameService.getKnowledgeFlameState();
+  assert.equal(state.streakWeeks, 3);
+  assert.equal(state.weekCompleted, true);
+});
+
+test("F8-10. semana intermediaria incompleta reinicia a sequencia em 1", () => {
+  const { content } = seedContent();
+  // semana -3: completa; semana -2: so 1/3 (quebra a sequencia); semana -1: completa; atual: vazia
+  addReviewActivity(content.id, 3, 0);
+  addQuizActivity(content.id, 3, 1);
+  addFlashcardActivity(content.id, 3, 2);
+  addReviewActivity(content.id, 2, 0);
+  addReviewActivity(content.id, 1, 0);
+  addQuizActivity(content.id, 1, 1);
+  addFlashcardActivity(content.id, 1, 2);
+  const state = knowledgeFlameService.getKnowledgeFlameState();
+  assert.equal(state.streakWeeks, 1);
+  assert.equal(state.completed, 0); // semana atual sem atividade
+});
+
+test("F8-11. flashcards do mesmo conteudo no mesmo dia em 2 blocos contam 1", () => {
+  const { content } = seedContent();
+  addFlashcardActivity(content.id, 0, 0, 0);
+  addFlashcardActivity(content.id, 0, 0, 4 * 60 * 60 * 1000); // 4h depois, mesmo dia
+  const state = knowledgeFlameService.getKnowledgeFlameState();
+  assert.equal(state.completed, 1);
+});
+
+test("F8-12. review pendente ou pulada nao conta como atividade", () => {
+  const { content } = seedContent();
+  addReviewActivity(content.id, 0, 0, "pending");
+  addReviewActivity(content.id, 0, 1, "skipped");
+  const state = knowledgeFlameService.getKnowledgeFlameState();
+  assert.equal(state.completed, 0);
+});
+
+test("F8-13. timestamps invalidos sao ignorados sem lancar excecao", () => {
+  const { content } = seedContent();
+  withDb((db) => ({
+    ...db,
+    quizAttempts: [...db.quizAttempts, { ...createQuizAttempt({ quizId: "qz_bad", contentId: content.id, answers: buildAnswers(1, 1) }), answeredAt: "nao-e-uma-data" }],
+    flashcardAttempts: [...db.flashcardAttempts, { ...createFlashcardAttempt({ flashcardId: "fc_bad", contentId: content.id, correct: true }), answeredAt: null }],
+  }));
+  assert.doesNotThrow(() => knowledgeFlameService.getKnowledgeFlameState());
+  const state = knowledgeFlameService.getKnowledgeFlameState();
+  assert.equal(state.completed, 0);
 });
 
 // ─── relatório ───────────────────────────────────────────────────────────────
