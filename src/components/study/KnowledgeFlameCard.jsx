@@ -1,7 +1,8 @@
 import { useId } from "react";
-import { Flame } from "lucide-react";
+import { Flame, SlidersHorizontal } from "lucide-react";
 import Card from "../ui/Card";
 import ProgressBar from "../ui/ProgressBar";
+import Button from "../ui/Button";
 
 // Chama do Conhecimento (Fase 8) — indicador de constância semanal, não de
 // streak diário. Toda regra de negócio já vem pronta em `state`
@@ -77,29 +78,9 @@ export default function KnowledgeFlameCard({ state, onEditGoal }) {
       </div>
 
       <div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-          <span style={{ fontFamily: "Inter,sans-serif", fontSize: 12.5, color: "#374151", fontWeight: 600 }}>
-            {displayCompleted}/{target} atividades nesta semana
-          </span>
-          {onEditGoal && (
-            <button
-              onClick={onEditGoal}
-              style={{
-                fontFamily: "Inter,sans-serif",
-                fontSize: 12,
-                fontWeight: 700,
-                color: "#9A3412",
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                padding: "10px 8px",
-                margin: "-10px -8px",
-              }}
-            >
-              Editar meta
-            </button>
-          )}
-        </div>
+        <span style={{ display: "block", fontFamily: "Inter,sans-serif", fontSize: 12.5, color: "#374151", fontWeight: 600, marginBottom: 6 }}>
+          {displayCompleted}/{target} atividades nesta semana
+        </span>
         <ProgressBar value={pct} color="#F97316" />
       </div>
 
@@ -116,6 +97,12 @@ export default function KnowledgeFlameCard({ state, onEditGoal }) {
         <Flame size={14} color="#F97316" fill="#F97316" aria-hidden="true" style={{ flexShrink: 0 }} />
         <p style={{ fontFamily: "Inter,sans-serif", fontSize: 12.5, color: "#9A3412", margin: 0, fontWeight: 600 }}>{message}</p>
       </div>
+
+      {onEditGoal && (
+        <Button variant="outline" onClick={onEditGoal} style={{ width: "100%", height: 44, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+          <SlidersHorizontal size={15} /> Editar meta
+        </Button>
+      )}
 
       {/* Reforço acessível: mesma informação da chama, só em texto, para quem
           não percebe cor/ícone. */}

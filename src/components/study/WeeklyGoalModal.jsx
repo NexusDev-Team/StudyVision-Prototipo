@@ -70,8 +70,8 @@ export default function WeeklyGoalModal({ value, hasHistory, onSave, onClose }) 
       </p>
 
       <button onClick={handleSave} disabled={saving}
-        style={{ width: "100%", height: 52, borderRadius: 16, background: "linear-gradient(135deg,#2563EB,#7C3AED)", color: "white", fontSize: 14, fontWeight: 700, border: "none", cursor: saving ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-        <Flame size={17} /> {saving ? "Salvando..." : "Salvar meta"}
+        style={{ width: "100%", height: 52, borderRadius: 16, background: "#F97316", color: "white", fontSize: 14, fontWeight: 700, border: "none", cursor: saving ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: "0 4px 12px -4px rgba(249,115,22,0.4)" }}>
+        <Flame size={17} fill="white" /> {saving ? "Salvando..." : "Salvar meta"}
       </button>
     </Modal>
   );
