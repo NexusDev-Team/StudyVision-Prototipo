@@ -78,7 +78,7 @@ const subscriptionService = await import("../src/services/subscriptionService.js
 const { readDb, withDb } = await import("../src/data/storage/index.js");
 const validate = await import("../src/data/models/validate.js");
 const integrityService = await import("../src/services/integrityService.js");
-const { nowIso, startOfWeekKey, currentWeekStartKey, previousWeekKey, fromDayKey, addDaysIso } = await import("../src/utils/date.js");
+const { nowIso, startOfWeekKey, currentWeekStartKey, previousWeekKey, fromDayKey, addDaysIso, toDayKey } = await import("../src/utils/date.js");
 const { createEvent } = await import("../src/data/models/event.js");
 const { matchesQuery } = await import("../src/utils/search.js");
 const knowledgeFlameService = await import("../src/services/knowledgeFlameService.js");
@@ -1567,8 +1567,12 @@ test("F6-8. conteudo sem flashcards quiz reviews ou eventos nao quebra desempenh
 
 // ─── Fase 7 — revisões atreladas a plano/compromisso ────────────────────────
 
+// dayKey (local) de `days` dias a partir de agora. Usar toDayKey/addDaysIso —
+// nunca toISOString().slice(0,10), que fatia o dia em UTC e desloca a data
+// para quem está a oeste de Greenwich (Brasil, GMT-3), gerando falhas
+// intermitentes perto da virada do dia UTC (~21h-24h local).
 function futureDateKey(days) {
-  return new Date(Date.now() + days * 86400000).toISOString().slice(0, 10);
+  return toDayKey(addDaysIso(nowIso(), days));
 }
 
 test("F7-1. syncCommitmentReviews monta a serie D-7/D-3/D-1 para um evento distante", () => {
