@@ -1823,6 +1823,183 @@ test("F8-13. timestamps invalidos sao ignorados sem lancar excecao", () => {
   assert.equal(state.completed, 0);
 });
 
+// ─── Fase 9: Meta personalizada da Chama do Conhecimento ──────────────────────
+
+test("F9-1. usuario novo: meta padrao 3, progresso 0/3", () => {
+  const state = knowledgeFlameService.getKnowledgeFlameState();
+  assert.equal(state.target, 3);
+  assert.equal(state.completed, 0);
+});
+
+test("F9-2. usuario escolhe meta 5", () => {
+  const result = knowledgeFlameService.setPreferredWeeklyTarget(5);
+  assert.equal(result.target, 5);
+  assert.equal(knowledgeFlameService.getCurrentWeeklyTarget(), 5);
+});
+
+test("F9-3. meta persiste apos reload (novo readDb)", () => {
+  knowledgeFlameService.setPreferredWeeklyTarget(5);
+  readDb();
+  assert.equal(knowledgeFlameService.getPreferredWeeklyTarget(), 5);
+  assert.equal(knowledgeFlameService.getCurrentWeeklyTarget(), 5);
+});
+
+test("F9-4. duas atividades com meta 5 ficam 2/5", () => {
+  const { content } = seedContent();
+  knowledgeFlameService.setPreferredWeeklyTarget(5);
+  addReviewActivity(content.id, 0, 0);
+  addQuizActivity(content.id, 0, 1);
+  const state = knowledgeFlameService.getKnowledgeFlameState();
+  assert.equal(state.target, 5);
+  assert.equal(state.completed, 2);
+  assert.equal(state.weekCompleted, false);
+});
+
+test("F9-5. reduzir meta para 3 com 2 feitas fica 2/3 e preserva atividades", () => {
+  const { content } = seedContent();
+  knowledgeFlameService.setPreferredWeeklyTarget(5);
+  addReviewActivity(content.id, 0, 0);
+  addQuizActivity(content.id, 0, 1);
+  knowledgeFlameService.setPreferredWeeklyTarget(3);
+  const state = knowledgeFlameService.getKnowledgeFlameState();
+  assert.equal(state.target, 3);
+  assert.equal(state.completed, 2);
+  assert.equal(state.activities.length, 2);
+});
+
+test("F9-6. completar mais uma atividade fecha a meta reduzida (3/3)", () => {
+  const { content } = seedContent();
+  knowledgeFlameService.setPreferredWeeklyTarget(5);
+  addReviewActivity(content.id, 0, 0);
+  addQuizActivity(content.id, 0, 1);
+  knowledgeFlameService.setPreferredWeeklyTarget(3);
+  addFlashcardActivity(content.id, 0, 2);
+  const state = knowledgeFlameService.getKnowledgeFlameState();
+  assert.equal(state.completed, 3);
+  assert.equal(state.weekCompleted, true);
+});
+
+test("F9-7. aumentar meta com 3 feitas preserva atividades e reabre a semana", () => {
+  const { content } = seedContent();
+  addReviewActivity(content.id, 0, 0);
+  addQuizActivity(content.id, 0, 1);
+  addFlashcardActivity(content.id, 0, 2);
+  let state = knowledgeFlameService.getKnowledgeFlameState();
+  assert.equal(state.weekCompleted, true); // 3/3 com a meta padrao
+
+  knowledgeFlameService.setPreferredWeeklyTarget(5);
+  state = knowledgeFlameService.getKnowledgeFlameState();
+  assert.equal(state.target, 5);
+  assert.equal(state.completed, 3);
+  assert.equal(state.weekCompleted, false);
+  assert.equal(state.activities.length, 3);
+});
+
+test("F9-8. reduzir meta com excedente mostra a meta cumprida e o total real", () => {
+  const { content } = seedContent();
+  addReviewActivity(content.id, 0, 0);
+  addReviewActivity(content.id, 0, 1);
+  addQuizActivity(content.id, 0, 2);
+  addQuizActivity(content.id, 0, 3);
+  addFlashcardActivity(content.id, 0, 4);
+  knowledgeFlameService.setPreferredWeeklyTarget(3);
+  const state = knowledgeFlameService.getKnowledgeFlameState();
+  assert.equal(state.completed, 5);
+  assert.equal(state.target, 3);
+  assert.equal(state.displayCompleted, 3);
+  assert.equal(state.extraCompleted, 2);
+  assert.equal(state.weekCompleted, true);
+  assert.ok(state.message.includes("5"), state.message);
+});
+
+test("F9-9. semana seguinte usa a preferencia vigente e comeca em 0", () => {
+  seedContent();
+  knowledgeFlameService.setPreferredWeeklyTarget(5);
+  const currentKey = currentWeekStartKey();
+  const nextKey = startOfWeekKey(addDaysIso(fromDayKey(currentKey), 7));
+  assert.equal(knowledgeFlameService.getWeekTarget(nextKey), 5);
+  assert.equal(knowledgeFlameService.getWeekActivities(nextKey).length, 0);
+});
+
+test("F9-10. meta de semana passada nao muda quando a preferencia atual muda", () => {
+  const pastWeek = weekKeyAgo(2);
+  withDb((db) => ({
+    ...db,
+    flameGoals: { preferredWeeklyTarget: 3, weekTargets: { [pastWeek]: 3 } },
+  }));
+  knowledgeFlameService.setPreferredWeeklyTarget(7);
+  assert.equal(knowledgeFlameService.getWeekTarget(pastWeek), 3);
+  assert.equal(knowledgeFlameService.getCurrentWeeklyTarget(), 7);
+});
+
+test("F9-11. streak funciona com metas diferentes em cada semana", () => {
+  const { content } = seedContent();
+  const w2 = weekKeyAgo(2);
+  const w1 = weekKeyAgo(1);
+  withDb((db) => ({
+    ...db,
+    flameGoals: { preferredWeeklyTarget: 5, weekTargets: { [w2]: 3, [w1]: 5 } },
+  }));
+  addReviewActivity(content.id, 2, 0);
+  addQuizActivity(content.id, 2, 1);
+  addFlashcardActivity(content.id, 2, 2);
+  addReviewActivity(content.id, 1, 0);
+  addReviewActivity(content.id, 1, 1);
+  addQuizActivity(content.id, 1, 2);
+  addQuizActivity(content.id, 1, 3);
+  addFlashcardActivity(content.id, 1, 4);
+  const state = knowledgeFlameService.getKnowledgeFlameState();
+  assert.equal(state.streakWeeks, 2);
+});
+
+test("F9-12. semana anterior a qualquer configuracao resolve para o padrao 3", () => {
+  const w5 = weekKeyAgo(5);
+  const w1 = weekKeyAgo(1);
+  withDb((db) => ({
+    ...db,
+    flameGoals: { preferredWeeklyTarget: 6, weekTargets: { [w1]: 6 } },
+  }));
+  assert.equal(knowledgeFlameService.getWeekTarget(w5), 3);
+});
+
+test("F9-13. semana sem carimbo posterior a uma mudanca herda o carimbo anterior", () => {
+  const w2 = weekKeyAgo(2);
+  const w1 = weekKeyAgo(1);
+  withDb((db) => ({
+    ...db,
+    flameGoals: { preferredWeeklyTarget: 4, weekTargets: { [w2]: 4 } },
+  }));
+  assert.equal(knowledgeFlameService.getWeekTarget(w1), 4);
+});
+
+test("F9-14. valores invalidos de meta sao rejeitados sem gravar nada", () => {
+  knowledgeFlameService.setPreferredWeeklyTarget(4);
+  for (const invalid of [0, -1, 8, 10, null, undefined, "abc", 3.5]) {
+    const result = knowledgeFlameService.setPreferredWeeklyTarget(invalid);
+    assert.equal(result, null, `esperado null para ${JSON.stringify(invalid)}`);
+  }
+  assert.equal(knowledgeFlameService.getPreferredWeeklyTarget(), 4);
+});
+
+test("F9-15. flameGoals corrompido no disco vira default sem lancar", () => {
+  withDb((db) => ({ ...db, flameGoals: "nao-e-um-objeto" }));
+  assert.doesNotThrow(() => knowledgeFlameService.getKnowledgeFlameState());
+  assert.equal(knowledgeFlameService.getPreferredWeeklyTarget(), 3);
+
+  withDb((db) => ({ ...db, flameGoals: { preferredWeeklyTarget: 99, weekTargets: ["nao", "e", "objeto"] } }));
+  assert.equal(knowledgeFlameService.getPreferredWeeklyTarget(), 3);
+  assert.equal(knowledgeFlameService.getCurrentWeeklyTarget(), 3);
+});
+
+test("F9-16. srLabel usa a meta configurada, nunca o padrao hardcoded", () => {
+  const { content } = seedContent();
+  knowledgeFlameService.setPreferredWeeklyTarget(5);
+  addQuizActivity(content.id, 0, 0);
+  const state = knowledgeFlameService.getKnowledgeFlameState();
+  assert.equal(state.srLabel, "1 de 5 atividades concluídas nesta semana.");
+  assert.ok(!state.message.includes("3"), `mensagem nao deveria mencionar a meta padrao: ${state.message}`);
+});
+
 // ─── relatório ───────────────────────────────────────────────────────────────
 console.log(`\n${passed} passaram, ${failed} falharam`);
 if (failed > 0) {
