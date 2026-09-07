@@ -134,6 +134,7 @@ export function migrateItems(legacyItems) {
     quizAttempts: [],
     reviews,
     events,
+    flameGoals: { preferredWeeklyTarget: 3, weekTargets: {} },
   };
 }
 

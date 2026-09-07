@@ -6,6 +6,16 @@
 export const DB_KEY = "sv_db";
 export const SCHEMA_VERSION = 2;
 
+// Meta semanal da Chama do Conhecimento (Fase 9): preferredWeeklyTarget é a
+// meta vigente (1..7); weekTargets carimba, por weekStartKey (segunda,
+// "YYYY-MM-DD"), a meta que valia naquela semana — histórico imutável, nunca
+// recalculado com a preferência atual.
+const DEFAULT_WEEKLY_TARGET = 3;
+
+function emptyFlameGoals() {
+  return { preferredWeeklyTarget: DEFAULT_WEEKLY_TARGET, weekTargets: {} };
+}
+
 function emptyDb() {
   return {
     version: SCHEMA_VERSION,
@@ -15,7 +25,35 @@ function emptyDb() {
     quizAttempts: [],
     reviews: [],
     events: [],
+    flameGoals: emptyFlameGoals(),
   };
+}
+
+const WEEK_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function isValidWeeklyTarget(value) {
+  return Number.isInteger(value) && value >= 1 && value <= 7;
+}
+
+// Coerção defensiva de flameGoals: nunca lança, descarta o que não bate o
+// formato esperado em vez de propagar um valor fora da faixa 1..7.
+function coerceFlameGoals(value) {
+  if (!value || typeof value !== "object") return emptyFlameGoals();
+
+  const preferredWeeklyTarget = isValidWeeklyTarget(value.preferredWeeklyTarget)
+    ? value.preferredWeeklyTarget
+    : DEFAULT_WEEKLY_TARGET;
+
+  const weekTargets = {};
+  if (value.weekTargets && typeof value.weekTargets === "object" && !Array.isArray(value.weekTargets)) {
+    for (const [weekKey, target] of Object.entries(value.weekTargets)) {
+      if (WEEK_KEY_RE.test(weekKey) && isValidWeeklyTarget(target)) {
+        weekTargets[weekKey] = target;
+      }
+    }
+  }
+
+  return { preferredWeeklyTarget, weekTargets };
 }
 
 function safeParse(raw) {
@@ -39,6 +77,7 @@ export function readDb() {
     quizAttempts: Array.isArray(parsed.quizAttempts) ? parsed.quizAttempts : [],
     reviews: Array.isArray(parsed.reviews) ? parsed.reviews : [],
     events: Array.isArray(parsed.events) ? parsed.events : [],
+    flameGoals: coerceFlameGoals(parsed.flameGoals),
   };
 }
 
