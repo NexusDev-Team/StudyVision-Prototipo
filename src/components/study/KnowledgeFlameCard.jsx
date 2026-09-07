@@ -8,13 +8,13 @@ import ProgressBar from "../ui/ProgressBar";
 // (knowledgeFlameService.getKnowledgeFlameState()); este componente só
 // exibe. A cor não é a única pista de estado: `state.srLabel` garante o
 // mesmo significado em texto puro.
-export default function KnowledgeFlameCard({ state }) {
+export default function KnowledgeFlameCard({ state, onEditGoal }) {
   const gradientId = useId().replace(/:/g, "");
   if (!state) return null;
 
-  const { completed, target, streakWeeks, isFirstTime, message, srLabel } = state;
+  const { completed, target, displayCompleted, streakWeeks, isFirstTime, message, srLabel } = state;
   const active = completed > 0;
-  const pct = (Math.min(completed, target) / target) * 100;
+  const pct = (displayCompleted / target) * 100;
 
   return (
     <Card
@@ -77,10 +77,28 @@ export default function KnowledgeFlameCard({ state }) {
       </div>
 
       <div>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
           <span style={{ fontFamily: "Inter,sans-serif", fontSize: 12.5, color: "#374151", fontWeight: 600 }}>
-            {Math.min(completed, target)}/{target} atividades nesta semana
+            {displayCompleted}/{target} atividades nesta semana
           </span>
+          {onEditGoal && (
+            <button
+              onClick={onEditGoal}
+              style={{
+                fontFamily: "Inter,sans-serif",
+                fontSize: 12,
+                fontWeight: 700,
+                color: "#9A3412",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                padding: "10px 8px",
+                margin: "-10px -8px",
+              }}
+            >
+              Editar meta
+            </button>
+          )}
         </div>
         <ProgressBar value={pct} color="#F97316" />
       </div>

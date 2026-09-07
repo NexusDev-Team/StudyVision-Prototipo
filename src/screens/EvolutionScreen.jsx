@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { AnimatePresence } from "framer-motion";
 import { TrendingUp } from "lucide-react";
 import LogoSVG from "../components/brand/LogoSVG";
 import VisionPlusButton from "../components/plus/VisionPlusButton";
@@ -14,6 +15,7 @@ import PlusFinalCta from "../components/plus/PlusFinalCta";
 import SparkChart from "../components/ui/SparkChart";
 import Button from "../components/ui/Button";
 import KnowledgeFlameCard from "../components/study/KnowledgeFlameCard";
+import WeeklyGoalModal from "../components/study/WeeklyGoalModal";
 import { useContentStore } from "../context/ContentStoreContext.jsx";
 import {
   getEvolutionSummary,
@@ -26,7 +28,7 @@ import {
   getAccuracyDelta,
   getSubjectsToReview,
 } from "../services/evolutionService";
-import { getKnowledgeFlameState } from "../services/knowledgeFlameService";
+import { getKnowledgeFlameState, setPreferredWeeklyTarget } from "../services/knowledgeFlameService";
 
 function StatCard({ value, label, delay = 0 }) {
   return (
@@ -41,8 +43,9 @@ function StatCard({ value, label, delay = 0 }) {
 // calculado aqui. Os cálculos ficam em useMemo presos ao snapshot do store
 // para a tela refletir mutações (quiz respondido, review concluída) sem
 // depender só do remount de navegação.
-export default function EvolutionScreen({ isPremium, onOpenContent, onOpenLibrary, onOpenReview, onVisionPlus, onStartTrial }) {
-  const { contents, reviews } = useContentStore();
+export default function EvolutionScreen({ isPremium, onOpenContent, onOpenLibrary, onOpenReview, onVisionPlus, onStartTrial, onToast }) {
+  const { contents, reviews, mutate } = useContentStore();
+  const [editingGoal, setEditingGoal] = useState(false);
 
   const summary = useMemo(() => getEvolutionSummary(), [contents, reviews]);
   const subjectRows = useMemo(
@@ -60,6 +63,12 @@ export default function EvolutionScreen({ isPremium, onOpenContent, onOpenLibrar
   const delta = useMemo(() => getAccuracyDelta(), [contents]);
   const subjectsToReview = useMemo(() => getSubjectsToReview(), [contents, reviews]);
   const flameState = useMemo(() => getKnowledgeFlameState(), [contents, reviews]);
+
+  const handleSaveGoal = (target) => {
+    mutate(() => setPreferredWeeklyTarget(target));
+    setEditingGoal(false);
+    onToast?.("✓ Meta atualizada");
+  };
 
   const historyAccuracies = history.map((h) => h.accuracy ?? 0);
   const yLabels = history.length >= 2
@@ -89,7 +98,7 @@ export default function EvolutionScreen({ isPremium, onOpenContent, onOpenLibrar
           />
         ) : (
           <>
-            <KnowledgeFlameCard state={flameState} />
+            <KnowledgeFlameCard state={flameState} onEditGoal={() => setEditingGoal(true)} />
 
             <SectionLabel>Resumo</SectionLabel>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
@@ -218,6 +227,17 @@ export default function EvolutionScreen({ isPremium, onOpenContent, onOpenLibrar
           </>
         )}
       </div>
+
+      <AnimatePresence>
+        {editingGoal && (
+          <WeeklyGoalModal
+            value={flameState.preferredWeeklyTarget}
+            hasHistory={!flameState.isFirstTime}
+            onSave={handleSaveGoal}
+            onClose={() => setEditingGoal(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

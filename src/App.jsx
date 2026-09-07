@@ -191,6 +191,7 @@ export default function App() {
               onOpenReview={() => goTo("review")}
               onVisionPlus={() => go("visionplus")}
               onStartTrial={handleStartTrial}
+              onToast={showToast}
             />
           )}
           {screen === "visionplus" && (
