@@ -17,7 +17,7 @@ import { getKnowledgeFlameState } from "../services/knowledgeFlameService";
 import { endOfTodayIso, DAY_MS } from "../utils/date";
 import { getSubjectVisual } from "../constants";
 
-export default function ReviewScreen({ onReview, onOpenContent, onToast, onVisionPlus }) {
+export default function ReviewScreen({ onReview, onOpenContent, onToast, onVisionPlus, onOpenEvolution }) {
   const { contents, reviews, events, mutate } = useContentStore();
   const flameState = useMemo(() => getKnowledgeFlameState(), [reviews, contents]);
   const [selectedDate, setSelectedDate] = useState(null);
@@ -113,7 +113,7 @@ export default function ReviewScreen({ onReview, onOpenContent, onToast, onVisio
             <span style={{ fontSize: 11, fontWeight: 700, color: "#2563EB", letterSpacing: 1 }}>STUDY VISION</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <FlameBadge state={flameState} />
+            <FlameBadge state={flameState} onClick={onOpenEvolution} />
             <VisionPlusButton onClick={onVisionPlus} />
           </div>
         </div>

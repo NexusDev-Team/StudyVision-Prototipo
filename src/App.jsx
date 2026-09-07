@@ -181,6 +181,7 @@ export default function App() {
               onOpenContent={(item) => { setSelectedContentId(item.id); go("detail"); }}
               onToast={showToast}
               onVisionPlus={() => go("visionplus")}
+              onOpenEvolution={() => goTo("evolution")}
             />
           )}
           {screen === "evolution" && (

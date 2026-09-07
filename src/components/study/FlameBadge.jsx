@@ -1,32 +1,34 @@
 import { useId } from "react";
+import { motion } from "framer-motion";
 import { Flame } from "lucide-react";
 
-// Indicador compacto da Chama do Conhecimento (Fase 8) para o header da
-// Review — não compete com a função principal da tela, só contextualiza.
-// Toda a regra de negócio já vem pronta em `state`
-// (knowledgeFlameService.getKnowledgeFlameState()).
-export default function FlameBadge({ state }) {
+// Indicador compacto da Chama do Conhecimento para o header da Review — não
+// compete com a função principal da tela, só contextualiza. Toda a regra de
+// negócio já vem pronta em `state` (knowledgeFlameService.getKnowledgeFlameState()).
+// Com `onClick`, vira um atalho para ver os detalhes na Evolution (Fase 9) —
+// a Review continua sem modal de edição de meta.
+export default function FlameBadge({ state, onClick }) {
   const gradientId = useId().replace(/:/g, "");
   if (!state) return null;
 
-  const { completed, target, srLabel } = state;
-  const active = completed > 0;
+  const { target, displayCompleted, srLabel } = state;
+  const active = displayCompleted > 0;
 
-  return (
-    <div
-      role="status"
-      aria-label={srLabel}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 5,
-        padding: "5px 10px",
-        borderRadius: 999,
-        background: active ? "linear-gradient(135deg,#FFF1F2,#FFEDD5)" : "#F1F5F9",
-        boxShadow: active ? "0 2px 8px -3px rgba(249,115,22,0.55)" : "none",
-        flexShrink: 0,
-      }}
-    >
+  const style = {
+    display: "flex",
+    alignItems: "center",
+    gap: 5,
+    padding: "5px 10px",
+    borderRadius: 999,
+    background: active ? "linear-gradient(135deg,#FFF1F2,#FFEDD5)" : "#F1F5F9",
+    boxShadow: active ? "0 2px 8px -3px rgba(249,115,22,0.55)" : "none",
+    flexShrink: 0,
+    border: "none",
+    cursor: onClick ? "pointer" : "default",
+  };
+
+  const content = (
+    <>
       <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden="true">
         <defs>
           <linearGradient id={`flamebadge-${gradientId}`} x1="0%" y1="0%" x2="20%" y2="100%">
@@ -43,8 +45,27 @@ export default function FlameBadge({ state }) {
         aria-hidden="true"
       />
       <span style={{ fontFamily: "Inter,sans-serif", fontSize: 12, fontWeight: 700, color: active ? "#9A3412" : "#64748B" }}>
-        {Math.min(completed, target)}/{target}
+        {displayCompleted}/{target}
       </span>
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <motion.button
+        onClick={onClick}
+        whileTap={{ scale: 0.95 }}
+        aria-label={`${srLabel} Ver detalhes na Evolução.`}
+        style={style}
+      >
+        {content}
+      </motion.button>
+    );
+  }
+
+  return (
+    <div role="status" aria-label={srLabel} style={style}>
+      {content}
     </div>
   );
 }
