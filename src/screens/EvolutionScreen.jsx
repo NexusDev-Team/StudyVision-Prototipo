@@ -91,11 +91,14 @@ export default function EvolutionScreen({ isPremium, onOpenContent, onOpenLibrar
 
       <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px 24px" }}>
         {summary.totalContents === 0 ? (
-          <EmptyState
-            icon={<TrendingUp size={32} color="#94A3B8" style={{ margin: "0 auto 12px" }} />}
-            title="Você ainda não tem dados de evolução"
-            description="Capture seu primeiro conteúdo e comece a estudar para acompanhar seu progresso."
-          />
+          <>
+            <KnowledgeFlameCard state={flameState} onEditGoal={() => setEditingGoal(true)} />
+            <EmptyState
+              icon={<TrendingUp size={32} color="#94A3B8" style={{ margin: "0 auto 12px" }} />}
+              title="Você ainda não tem dados de evolução"
+              description="Capture seu primeiro conteúdo e comece a estudar para acompanhar seu progresso."
+            />
+          </>
         ) : (
           <>
             <KnowledgeFlameCard state={flameState} onEditGoal={() => setEditingGoal(true)} />
