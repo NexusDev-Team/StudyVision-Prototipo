@@ -3,6 +3,8 @@
 // tudo passa por readDb/writeDb/withDb, para manter uma única fonte de
 // verdade e permitir versionamento/migração num só lugar.
 
+import { LEARNING_PREFERENCE_KEYS, emptyPreferenceOptions } from "../../constants.js";
+
 export const DB_KEY = "sv_db";
 export const SCHEMA_VERSION = 2;
 
@@ -16,6 +18,14 @@ function emptyFlameGoals() {
   return { preferredWeeklyTarget: DEFAULT_WEEKLY_TARGET, weekTargets: {} };
 }
 
+// Modo Inclusão (Fase 10): preferências de aprendizagem do usuário. `configured`
+// distingue "nunca configurou" (dispara o onboarding) de "configurou e não
+// escolheu nenhuma". `options` só carrega as chaves canônicas de
+// LEARNING_PREFERENCE_KEYS, sempre booleanas.
+function emptyLearningPreferences() {
+  return { configured: false, updatedAt: null, options: emptyPreferenceOptions() };
+}
+
 function emptyDb() {
   return {
     version: SCHEMA_VERSION,
@@ -26,6 +36,27 @@ function emptyDb() {
     reviews: [],
     events: [],
     flameGoals: emptyFlameGoals(),
+    learningPreferences: emptyLearningPreferences(),
+  };
+}
+
+// Coerção defensiva de learningPreferences: nunca lança. Descarta chaves fora
+// de LEARNING_PREFERENCE_KEYS, força cada opção a booleano, e um objeto ausente
+// ou malformado vira o default de fábrica (nenhuma preferência, não configurado).
+function coerceLearningPreferences(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return emptyLearningPreferences();
+  }
+  const options = emptyPreferenceOptions();
+  if (value.options && typeof value.options === "object" && !Array.isArray(value.options)) {
+    for (const key of LEARNING_PREFERENCE_KEYS) {
+      options[key] = value.options[key] === true;
+    }
+  }
+  return {
+    configured: value.configured === true,
+    updatedAt: typeof value.updatedAt === "string" ? value.updatedAt : null,
+    options,
   };
 }
 
@@ -78,6 +109,7 @@ export function readDb() {
     reviews: Array.isArray(parsed.reviews) ? parsed.reviews : [],
     events: Array.isArray(parsed.events) ? parsed.events : [],
     flameGoals: coerceFlameGoals(parsed.flameGoals),
+    learningPreferences: coerceLearningPreferences(parsed.learningPreferences),
   };
 }
 

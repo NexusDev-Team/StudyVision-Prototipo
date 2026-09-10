@@ -135,6 +135,13 @@ export function migrateItems(legacyItems) {
     reviews,
     events,
     flameGoals: { preferredWeeklyTarget: 3, weekTargets: {} },
+    // Modo Inclusão (Fase 10): db legado não tem preferências — começa no padrão
+    // de fábrica (nenhuma ativa, não configurado). readDb() faz a coerção final.
+    learningPreferences: {
+      configured: false,
+      updatedAt: null,
+      options: { simplify: false, focus: false, visual: false, stepByStep: false },
+    },
   };
 }
 

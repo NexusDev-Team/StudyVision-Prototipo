@@ -85,6 +85,8 @@ const knowledgeFlameService = await import("../src/services/knowledgeFlameServic
 const { createQuizAttempt } = await import("../src/data/models/quiz.js");
 const { createFlashcardAttempt } = await import("../src/data/models/flashcard.js");
 const { createReview } = await import("../src/data/models/review.js");
+const { migrateItems } = await import("../src/data/storage/migrations.js");
+const { LEARNING_PREFERENCE_KEYS } = await import("../src/constants.js");
 
 // helper: cria um conteúdo mínimo já com matéria
 // helper: gera `total` respostas de quiz com `correct` delas certas.
@@ -2002,6 +2004,79 @@ test("F9-16. srLabel usa a meta configurada, nunca o padrao hardcoded", () => {
   const state = knowledgeFlameService.getKnowledgeFlameState();
   assert.equal(state.srLabel, "1 de 5 atividades concluídas nesta semana.");
   assert.ok(!state.message.includes("3"), `mensagem nao deveria mencionar a meta padrao: ${state.message}`);
+});
+
+// ─── Fase 10: Modo Inclusão — preferências de aprendizagem (persistência) ─────
+
+test("F10-1. db novo nasce com preferencias no padrao de fabrica", () => {
+  const db = readDb();
+  assert.deepEqual(db.learningPreferences, {
+    configured: false,
+    updatedAt: null,
+    options: { simplify: false, focus: false, visual: false, stepByStep: false },
+  });
+});
+
+test("F10-2. db legado sem o campo recebe o default sem lancar", () => {
+  withDb((db) => {
+    const { learningPreferences, ...rest } = db;
+    return rest;
+  });
+  assert.doesNotThrow(() => readDb());
+  const db = readDb();
+  assert.equal(db.learningPreferences.configured, false);
+  assert.deepEqual(Object.keys(db.learningPreferences.options).sort(), [...LEARNING_PREFERENCE_KEYS].sort());
+});
+
+test("F10-3. lixo no campo (string) vira o default", () => {
+  withDb((db) => ({ ...db, learningPreferences: "nao-e-objeto" }));
+  assert.deepEqual(readDb().learningPreferences, {
+    configured: false,
+    updatedAt: null,
+    options: { simplify: false, focus: false, visual: false, stepByStep: false },
+  });
+});
+
+test("F10-4. chave desconhecida e valores nao-boolean sao normalizados", () => {
+  withDb((db) => ({
+    ...db,
+    learningPreferences: {
+      configured: "sim",
+      updatedAt: 12345,
+      options: { simplify: 1, focus: "true", visual: null, stepByStep: true, hackKey: true },
+    },
+  }));
+  const prefs = readDb().learningPreferences;
+  assert.equal(prefs.configured, false, "configured nao-boolean vira false");
+  assert.equal(prefs.updatedAt, null, "updatedAt nao-string vira null");
+  assert.deepEqual(prefs.options, {
+    simplify: false, focus: false, visual: false, stepByStep: true,
+  });
+  assert.ok(!("hackKey" in prefs.options), "chave fora da whitelist descartada");
+});
+
+test("F10-5. preferencias sobrevivem a um novo readDb", () => {
+  withDb((db) => ({
+    ...db,
+    learningPreferences: {
+      configured: true,
+      updatedAt: "2026-09-10T12:00:00.000Z",
+      options: { simplify: true, focus: true, visual: false, stepByStep: false },
+    },
+  }));
+  const prefs = readDb().learningPreferences;
+  assert.equal(prefs.configured, true);
+  assert.equal(prefs.updatedAt, "2026-09-10T12:00:00.000Z");
+  assert.deepEqual(prefs.options, { simplify: true, focus: true, visual: false, stepByStep: false });
+});
+
+test("F10-6. migracao v1->v2 produz o bloco de preferencias no padrao", () => {
+  const db = migrateItems([{ id: "1", subject: "Matemática", concept: "Teste", summary: "x" }]);
+  assert.deepEqual(db.learningPreferences, {
+    configured: false,
+    updatedAt: null,
+    options: { simplify: false, focus: false, visual: false, stepByStep: false },
+  });
 });
 
 // ─── relatório ───────────────────────────────────────────────────────────────
