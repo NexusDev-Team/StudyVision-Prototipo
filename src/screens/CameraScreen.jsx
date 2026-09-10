@@ -27,7 +27,9 @@ export default function CameraScreen({ onCapture, onLibraryNav, mode = "capture"
   // Modo Inclusão (Fase 10): preferência PADRÃO carregada do storage.
   const [learningPrefs, setLearningPrefs] = useState(() => getLearningPreferences());
   // sheet: null | "settings" (⚙️, edita o padrão) | "onboarding" (1ª vez)
+  //      | "capture" (revisa as preferências ANTES de analisar a foto tirada)
   const [sheet, setSheet] = useState(null);
+  const [pendingCapture, setPendingCapture] = useState(null); // dataUrl aguardando análise
   const videoRef = useRef(null);
   const streamRef = useRef(null);
 
@@ -98,7 +100,33 @@ export default function CameraScreen({ onCapture, onLibraryNav, mode = "capture"
     setCapturing(true);
     setFlashWhite(true);
     setTimeout(() => setFlashWhite(false), 180);
-    setTimeout(() => onCapture(dataUrl), 350);
+    setTimeout(() => {
+      // Attach: nenhuma análise de IA — segue direto.
+      if (isAttach) {
+        onCapture(dataUrl);
+        return;
+      }
+      // Capture: revisa/ajusta as preferências desta captura antes da IA.
+      setCapturing(false);
+      setPendingCapture(dataUrl);
+      setSheet("capture");
+    }, 350);
+  };
+
+  // "Adaptar e analisar": dispara a análise com as preferências desta captura.
+  // `makeDefault` grava essas opções como novo padrão; sem ele, a preferência
+  // padrão do usuário fica intacta.
+  const handleAnalyzeCapture = (options, { makeDefault } = {}) => {
+    if (makeDefault) setLearningPrefs(setLearningPreferences(options));
+    const dataUrl = pendingCapture;
+    setPendingCapture(null);
+    setSheet(null);
+    onCapture(dataUrl, options);
+  };
+
+  const discardCapture = () => {
+    setPendingCapture(null);
+    setSheet(null);
   };
 
   return (
@@ -268,6 +296,25 @@ export default function CameraScreen({ onCapture, onLibraryNav, mode = "capture"
               setSheet(null);
               onToast?.("✓ Preferências salvas");
             }}
+          />
+        )}
+        {sheet === "capture" && pendingCapture && (
+          <LearningPreferencesSheet
+            key="capture"
+            title="Sua captura"
+            subtitle="Como você quer estudar esta captura? Ajuste só para agora, se quiser."
+            value={learningPrefs.options}
+            saveLabel="Adaptar e analisar"
+            showMakeDefault
+            preview={
+              <img
+                src={pendingCapture}
+                alt="Pré-visualização da foto capturada"
+                style={{ width: "100%", maxHeight: 180, objectFit: "cover", borderRadius: 14, display: "block" }}
+              />
+            }
+            onClose={discardCapture}
+            onSave={handleAnalyzeCapture}
           />
         )}
       </AnimatePresence>

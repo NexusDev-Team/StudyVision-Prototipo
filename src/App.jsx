@@ -113,7 +113,7 @@ export default function App() {
           {screen === "camera" && (
             <CameraScreen
               mode={attachTargetId ? "attach" : "capture"}
-              onCapture={attachTargetId ? handleAttachCapture : (dataUrl) => { analysis.run(dataUrl); go("analysis"); }}
+              onCapture={attachTargetId ? handleAttachCapture : (dataUrl, prefs) => { analysis.run(dataUrl, prefs); go("analysis"); }}
               onLibraryNav={() => openLibrary()}
               onClose={() => { setAttachTargetId(null); goBack(); }}
               onToast={showToast}
