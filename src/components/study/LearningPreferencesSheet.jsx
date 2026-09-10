@@ -4,15 +4,18 @@ import Modal from "../ui/Modal";
 import { LEARNING_PREFERENCE_KEYS, LEARNING_PREFERENCE_META } from "../../constants";
 import { normalizePreferenceOptions } from "../../services/learningPreferencesService";
 
-// Modo Inclusão (Fase 10) — bottom sheet "Seu jeito de aprender". Um único
+// Modo Inclusão — bottom sheet "Como podemos adaptar seus estudos?". Um único
 // componente para os três contextos: configuração inicial (onboarding),
-// edição do padrão pelo ⚙️ da câmera, e revisão das preferências de UMA
+// edição do padrão pelo ⚙️ da câmera, e revisão das necessidades de UMA
 // captura. Não decide regra de negócio: coleta a seleção e devolve via
 // onSave(options, { makeDefault }). Quem valida/persiste é o serviço.
 //
+// Vocabulário: sempre "Tenho dificuldade para…", "Você escolhe…". Nunca
+// "você sofre/possui/seu transtorno", nunca rótulo médico.
+//
 // Props:
 //  - title, subtitle: textos do cabeçalho
-//  - value: objeto de opções inicial (as 4 chaves booleanas)
+//  - value: objeto de opções inicial (as chaves de LEARNING_PREFERENCE_KEYS)
 //  - onSave(options, { makeDefault }): confirma
 //  - onClose(): fecha sem salvar (backdrop, Esc, X)
 //  - onSkip(): opcional — mostra "Pular por agora" (só no onboarding)
@@ -20,8 +23,8 @@ import { normalizePreferenceOptions } from "../../services/learningPreferencesSe
 //  - preview: nó opcional renderizado acima das opções (ex: a foto da captura)
 //  - showMakeDefault: mostra o checkbox "Tornar meu padrão" (contexto de captura)
 export default function LearningPreferencesSheet({
-  title = "Seu jeito de aprender",
-  subtitle = "Cada pessoa aprende de uma forma. Escolha como o Study Vision deve adaptar seus conteúdos para você.",
+  title = "Como podemos adaptar seus estudos?",
+  subtitle = "Selecione as dificuldades que você encontra durante seus estudos. O Study Vision usará suas escolhas para adaptar os conteúdos para você.",
   value,
   onSave,
   onClose,

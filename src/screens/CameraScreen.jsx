@@ -33,8 +33,8 @@ export default function CameraScreen({ onCapture, onLibraryNav, mode = "capture"
   const videoRef = useRef(null);
   const streamRef = useRef(null);
 
-  // Configuração inicial "Como você prefere estudar?" — só na primeira vez
-  // relevante (nunca no modo attach, nunca se o usuário já configurou/pulou).
+  // Configuração inicial "Como podemos adaptar seus estudos?" — só na primeira
+  // vez relevante (nunca no modo attach, nunca se o usuário já configurou/pulou).
   useEffect(() => {
     if (!isAttach && !learningPrefs.configured) setSheet("onboarding");
   }, [isAttach, learningPrefs.configured]);
@@ -200,7 +200,7 @@ export default function CameraScreen({ onCapture, onLibraryNav, mode = "capture"
               <Eye size={16} color="white" />
             </button>
 
-            <button onClick={() => setSheet("settings")} aria-label="Seu jeito de aprender"
+            <button onClick={() => setSheet("settings")} aria-label="Adaptar meus estudos"
               style={{ width: 34, height: 34, flexShrink: 0, borderRadius: "50%", background: "rgba(255,255,255,0.1)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(8px)" }}>
               <Settings size={16} color="white" />
             </button>
@@ -269,13 +269,12 @@ export default function CameraScreen({ onCapture, onLibraryNav, mode = "capture"
         </div>
       </div>
 
-      {/* Modo Inclusão — "Seu jeito de aprender". */}
+      {/* Modo Inclusão — "Como podemos adaptar seus estudos?" */}
       <AnimatePresence>
         {sheet === "onboarding" && (
           <LearningPreferencesSheet
             key="onboarding"
-            title="Como você prefere estudar?"
-            subtitle="Escolha uma ou mais formas para o Study Vision adaptar seus conteúdos. Você pode mudar isso depois no ⚙️."
+            subtitle="Selecione as dificuldades que você encontra durante seus estudos. O Study Vision usará suas escolhas para adaptar os conteúdos para você. Você pode mudar isso depois no ⚙️."
             value={learningPrefs.options}
             onClose={dismissOnboarding}
             onSkip={dismissOnboarding}
@@ -302,7 +301,7 @@ export default function CameraScreen({ onCapture, onLibraryNav, mode = "capture"
           <LearningPreferencesSheet
             key="capture"
             title="Sua captura"
-            subtitle="Como você quer estudar esta captura? Ajuste só para agora, se quiser."
+            subtitle="Quais dificuldades o Study Vision deve considerar nesta captura? Ajuste só para agora, se quiser."
             value={learningPrefs.options}
             saveLabel="Adaptar e analisar"
             showMakeDefault
