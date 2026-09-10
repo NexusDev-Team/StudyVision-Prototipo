@@ -87,12 +87,13 @@ Fotos diferentes produzem resultados diferentes — testado com fotos reais de F
 - **Matérias são dinâmicas**: o filtro da Biblioteca (`LibraryScreen`) é derivado das matérias realmente presentes nos itens salvos, não de uma lista fixa — uma matéria nova identificada pela IA (Biologia, Filosofia, Geografia, Sociologia, Inglês, Artes, Redação, entre outras) aparece automaticamente no filtro.
 - `SUBJECT_META` (`src/constants.js`) tem entradas para as matérias mais comuns; `getSubjectMeta(nome)` gera um fallback de cor/ícone determinístico (hash do nome) para qualquer matéria fora da lista, então nada fica sem cor/ícone.
 
-### 5.12 Modo Inclusão — preferências de aprendizagem (Fase 10)
-- "Seu jeito de aprender": o estudante escolhe uma ou mais de quatro formas de o Study Vision **adaptar a apresentação** do conteúdo — **Simplificar**, **Foco**, **Visual**, **Passo a passo**. Não é diagnóstico, não classifica o usuário, não cita condição médica; muda só linguagem, ênfase e organização, nunca a veracidade ou as respostas corretas.
-- Configuração inicial (pulável) na primeira abertura da câmera; depois editável pelo ⚙️ do cluster central da câmera. Ambos usam o mesmo bottom sheet (`LearningPreferencesSheet`).
-- Depois da captura, um passo "Sua captura" mostra a foto e as preferências que serão usadas (pré-marcadas com o padrão do usuário); dá para ajustar só para aquela captura, ou marcar "Tornar meu padrão".
-- As preferências vão para a IA junto da imagem, via `buildAnalysisPrompt` (`lib/prompts.js`) — mesma chamada `POST /api/analyze`, mesmo modelo. Sem nenhuma preferência ativa o prompt é idêntico ao de antes do Modo Inclusão.
-- O resumo passa a ser renderizado (`ContentBlocks`) reconhecendo subtítulos, listas e etapas numeradas; conteúdo antigo (resumo em parágrafo corrido) renderiza igual. O conteúdo gerado continua sendo um `Content` normal — biblioteca, quiz, flashcards, revisões, evolução e Chama do Conhecimento não mudaram.
+### 5.12 Modo Inclusão — necessidades de acessibilidade declaradas (Fases 10–11)
+- "Como podemos adaptar seus estudos?": o estudante marca uma ou mais **dificuldades reais** que encontra ao estudar — 🧠 me concentrar, 📖 ler textos longos, 🔤 acompanhar textos, 🧩 entender conteúdos complexos, ✋ acompanhar muitas etapas. Não é diagnóstico, não classifica o usuário, não cita TDAH/dislexia/autismo nem qualquer condição médica. A adaptação muda só a **apresentação** — nunca a veracidade, as fórmulas, as respostas corretas, e **nunca elimina etapas ou conceitos** para "facilitar".
+- Cada necessidade produz uma adaptação **distinta** no prompt (`lib/prompts.js` → `PREFERENCE_RULES`): concentração = uma ideia por vez; textos longos = frases curtas, conteúdo inteiro preservado; acompanhar textos = disposição na tela (blocos curtos, separação nítida), significado intacto; conteúdos complexos = define o termo antes de usar, exemplo concreto, progressão; muitas etapas = uma etapa por linha, ação/porquê/resultado, todas as etapas preservadas.
+- Configuração inicial (pulável) na primeira abertura da câmera; depois editável pelo ⚙️ do cluster central. Ambos usam o mesmo bottom sheet (`LearningPreferencesSheet`). Depois da captura, o passo "Sua captura" mostra a foto e as necessidades que serão usadas (pré-marcadas com o padrão); dá para ajustar só para aquela captura, ou marcar "Tornar meu padrão".
+- As necessidades vão para a IA junto da imagem, via `buildAnalysisPrompt` — mesma chamada `POST /api/analyze`, mesmo modelo. Sem nenhuma ativa, o prompt é idêntico ao de antes do Modo Inclusão.
+- "Acompanhar textos" (`textTracking`) é a única que também muda a UI: `ContentBlocks` lê a preferência **atual** do usuário e aplica um perfil de leitura mais espaçado (entrelinha, respiro entre blocos, subtítulos destacados) a todo conteúdo, inclusive o antigo. Sem ela, a renderização é idêntica à anterior.
+- `sv_db.learningPreferences` carrega um carimbo `keysVersion`: quando o conjunto de necessidades muda, a configuração salva é invalidada (volta ao padrão, onboarding pergunta de novo) — não há remapeamento automático, porque a pergunta mudou de natureza. Conteúdo já salvo mantém o rastro antigo intocado. O conteúdo gerado continua sendo um `Content` normal — biblioteca, quiz, flashcards, revisões, evolução e Chama do Conhecimento não mudaram.
 
 ## 6. Modelo de dados (`localStorage`, alimentado por IA real)
 
@@ -109,9 +110,10 @@ leitura; `subjectId: null` + `subjectName: ""` é um estado válido — conteúd
 (derivado do desempenho real, nunca do `difficulty`), `images[]`, `flashcards[]`,
 `quizzes[]`, `openQuestions[]`, `mastery` (`score`, `level`, `updatedAt`),
 `reviewPlan` (`none`/`weekly`/`biweekly`/`monthly`), `learningPreferences?`
-(Fase 10 — objeto `{ simplify, focus, visual, stepByStep }` de booleanos, ou
-`null` = conteúdo gerado sem o Modo Inclusão; rastro de qual adaptação gerou o
-material, prepara medição futura de desempenho por formato), `createdAt`/`updatedAt`.
+(objeto de booleanos com as necessidades de acessibilidade ativas na captura —
+Fase 11: `concentration`/`longText`/`textTracking`/`complexContent`/`manySteps`;
+Fase 10 gravava `simplify`/`focus`/`visual`/`stepByStep` e esse rastro histórico
+não é reescrito — ou `null` = conteúdo gerado sem o Modo Inclusão), `createdAt`/`updatedAt`.
 
 Entidades relacionadas, cada uma referenciando `content.id`:
 - `Subject` — `id`, `name`, `createdAt`/`updatedAt`. CRUD completo (`subjectService`), com reaproveitamento por nome (case/acento-insensitive) e destino obrigatório ao excluir matéria com conteúdo vinculado.
@@ -120,7 +122,7 @@ Entidades relacionadas, cada uma referenciando `content.id`:
 - `AcademicEvent` — `id`, `type` (`exam`/`assignment`/`class`/`deadline`/`other`), `title`, `date`, `time?`, `notes`, `reminders[]`, `contentIds[]` (N:N — um evento pode não ter nenhum conteúdo, ou vários). **Nunca inclui revisão** — Review e AcademicEvent são entidades e coleções distintas por decisão de arquitetura.
 
 Persistência:
-- `localStorage["sv_db"]` — `{ version, subjects[], contents[], flashcardAttempts[], quizAttempts[], reviews[], events[], flameGoals, learningPreferences }`. `flameGoals` (Fase 9) guarda a meta semanal da Chama e o carimbo por semana; `learningPreferences` (Fase 10) guarda a preferência **padrão** do Modo Inclusão (`{ configured, updatedAt, options }`). Ambos entram por coerção defensiva no `readDb`, sem bump de `version`. Se a cota estourar (fotos em base64 pesam), os conteúdos mais antigos são podados automaticamente e, em último caso, salvos sem imagem.
+- `localStorage["sv_db"]` — `{ version, subjects[], contents[], flashcardAttempts[], quizAttempts[], reviews[], events[], flameGoals, learningPreferences }`. `flameGoals` (Fase 9) guarda a meta semanal da Chama e o carimbo por semana; `learningPreferences` guarda a preferência **padrão** do Modo Inclusão (`{ keysVersion, configured, updatedAt, options }`) — `keysVersion` invalida a config quando o conjunto de necessidades muda. Ambos entram por coerção defensiva no `readDb`, sem bump de `version`. Se a cota estourar (fotos em base64 pesam), os conteúdos mais antigos são podados automaticamente e, em último caso, salvos sem imagem.
 - `localStorage["sv_subscription"]` — estado do plano (`plan`, `status`, `trialStartedAt`, `trialEndsAt`), ver 5.6. Fica fora de `sv_db`: assinatura nunca influencia dado acadêmico.
 - `integrityService.sweepOrphans()` roda ao abrir o app: remove tentativas/revisões apontando para conteúdo inexistente, limpa `contentIds` órfãos em eventos (sem apagar o evento) e reseta `subjectId` de conteúdo cuja matéria não existe mais.
 
@@ -230,6 +232,15 @@ Ordem cronológica das principais entregas desde o baseline do PRD (2026-08-07).
 - Preferência **padrão** em `sv_db.learningPreferences`; preferência **de uma captura** é local da câmera. Onboarding pulável na 1ª abertura, edição pelo ⚙️, e passo "Sua captura" revisando as preferências antes da análise. Rastro opcional em `Content.learningPreferences`.
 - `ContentBlocks` passa a renderizar o resumo com subtítulos / listas / etapas (contrato de marcadores com o prompt); resumo legado (parágrafo corrido) renderiza idêntico. Biblioteca, quiz, flashcards, revisões, evolução e Chama do Conhecimento inalterados.
 - Suíte: de 149 para **175** cenários (`F10-1` a `F10-29`). Avaliação qualitativa real (mesma foto, 5 combinações, Gemini real) em `plans/AVALIACAO-FASE-10-INCLUSAO.md` — diferença perceptível e mensurável.
+- Correções seguintes: reforço do prompt para subtítulo sempre sozinho na linha + renderizador tolerante (`ContentBlocks`); `learningInsightsService` mede desempenho por formato de adaptação (só leitura, nada persistido).
+
+### 10.13 Fase 11 — Modo Inclusão por necessidades de acessibilidade (2026-09-10)
+- As 4 preferências genéricas (Simplificar/Foco/Visual/Passo a passo) foram substituídas por **5 barreiras de aprendizagem declaradas**: 🧠 concentração, 📖 textos longos, 🔤 acompanhar textos, 🧩 conteúdos complexos, ✋ muitas etapas. A pergunta passou de "o que você prefere?" para "onde você encontra dificuldade?". Cada necessidade tem um foco distinto no prompt (`PREFERENCE_RULES`) — nenhuma vira "resumir".
+- Guardrail reforçado: nunca eliminar etapas de uma resolução, conceitos essenciais ou informação acadêmica para "facilitar"; nunca infantilizar. Anti-diagnóstico mantido.
+- Carimbo `keysVersion` em `sv_db.learningPreferences` (`LEARNING_KEYS_VERSION` em `src/data/storage/db.js`): bloco salvo com versão diferente da atual é invalidado no `readDb` — volta ao padrão de fábrica e o onboarding pergunta de novo, uma vez. Sem remapeamento automático das chaves antigas. `SCHEMA_VERSION` do db intacto. Conteúdo já salvo com o rastro antigo não é reescrito.
+- `textTracking` ativa um perfil de leitura mais espaçado em `ContentBlocks` (entrelinha, blocos, subtítulos), lido da preferência **atual** e válido para todo conteúdo. Sem ela, renderização byte a byte idêntica.
+- Textos da UI reescritos para "Como podemos adaptar seus estudos?" / "Tenho dificuldade para…" — sem "você sofre/possui/seu transtorno", sem rótulo especial.
+- Suíte: de 180 para **183** cenários; bloco de testes da Fase 10 substituído por `F11-1` a `F11-38` (sem duplicar). Avaliação qualitativa real (mesma foto, cada necessidade isolada + combinações, Gemini real) em `plans/AVALIACAO-FASE-11-NECESSIDADES.md` — saídas distintas entre si, conteúdo acadêmico preservado.
 
 ## 11. Análise — concluído vs. pendente
 
