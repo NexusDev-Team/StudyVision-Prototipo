@@ -89,6 +89,7 @@ const { migrateItems } = await import("../src/data/storage/migrations.js");
 const { LEARNING_PREFERENCE_KEYS } = await import("../src/constants.js");
 const { createContent } = await import("../src/data/models/content.js");
 const learningPreferencesService = await import("../src/services/learningPreferencesService.js");
+const prompts = await import("../lib/prompts.js");
 
 // helper: cria um conteúdo mínimo já com matéria
 // helper: gera `total` respostas de quiz com `correct` delas certas.
@@ -2166,6 +2167,67 @@ test("F10-15. alterar preferencias nao altera contents, reviews, flameGoals nem 
   assert.equal(JSON.stringify(contentService.getContent(content.id)), contentBefore, "content intacto");
   assert.equal(JSON.stringify(readDb().reviews), reviewsBefore, "reviews intactos");
   assert.equal(JSON.stringify(readDb().flameGoals), flameBefore, "flameGoals intacto");
+});
+
+// ─── Fase 10: Modo Inclusão — prompt adaptativo ─────────────────────────────
+
+const NONE = { simplify: false, focus: false, visual: false, stepByStep: false };
+const RULE_SNIPPET = {
+  simplify: "Simplificar: use frases curtas",
+  focus: "Foco: priorize o essencial",
+  visual: "Visual: no \"summary\", organize com hierarquia",
+  stepByStep: "Passo a passo: no \"summary\", apresente o raciocínio como sequência numerada",
+};
+
+test("F10-16. sem preferencia ativa o prompt e byte a byte igual ao ANALYSIS_PROMPT", () => {
+  assert.equal(prompts.buildAnalysisPrompt(NONE), prompts.ANALYSIS_PROMPT);
+  assert.equal(prompts.buildAnalysisPrompt(undefined), prompts.ANALYSIS_PROMPT);
+  assert.equal(prompts.buildAnalysisPrompt({}), prompts.ANALYSIS_PROMPT);
+  assert.equal(prompts.buildAnalysisPrompt({ hackKey: true }), prompts.ANALYSIS_PROMPT);
+});
+
+test("F10-17..20. cada preferencia isolada inclui a propria regra e exclui as outras tres", () => {
+  for (const key of prompts.PREFERENCE_KEYS) {
+    const out = prompts.buildAnalysisPrompt({ ...NONE, [key]: true });
+    assert.ok(out.includes(RULE_SNIPPET[key]), `${key}: deveria conter a propria regra`);
+    for (const other of prompts.PREFERENCE_KEYS) {
+      if (other === key) continue;
+      assert.ok(!out.includes(RULE_SNIPPET[other]), `${key}: nao deveria conter a regra de ${other}`);
+    }
+  }
+});
+
+test("F10-21. combinacao Simplificar+Foco contem exatamente essas duas regras", () => {
+  const out = prompts.buildAnalysisPrompt({ ...NONE, simplify: true, focus: true });
+  assert.ok(out.includes(RULE_SNIPPET.simplify));
+  assert.ok(out.includes(RULE_SNIPPET.focus));
+  assert.ok(!out.includes(RULE_SNIPPET.visual));
+  assert.ok(!out.includes(RULE_SNIPPET.stepByStep));
+});
+
+test("F10-22. combinacao Visual+Passo a passo contem exatamente essas duas regras", () => {
+  const out = prompts.buildAnalysisPrompt({ ...NONE, visual: true, stepByStep: true });
+  assert.ok(out.includes(RULE_SNIPPET.visual));
+  assert.ok(out.includes(RULE_SNIPPET.stepByStep));
+  assert.ok(!out.includes(RULE_SNIPPET.simplify));
+  assert.ok(!out.includes(RULE_SNIPPET.focus));
+});
+
+test("F10-23. prompt adaptado preserva o bloco de formato JSON e as regras anti-invencao", () => {
+  const out = prompts.buildAnalysisPrompt({ ...NONE, visual: true });
+  assert.ok(out.includes("Responda EXATAMENTE no formato JSON abaixo"), "secao de formato preservada");
+  assert.ok(out.includes('"success": true'), "schema JSON preservado");
+  assert.ok(out.includes("NUNCA invente textos, fórmulas, nomes, datas"), "regra anti-invencao preservada");
+  // o bloco de adaptacao vem ANTES da secao de formato
+  assert.ok(
+    out.indexOf("preferências de aprendizagem") < out.indexOf("Responda EXATAMENTE no formato JSON abaixo"),
+    "bloco de adaptacao deve preceder a secao de formato"
+  );
+  assert.ok(out.includes("não mencione TDAH, dislexia, autismo"), "guardrail anti-diagnostico presente");
+});
+
+test("F10-24. paridade: chaves do prompt == LEARNING_PREFERENCE_KEYS do src", () => {
+  assert.deepEqual([...prompts.PREFERENCE_KEYS].sort(), [...LEARNING_PREFERENCE_KEYS].sort());
 });
 
 // ─── relatório ───────────────────────────────────────────────────────────────
