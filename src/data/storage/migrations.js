@@ -11,6 +11,8 @@ import { createSubject } from "../models/subject.js";
 import { createReview } from "../models/review.js";
 import { createEvent } from "../models/event.js";
 import { LEGACY_TO_CANONICAL_EVENT_TYPE } from "../adapters/legacyEventType.js";
+import { emptyPreferenceOptions } from "../../constants.js";
+import { LEARNING_KEYS_VERSION } from "./db.js";
 
 function resolveSubjectId(subjectName, subjectsByName) {
   const name = (subjectName || "").trim() || "Sem matéria";
@@ -135,12 +137,14 @@ export function migrateItems(legacyItems) {
     reviews,
     events,
     flameGoals: { preferredWeeklyTarget: 3, weekTargets: {} },
-    // Modo Inclusão (Fase 10): db legado não tem preferências — começa no padrão
-    // de fábrica (nenhuma ativa, não configurado). readDb() faz a coerção final.
+    // Modo Inclusão: db legado não tem necessidades — começa no padrão de
+    // fábrica (nenhuma ativa, não configurado) com o carimbo de versão atual.
+    // readDb() faz a coerção final de qualquer forma.
     learningPreferences: {
+      keysVersion: LEARNING_KEYS_VERSION,
       configured: false,
       updatedAt: null,
-      options: { simplify: false, focus: false, visual: false, stepByStep: false },
+      options: emptyPreferenceOptions(),
     },
   };
 }

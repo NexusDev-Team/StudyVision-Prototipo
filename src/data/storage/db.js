@@ -18,12 +18,26 @@ function emptyFlameGoals() {
   return { preferredWeeklyTarget: DEFAULT_WEEKLY_TARGET, weekTargets: {} };
 }
 
-// Modo Inclusão (Fase 10): preferências de aprendizagem do usuário. `configured`
-// distingue "nunca configurou" (dispara o onboarding) de "configurou e não
-// escolheu nenhuma". `options` só carrega as chaves canônicas de
-// LEARNING_PREFERENCE_KEYS, sempre booleanas.
+// Modo Inclusão: necessidades de acessibilidade DECLARADAS pelo usuário.
+// `configured` distingue "nunca configurou" (dispara o onboarding) de
+// "configurou e não escolheu nenhuma". `options` só carrega as chaves canônicas
+// de LEARNING_PREFERENCE_KEYS, sempre booleanas.
+//
+// `keysVersion` carimba QUAL conjunto de chaves gerou aquela configuração.
+// Quando o conjunto muda (Fase 11 trocou as 4 preferências genéricas pelas 5
+// necessidades), a pergunta muda de natureza — mapear seria presumir a
+// resposta. Então: bloco salvo com keysVersion diferente do atual é resetado
+// (`configured: false`, `options` no padrão), e o onboarding pergunta de novo,
+// uma única vez. Não é migração de dado — é invalidação consciente.
+export const LEARNING_KEYS_VERSION = 2;
+
 function emptyLearningPreferences() {
-  return { configured: false, updatedAt: null, options: emptyPreferenceOptions() };
+  return {
+    keysVersion: LEARNING_KEYS_VERSION,
+    configured: false,
+    updatedAt: null,
+    options: emptyPreferenceOptions(),
+  };
 }
 
 function emptyDb() {
@@ -42,9 +56,15 @@ function emptyDb() {
 
 // Coerção defensiva de learningPreferences: nunca lança. Descarta chaves fora
 // de LEARNING_PREFERENCE_KEYS, força cada opção a booleano, e um objeto ausente
-// ou malformado vira o default de fábrica (nenhuma preferência, não configurado).
+// ou malformado vira o default de fábrica. Se o `keysVersion` salvo não bate o
+// atual (conjunto de necessidades trocou, ou bloco antigo sem carimbo), a
+// configuração é INVALIDADA: volta ao padrão de fábrica com o carimbo novo,
+// para o onboarding perguntar de novo.
 function coerceLearningPreferences(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return emptyLearningPreferences();
+  }
+  if (value.keysVersion !== LEARNING_KEYS_VERSION) {
     return emptyLearningPreferences();
   }
   const options = emptyPreferenceOptions();
@@ -54,6 +74,7 @@ function coerceLearningPreferences(value) {
     }
   }
   return {
+    keysVersion: LEARNING_KEYS_VERSION,
     configured: value.configured === true,
     updatedAt: typeof value.updatedAt === "string" ? value.updatedAt : null,
     options,

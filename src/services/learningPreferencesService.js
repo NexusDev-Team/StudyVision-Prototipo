@@ -1,8 +1,8 @@
-// Modo Inclusão (Fase 10): única porta de leitura/escrita das preferências de
-// aprendizagem do usuário. Segue o mesmo desenho de knowledgeFlameService —
-// a regra e a normalização vivem aqui, nunca no componente; a persistência
-// passa por withDb (db.learningPreferences). Nenhum acesso direto a
-// localStorage fora da camada de storage.
+// Modo Inclusão: única porta de leitura/escrita das necessidades de
+// acessibilidade declaradas pelo usuário. Segue o mesmo desenho de
+// knowledgeFlameService — a regra e a normalização vivem aqui, nunca no
+// componente; a persistência passa por withDb (db.learningPreferences).
+// Nenhum acesso direto a localStorage fora da camada de storage.
 //
 // Distinção importante:
 // - preferência PADRÃO: o que este serviço lê/grava, persistido em sv_db.
@@ -10,10 +10,11 @@
 //   menos que o usuário peça explicitamente "tornar meu padrão".
 
 import { readDb, withDb } from "../data/storage/index.js";
+import { LEARNING_KEYS_VERSION } from "../data/storage/db.js";
 import { nowIso } from "../utils/date.js";
 import { LEARNING_PREFERENCE_KEYS, emptyPreferenceOptions } from "../constants.js";
 
-// Reduz qualquer entrada a um objeto só com as 4 chaves canônicas, booleanas.
+// Reduz qualquer entrada a um objeto só com as chaves canônicas, booleanas.
 // Aceita objeto parcial; chaves desconhecidas são ignoradas.
 export function normalizePreferenceOptions(raw) {
   const options = emptyPreferenceOptions();
@@ -38,6 +39,7 @@ export function hasActivePreference(options) {
 export function getLearningPreferences() {
   const { learningPreferences } = readDb();
   return {
+    keysVersion: learningPreferences.keysVersion,
     configured: learningPreferences.configured === true,
     updatedAt: learningPreferences.updatedAt || null,
     options: normalizePreferenceOptions(learningPreferences.options),
@@ -55,9 +57,12 @@ export function getPreferenceOptions() {
 export function setLearningPreferences(options) {
   const normalized = normalizePreferenceOptions(options);
   const updatedAt = nowIso();
-  withDb((db) => ({
-    ...db,
-    learningPreferences: { configured: true, updatedAt, options: normalized },
-  }));
-  return { configured: true, updatedAt, options: normalized };
+  const learningPreferences = {
+    keysVersion: LEARNING_KEYS_VERSION,
+    configured: true,
+    updatedAt,
+    options: normalized,
+  };
+  withDb((db) => ({ ...db, learningPreferences }));
+  return learningPreferences;
 }

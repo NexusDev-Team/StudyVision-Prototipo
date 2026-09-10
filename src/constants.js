@@ -41,39 +41,54 @@ export const REVIEW_FLAG_META = {
   overdue: { label: "Revisão atrasada", color: "#B45309", bg: "rgba(180,83,9,0.1)" },
 };
 
-// Modo Inclusão — preferências de aprendizagem. O estudante escolhe uma ou mais
-// formas de o Study Vision adaptar a APRESENTAÇÃO do conteúdo (nunca a verdade).
-// Estas chaves são o contrato canônico: o mesmo conjunto é replicado em
+// Modo Inclusão — necessidades de acessibilidade DECLARADAS pelo estudante.
+// O usuário informa onde encontra dificuldade nos estudos; o Study Vision usa
+// isso para adaptar a APRESENTAÇÃO do conteúdo (nunca a verdade acadêmica).
+// NÃO é diagnóstico: nada de "Modo TDAH", dislexia, autismo ou rótulo médico.
+// Estas chaves são o contrato canônico — o mesmo conjunto é replicado em
 // lib/prompts.js (a função serverless não importa src/) e um teste de paridade
-// trava o drift entre os dois lugares.
-export const LEARNING_PREFERENCE_KEYS = ["simplify", "focus", "visual", "stepByStep"];
+// trava o drift. Trocar o conjunto exige bumpar LEARNING_KEYS_VERSION em
+// src/data/storage/db.js (ver o carimbo keysVersion na preferência).
+export const LEARNING_PREFERENCE_KEYS = [
+  "concentration",
+  "longText",
+  "textTracking",
+  "complexContent",
+  "manySteps",
+];
 
 export const LEARNING_PREFERENCE_META = {
-  simplify: {
-    emoji: "🧩",
-    label: "Simplificar",
-    description: "Explicações mais simples e diretas.",
+  concentration: {
+    emoji: "🧠",
+    label: "Tenho dificuldade para me concentrar",
+    description: "Reduza estímulos e divida o conteúdo em pequenas partes.",
   },
-  focus: {
-    emoji: "🎯",
-    label: "Foco",
-    description: "Destaque o que realmente importa.",
-  },
-  visual: {
-    emoji: "👁️",
-    label: "Visual",
-    description: "Organize o conteúdo de forma mais visual.",
-  },
-  stepByStep: {
+  longText: {
     emoji: "📖",
-    label: "Passo a passo",
-    description: "Divida explicações e exercícios em etapas.",
+    label: "Tenho dificuldade para ler textos longos",
+    description: "Transforme textos extensos em partes menores e mais objetivas.",
+  },
+  textTracking: {
+    emoji: "🔤",
+    label: "Tenho dificuldade para acompanhar textos",
+    description: "Organize a leitura para facilitar o acompanhamento linha por linha.",
+  },
+  complexContent: {
+    emoji: "🧩",
+    label: "Tenho dificuldade para entender conteúdos complexos",
+    description: "Explique conceitos difíceis de forma gradual e concreta.",
+  },
+  manySteps: {
+    emoji: "✋",
+    label: "Tenho dificuldade para acompanhar muitas etapas",
+    description: "Divida processos e exercícios em uma etapa por vez.",
   },
 };
 
-// Objeto de opções com todas as preferências desligadas — o padrão de fábrica.
+// Objeto de opções com todas as necessidades desligadas — o padrão de fábrica.
+// Deriva das chaves para não sair de sincronia ao mudar o conjunto.
 export function emptyPreferenceOptions() {
-  return { simplify: false, focus: false, visual: false, stepByStep: false };
+  return Object.fromEntries(LEARNING_PREFERENCE_KEYS.map((key) => [key, false]));
 }
 
 export const PLANNING_TYPES = ["Prova", "Trabalho", "Revisão"];

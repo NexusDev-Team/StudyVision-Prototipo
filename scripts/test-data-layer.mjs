@@ -87,6 +87,7 @@ const { createFlashcardAttempt } = await import("../src/data/models/flashcard.js
 const { createReview } = await import("../src/data/models/review.js");
 const { migrateItems } = await import("../src/data/storage/migrations.js");
 const { LEARNING_PREFERENCE_KEYS } = await import("../src/constants.js");
+const { LEARNING_KEYS_VERSION } = await import("../src/data/storage/db.js");
 const { createContent } = await import("../src/data/models/content.js");
 const learningPreferencesService = await import("../src/services/learningPreferencesService.js");
 const prompts = await import("../lib/prompts.js");
@@ -2011,152 +2012,198 @@ test("F9-16. srLabel usa a meta configurada, nunca o padrao hardcoded", () => {
   assert.ok(!state.message.includes("3"), `mensagem nao deveria mencionar a meta padrao: ${state.message}`);
 });
 
-// ─── Fase 10: Modo Inclusão — preferências de aprendizagem (persistência) ─────
+// ─── Fase 11: Modo Inclusão — necessidades de acessibilidade (persistência) ──
 
-test("F10-1. db novo nasce com preferencias no padrao de fabrica", () => {
-  const db = readDb();
-  assert.deepEqual(db.learningPreferences, {
-    configured: false,
-    updatedAt: null,
-    options: { simplify: false, focus: false, visual: false, stepByStep: false },
-  });
+const EMPTY_NEEDS = Object.fromEntries(LEARNING_PREFERENCE_KEYS.map((k) => [k, false]));
+
+test("F11-1. db novo nasce com necessidades no padrao de fabrica e keysVersion carimbado", () => {
+  const lp = readDb().learningPreferences;
+  assert.equal(lp.configured, false);
+  assert.equal(lp.updatedAt, null);
+  assert.equal(lp.keysVersion, LEARNING_KEYS_VERSION);
+  assert.deepEqual(lp.options, EMPTY_NEEDS);
 });
 
-test("F10-2. db legado sem o campo recebe o default sem lancar", () => {
+test("F11-2. db legado sem o campo recebe o default sem lancar", () => {
   withDb((db) => {
     const { learningPreferences, ...rest } = db;
     return rest;
   });
   assert.doesNotThrow(() => readDb());
-  const db = readDb();
-  assert.equal(db.learningPreferences.configured, false);
-  assert.deepEqual(Object.keys(db.learningPreferences.options).sort(), [...LEARNING_PREFERENCE_KEYS].sort());
+  const lp = readDb().learningPreferences;
+  assert.equal(lp.configured, false);
+  assert.equal(lp.keysVersion, LEARNING_KEYS_VERSION);
+  assert.deepEqual(Object.keys(lp.options).sort(), [...LEARNING_PREFERENCE_KEYS].sort());
 });
 
-test("F10-3. lixo no campo (string) vira o default", () => {
-  withDb((db) => ({ ...db, learningPreferences: "nao-e-objeto" }));
-  assert.deepEqual(readDb().learningPreferences, {
-    configured: false,
-    updatedAt: null,
-    options: { simplify: false, focus: false, visual: false, stepByStep: false },
-  });
-});
-
-test("F10-4. chave desconhecida e valores nao-boolean sao normalizados", () => {
+test("F11-3. necessidades no formato novo sobrevivem a um novo readDb", () => {
   withDb((db) => ({
     ...db,
     learningPreferences: {
-      configured: "sim",
-      updatedAt: 12345,
-      options: { simplify: 1, focus: "true", visual: null, stepByStep: true, hackKey: true },
+      keysVersion: LEARNING_KEYS_VERSION,
+      configured: true,
+      updatedAt: "2026-09-10T12:00:00.000Z",
+      options: { ...EMPTY_NEEDS, longText: true, complexContent: true },
     },
   }));
-  const prefs = readDb().learningPreferences;
-  assert.equal(prefs.configured, false, "configured nao-boolean vira false");
-  assert.equal(prefs.updatedAt, null, "updatedAt nao-string vira null");
-  assert.deepEqual(prefs.options, {
-    simplify: false, focus: false, visual: false, stepByStep: true,
-  });
-  assert.ok(!("hackKey" in prefs.options), "chave fora da whitelist descartada");
+  const lp = readDb().learningPreferences;
+  assert.equal(lp.configured, true);
+  assert.equal(lp.updatedAt, "2026-09-10T12:00:00.000Z");
+  assert.deepEqual(lp.options, { ...EMPTY_NEEDS, longText: true, complexContent: true });
 });
 
-test("F10-5. preferencias sobrevivem a um novo readDb", () => {
+test("F11-4. preferencia salva no formato da Fase 10 e resetada e o onboarding volta a perguntar", () => {
+  // conjunto antigo: 4 chaves genericas, ja configurado
+  withDb((db) => ({
+    ...db,
+    learningPreferences: {
+      keysVersion: 1,
+      configured: true,
+      updatedAt: "2026-09-09T10:00:00.000Z",
+      options: { simplify: true, focus: true, visual: false, stepByStep: true },
+    },
+  }));
+  const lp = readDb().learningPreferences;
+  assert.equal(lp.keysVersion, LEARNING_KEYS_VERSION, "keysVersion atualizado");
+  assert.equal(lp.configured, false, "configured resetado -> onboarding volta");
+  assert.deepEqual(lp.options, EMPTY_NEEDS, "options no padrao de fabrica");
+});
+
+test("F11-5. bloco sem keysVersion (Fase 10 antes do carimbo) tambem e resetado", () => {
   withDb((db) => ({
     ...db,
     learningPreferences: {
       configured: true,
-      updatedAt: "2026-09-10T12:00:00.000Z",
-      options: { simplify: true, focus: true, visual: false, stepByStep: false },
+      updatedAt: "2026-09-09T10:00:00.000Z",
+      options: { simplify: true, focus: false, visual: true, stepByStep: false },
     },
   }));
-  const prefs = readDb().learningPreferences;
-  assert.equal(prefs.configured, true);
-  assert.equal(prefs.updatedAt, "2026-09-10T12:00:00.000Z");
-  assert.deepEqual(prefs.options, { simplify: true, focus: true, visual: false, stepByStep: false });
+  const lp = readDb().learningPreferences;
+  assert.equal(lp.keysVersion, LEARNING_KEYS_VERSION);
+  assert.equal(lp.configured, false);
+  assert.deepEqual(lp.options, EMPTY_NEEDS);
 });
 
-test("F10-6. migracao v1->v2 produz o bloco de preferencias no padrao", () => {
-  const db = migrateItems([{ id: "1", subject: "Matemática", concept: "Teste", summary: "x" }]);
-  assert.deepEqual(db.learningPreferences, {
+test("F11-6. lixo no campo (string) vira o default carimbado", () => {
+  withDb((db) => ({ ...db, learningPreferences: "nao-e-objeto" }));
+  assert.deepEqual(readDb().learningPreferences, {
+    keysVersion: LEARNING_KEYS_VERSION,
     configured: false,
     updatedAt: null,
-    options: { simplify: false, focus: false, visual: false, stepByStep: false },
+    options: EMPTY_NEEDS,
   });
 });
 
-test("F10-7. Content legado sem o campo continua valido e vira null", () => {
+test("F11-7. chave desconhecida e valores nao-boolean sao normalizados", () => {
+  withDb((db) => ({
+    ...db,
+    learningPreferences: {
+      keysVersion: LEARNING_KEYS_VERSION,
+      configured: "sim",
+      updatedAt: 12345,
+      options: { concentration: 1, longText: "true", textTracking: null, manySteps: true, hackKey: true, simplify: true },
+    },
+  }));
+  const lp = readDb().learningPreferences;
+  assert.equal(lp.configured, false, "configured nao-boolean vira false");
+  assert.equal(lp.updatedAt, null, "updatedAt nao-string vira null");
+  assert.deepEqual(lp.options, { ...EMPTY_NEEDS, manySteps: true });
+  assert.ok(!("hackKey" in lp.options), "chave fora da whitelist descartada");
+  assert.ok(!("simplify" in lp.options), "chave do conjunto antigo descartada");
+});
+
+test("F11-8. migracao v1->v2 produz o bloco de necessidades no padrao carimbado", () => {
+  const db = migrateItems([{ id: "1", subject: "Matemática", concept: "Teste", summary: "x" }]);
+  assert.deepEqual(db.learningPreferences, {
+    keysVersion: LEARNING_KEYS_VERSION,
+    configured: false,
+    updatedAt: null,
+    options: EMPTY_NEEDS,
+  });
+});
+
+test("F11-9. Content legado sem o campo continua valido e vira null", () => {
   const content = createContent({ title: "Antigo", summary: "x" });
   assert.equal(content.learningPreferences, null);
   assert.equal(validate.validateContent(content).valid, true);
 });
 
-test("F10-8. learningPreferences do input e sanitizado para as 4 chaves booleanas", () => {
+test("F11-10. Content salvo com chaves da Fase 10 continua valido e NAO e reescrito ao ler", () => {
+  // grava direto no disco um content com o conjunto antigo, como se fosse historico
+  const legacy = createContent({ title: "Historico", summary: "y" });
+  legacy.learningPreferences = { simplify: true, focus: true, visual: false, stepByStep: true };
+  withDb((db) => ({ ...db, contents: [...db.contents, legacy] }));
+
+  const reloaded = readDb().contents.find((c) => c.id === legacy.id);
+  assert.deepEqual(reloaded.learningPreferences, { simplify: true, focus: true, visual: false, stepByStep: true }, "rastro antigo intacto");
+  assert.equal(validate.validateContent(reloaded).valid, true, "continua valido");
+});
+
+test("F11-11. learningPreferences do input e sanitizado para as 5 chaves novas", () => {
   const content = createContent({
     title: "Adaptado",
-    learningPreferences: { simplify: true, focus: 1, visual: "x", stepByStep: true, hackKey: true },
+    learningPreferences: { concentration: true, longText: 1, textTracking: "x", manySteps: true, hackKey: true },
   });
-  assert.deepEqual(content.learningPreferences, {
-    simplify: true, focus: false, visual: false, stepByStep: true,
-  });
+  assert.deepEqual(content.learningPreferences, { ...EMPTY_NEEDS, concentration: true, manySteps: true });
   assert.equal(validate.validateContent(content).valid, true);
 });
 
-test("F10-9. conteudo criado com preferencias mantem o registro apos reload", () => {
+test("F11-12. conteudo criado com necessidades mantem o registro apos reload", () => {
   const subject = subjectService.createSubjectEntry("Matemática");
   const { content } = contentService.createContentEntry({
     subjectId: subject.id,
     subjectName: subject.name,
-    title: "Com preferencias",
+    title: "Com necessidades",
     summary: "y",
-    learningPreferences: { simplify: true, focus: true, visual: false, stepByStep: false },
+    learningPreferences: { ...EMPTY_NEEDS, longText: true, complexContent: true },
   });
   const reloaded = contentService.getContent(content.id);
-  assert.deepEqual(reloaded.learningPreferences, {
-    simplify: true, focus: true, visual: false, stepByStep: false,
-  });
+  assert.deepEqual(reloaded.learningPreferences, { ...EMPTY_NEEDS, longText: true, complexContent: true });
 });
 
-// ─── Fase 10: Modo Inclusão — serviço de preferências ────────────────────────
+// ─── Fase 11: Modo Inclusão — serviço de necessidades ───────────────────────
 
-test("F10-10. padrao de fabrica: nao configurado, nenhuma ativa", () => {
+test("F11-13. padrao de fabrica: nao configurado, nenhuma ativa", () => {
   const prefs = learningPreferencesService.getLearningPreferences();
   assert.equal(prefs.configured, false);
   assert.equal(prefs.updatedAt, null);
+  assert.equal(prefs.keysVersion, LEARNING_KEYS_VERSION);
   assert.equal(learningPreferencesService.hasActivePreference(prefs.options), false);
 });
 
-test("F10-11. salvar uma preferencia marca configured e persiste", () => {
-  learningPreferencesService.setLearningPreferences({ visual: true });
+test("F11-14. salvar uma necessidade marca configured, carimba versao e persiste", () => {
+  learningPreferencesService.setLearningPreferences({ textTracking: true });
   const prefs = learningPreferencesService.getLearningPreferences();
   assert.equal(prefs.configured, true);
   assert.ok(prefs.updatedAt);
-  assert.deepEqual(prefs.options, { simplify: false, focus: false, visual: true, stepByStep: false });
+  assert.equal(prefs.keysVersion, LEARNING_KEYS_VERSION);
+  assert.deepEqual(prefs.options, { ...EMPTY_NEEDS, textTracking: true });
 });
 
-test("F10-12. salvar varias preferencias", () => {
-  learningPreferencesService.setLearningPreferences({ simplify: true, focus: true, stepByStep: true });
+test("F11-15. salvar varias necessidades", () => {
+  learningPreferencesService.setLearningPreferences({ concentration: true, longText: true, manySteps: true });
   assert.deepEqual(learningPreferencesService.getPreferenceOptions(), {
-    simplify: true, focus: true, visual: false, stepByStep: true,
+    ...EMPTY_NEEDS, concentration: true, longText: true, manySteps: true,
   });
 });
 
-test("F10-13. salvar nenhuma preferencia ainda marca configured=true", () => {
+test("F11-16. salvar nenhuma necessidade ainda marca configured=true", () => {
   learningPreferencesService.setLearningPreferences({});
   const prefs = learningPreferencesService.getLearningPreferences();
   assert.equal(prefs.configured, true);
   assert.equal(learningPreferencesService.hasActivePreference(prefs.options), false);
 });
 
-test("F10-14. preferencias sobrevivem ao reload (novo readDb)", () => {
-  learningPreferencesService.setLearningPreferences({ focus: true, visual: true });
+test("F11-17. necessidades sobrevivem ao reload (novo readDb)", () => {
+  learningPreferencesService.setLearningPreferences({ longText: true, textTracking: true });
   const again = readDb().learningPreferences;
   assert.equal(again.configured, true);
-  assert.deepEqual(again.options, { simplify: false, focus: true, visual: true, stepByStep: false });
+  assert.equal(again.keysVersion, LEARNING_KEYS_VERSION);
+  assert.deepEqual(again.options, { ...EMPTY_NEEDS, longText: true, textTracking: true });
 });
 
-test("F10-15. alterar preferencias nao altera contents, reviews, flameGoals nem updatedAt de conteudo", () => {
+test("F11-18. alterar necessidades nao altera contents, reviews, flameGoals nem conteudo", () => {
   const { content } = seedContent();
-  content.reviewPlan = "weekly";
   contentService.updateContent(content.id, { reviewPlan: "weekly" });
   knowledgeFlameService.setPreferredWeeklyTarget(5);
 
@@ -2164,31 +2211,34 @@ test("F10-15. alterar preferencias nao altera contents, reviews, flameGoals nem 
   const reviewsBefore = JSON.stringify(readDb().reviews);
   const flameBefore = JSON.stringify(readDb().flameGoals);
 
-  learningPreferencesService.setLearningPreferences({ simplify: true, stepByStep: true });
+  learningPreferencesService.setLearningPreferences({ concentration: true, manySteps: true });
 
   assert.equal(JSON.stringify(contentService.getContent(content.id)), contentBefore, "content intacto");
   assert.equal(JSON.stringify(readDb().reviews), reviewsBefore, "reviews intactos");
   assert.equal(JSON.stringify(readDb().flameGoals), flameBefore, "flameGoals intacto");
 });
 
-// ─── Fase 10: Modo Inclusão — prompt adaptativo ─────────────────────────────
+// ─── Fase 11: Modo Inclusão — prompt por necessidade ────────────────────────
 
-const NONE = { simplify: false, focus: false, visual: false, stepByStep: false };
+const NONE = { ...EMPTY_NEEDS };
 const RULE_SNIPPET = {
-  simplify: "Simplificar: use frases curtas",
-  focus: "Foco: priorize o essencial",
-  visual: "Visual: no \"summary\", organize com hierarquia",
-  stepByStep: "Passo a passo: no \"summary\", apresente o raciocínio como sequência numerada",
+  concentration: "Dificuldade de concentração: apresente UMA ideia por vez",
+  longText: "Dificuldade com textos longos: quebre paredes de texto",
+  textTracking: "Dificuldade para acompanhar textos: priorize a DISPOSIÇÃO",
+  complexContent: "Dificuldade com conteúdos complexos: construa a explicação em progressão",
+  manySteps: "Dificuldade com muitas etapas: divida todo processo",
 };
+const FORMATTING_NEEDS = ["longText", "textTracking", "manySteps"];
 
-test("F10-16. sem preferencia ativa o prompt e byte a byte igual ao ANALYSIS_PROMPT", () => {
+test("F11-19. sem necessidade ativa o prompt e byte a byte igual ao ANALYSIS_PROMPT", () => {
   assert.equal(prompts.buildAnalysisPrompt(NONE), prompts.ANALYSIS_PROMPT);
   assert.equal(prompts.buildAnalysisPrompt(undefined), prompts.ANALYSIS_PROMPT);
   assert.equal(prompts.buildAnalysisPrompt({}), prompts.ANALYSIS_PROMPT);
   assert.equal(prompts.buildAnalysisPrompt({ hackKey: true }), prompts.ANALYSIS_PROMPT);
+  assert.equal(prompts.buildAnalysisPrompt({ simplify: true }), prompts.ANALYSIS_PROMPT, "chave do conjunto antigo e ignorada");
 });
 
-test("F10-17..20. cada preferencia isolada inclui a propria regra e exclui as outras tres", () => {
+test("F11-20..24. cada necessidade isolada inclui a propria regra e exclui as outras quatro", () => {
   for (const key of prompts.PREFERENCE_KEYS) {
     const out = prompts.buildAnalysisPrompt({ ...NONE, [key]: true });
     assert.ok(out.includes(RULE_SNIPPET[key]), `${key}: deveria conter a propria regra`);
@@ -2199,61 +2249,72 @@ test("F10-17..20. cada preferencia isolada inclui a propria regra e exclui as ou
   }
 });
 
-test("F10-21. combinacao Simplificar+Foco contem exatamente essas duas regras", () => {
-  const out = prompts.buildAnalysisPrompt({ ...NONE, simplify: true, focus: true });
-  assert.ok(out.includes(RULE_SNIPPET.simplify));
-  assert.ok(out.includes(RULE_SNIPPET.focus));
-  assert.ok(!out.includes(RULE_SNIPPET.visual));
-  assert.ok(!out.includes(RULE_SNIPPET.stepByStep));
+test("F11-25. combinacao longText + complexContent contem exatamente essas duas regras", () => {
+  const out = prompts.buildAnalysisPrompt({ ...NONE, longText: true, complexContent: true });
+  assert.ok(out.includes(RULE_SNIPPET.longText));
+  assert.ok(out.includes(RULE_SNIPPET.complexContent));
+  assert.ok(!out.includes(RULE_SNIPPET.concentration));
+  assert.ok(!out.includes(RULE_SNIPPET.textTracking));
+  assert.ok(!out.includes(RULE_SNIPPET.manySteps));
 });
 
-test("F10-22. combinacao Visual+Passo a passo contem exatamente essas duas regras", () => {
-  const out = prompts.buildAnalysisPrompt({ ...NONE, visual: true, stepByStep: true });
-  assert.ok(out.includes(RULE_SNIPPET.visual));
-  assert.ok(out.includes(RULE_SNIPPET.stepByStep));
-  assert.ok(!out.includes(RULE_SNIPPET.simplify));
-  assert.ok(!out.includes(RULE_SNIPPET.focus));
+test("F11-26. combinacao concentration + longText + manySteps combina as tres", () => {
+  const out = prompts.buildAnalysisPrompt({ ...NONE, concentration: true, longText: true, manySteps: true });
+  for (const k of ["concentration", "longText", "manySteps"]) assert.ok(out.includes(RULE_SNIPPET[k]), `falta ${k}`);
+  assert.ok(!out.includes(RULE_SNIPPET.complexContent));
+  assert.ok(!out.includes(RULE_SNIPPET.textTracking));
 });
 
-test("F10-23. prompt adaptado preserva o bloco de formato JSON e as regras anti-invencao", () => {
-  const out = prompts.buildAnalysisPrompt({ ...NONE, visual: true });
+test("F11-27. prompt adaptado preserva o bloco de formato JSON e as regras anti-invencao", () => {
+  const out = prompts.buildAnalysisPrompt({ ...NONE, longText: true });
   assert.ok(out.includes("Responda EXATAMENTE no formato JSON abaixo"), "secao de formato preservada");
   assert.ok(out.includes('"success": true'), "schema JSON preservado");
   assert.ok(out.includes("NUNCA invente textos, fórmulas, nomes, datas"), "regra anti-invencao preservada");
-  // o bloco de adaptacao vem ANTES da secao de formato
   assert.ok(
-    out.indexOf("preferências de aprendizagem") < out.indexOf("Responda EXATAMENTE no formato JSON abaixo"),
+    out.indexOf("informou dificuldades que encontra") < out.indexOf("Responda EXATAMENTE no formato JSON abaixo"),
     "bloco de adaptacao deve preceder a secao de formato"
   );
   assert.ok(out.includes("não mencione TDAH, dislexia, autismo"), "guardrail anti-diagnostico presente");
+  assert.ok(out.includes("NUNCA elimine etapas"), "guardrail de preservacao academica presente");
 });
 
-test("F10-24. paridade: chaves do prompt == LEARNING_PREFERENCE_KEYS do src", () => {
+test("F11-28. paridade: chaves do prompt == LEARNING_PREFERENCE_KEYS do src", () => {
   assert.deepEqual([...prompts.PREFERENCE_KEYS].sort(), [...LEARNING_PREFERENCE_KEYS].sort());
 });
 
-// ─── Fase 10: Modo Inclusão — sanitização no endpoint ───────────────────────
-
-test("F10-25. sanitizePreferences descarta chave injetada", () => {
-  const out = prompts.sanitizePreferences({ simplify: true, __proto__: { polluted: true }, dropMe: true });
-  assert.deepEqual(out, { simplify: true, focus: false, visual: false, stepByStep: false });
-  assert.ok(!("dropMe" in out));
-});
-
-test("F10-26. sanitizePreferences forca cada valor a booleano estrito", () => {
-  const out = prompts.sanitizePreferences({ simplify: 1, focus: "true", visual: {}, stepByStep: true });
-  assert.deepEqual(out, { simplify: false, focus: false, visual: false, stepByStep: true });
-});
-
-test("F10-27. sanitizePreferences com entrada ausente/invalida vira tudo false", () => {
-  for (const bad of [undefined, null, "x", 42, [], [1, 2]]) {
-    assert.deepEqual(prompts.sanitizePreferences(bad), {
-      simplify: false, focus: false, visual: false, stepByStep: false,
-    });
+test("F11-29. so as necessidades de formatacao por linha injetam o bloco SUMMARY_FORMATTING", () => {
+  for (const key of FORMATTING_NEEDS) {
+    const out = prompts.buildAnalysisPrompt({ ...NONE, [key]: true });
+    assert.ok(out.includes('Formatação do "summary"'), `${key}: bloco de formatacao presente`);
+    assert.ok(out.includes("APENAS o rótulo curto"), `${key}: regra do subtitulo isolado presente`);
+  }
+  for (const key of ["concentration", "complexContent"]) {
+    const out = prompts.buildAnalysisPrompt({ ...NONE, [key]: true });
+    assert.ok(!out.includes('Formatação do "summary"'), `${key}: sem formatacao por linha`);
   }
 });
 
-// ─── Fase 10: Modo Inclusão — normalização do resultado da IA ───────────────
+// ─── Fase 11: Modo Inclusão — sanitização no endpoint ───────────────────────
+
+test("F11-30. sanitizePreferences descarta chave injetada e do conjunto antigo", () => {
+  const out = prompts.sanitizePreferences({ longText: true, simplify: true, __proto__: { polluted: true }, dropMe: true });
+  assert.deepEqual(out, { ...EMPTY_NEEDS, longText: true });
+  assert.ok(!("dropMe" in out));
+  assert.ok(!("simplify" in out));
+});
+
+test("F11-31. sanitizePreferences forca cada valor a booleano estrito", () => {
+  const out = prompts.sanitizePreferences({ concentration: 1, longText: "true", textTracking: {}, manySteps: true });
+  assert.deepEqual(out, { ...EMPTY_NEEDS, manySteps: true });
+});
+
+test("F11-32. sanitizePreferences com entrada ausente/invalida vira tudo false", () => {
+  for (const bad of [undefined, null, "x", 42, [], [1, 2]]) {
+    assert.deepEqual(prompts.sanitizePreferences(bad), EMPTY_NEEDS);
+  }
+});
+
+// ─── Fase 11: Modo Inclusão — normalização do resultado da IA ───────────────
 
 const FAKE_GEMINI = {
   success: true, subject: "Matemática", topic: "Derivadas", title: "Derivadas",
@@ -2263,39 +2324,22 @@ const FAKE_GEMINI = {
   difficulty: "easy",
 };
 
-test("F10-28. normalizeAnalysisResult grava as preferencias ativas no Content", () => {
+test("F11-33. normalizeAnalysisResult grava as necessidades ativas no Content", () => {
   const { content } = studyVisionService.normalizeAnalysisResult(FAKE_GEMINI, "data:image/jpeg;base64,AAA", {
-    simplify: true, focus: false, visual: true, stepByStep: false,
+    concentration: true, longText: false, textTracking: true, complexContent: false, manySteps: false,
   });
-  assert.deepEqual(content.learningPreferences, {
-    simplify: true, focus: false, visual: true, stepByStep: false,
-  });
+  assert.deepEqual(content.learningPreferences, { ...EMPTY_NEEDS, concentration: true, textTracking: true });
 });
 
-test("F10-29. sem preferencia ativa o Content fica com learningPreferences null", () => {
-  for (const prefs of [undefined, null, {}, { simplify: false, focus: false, visual: false, stepByStep: false }]) {
+test("F11-34. sem necessidade ativa o Content fica com learningPreferences null", () => {
+  for (const prefs of [undefined, null, {}, EMPTY_NEEDS]) {
     const { content } = studyVisionService.normalizeAnalysisResult(FAKE_GEMINI, "data:image/jpeg;base64,AAA", prefs);
     assert.equal(content.learningPreferences, null, `esperado null para ${JSON.stringify(prefs)}`);
   }
 });
 
-// ─── Fase 10: Modo Inclusão — reforço de formatação do prompt ───────────────
+// ─── Fase 11: Modo Inclusão — desempenho por necessidade ────────────────────
 
-test("F10-30. Visual e/ou Passo a passo injetam o bloco de formatação por linha", () => {
-  const withVisual = prompts.buildAnalysisPrompt({ ...NONE, visual: true });
-  const withStep = prompts.buildAnalysisPrompt({ ...NONE, stepByStep: true });
-  for (const out of [withVisual, withStep]) {
-    assert.ok(out.includes('Formatação do "summary"'), "bloco de formatação presente");
-    assert.ok(out.includes("SOZINHO na sua linha") || out.includes("APENAS o rótulo curto"), "regra do subtítulo isolado presente");
-  }
-  // Simplificar/Foco sozinhos NÃO precisam do bloco de formatação por linha.
-  const simpleOnly = prompts.buildAnalysisPrompt({ ...NONE, simplify: true, focus: true });
-  assert.ok(!simpleOnly.includes('Formatação do "summary"'), "sem formatação por linha quando só Simplificar/Foco");
-});
-
-// ─── Fase 10: Modo Inclusão — desempenho por formato de adaptação ───────────
-
-// helper: cria conteúdo com preferências e registra tentativas reais.
 function seedAdaptiveContent({ prefs, quiz = [0, 0], flash = [] } = {}) {
   const subject = subjectService.createSubjectEntry("Matemática");
   const { content } = contentService.createContentEntry({
@@ -2305,10 +2349,7 @@ function seedAdaptiveContent({ prefs, quiz = [0, 0], flash = [] } = {}) {
   if (quiz[0] > 0) {
     withDb((db) => ({
       ...db,
-      quizAttempts: [...db.quizAttempts, createQuizAttempt({
-        contentId: content.id,
-        answers: buildAnswers(quiz[0], quiz[1]),
-      })],
+      quizAttempts: [...db.quizAttempts, createQuizAttempt({ contentId: content.id, answers: buildAnswers(quiz[0], quiz[1]) })],
     }));
   }
   for (const correct of flash) {
@@ -2320,52 +2361,49 @@ function seedAdaptiveContent({ prefs, quiz = [0, 0], flash = [] } = {}) {
   return content;
 }
 
-test("F10-31. sem conteudo adaptado: hasData=false e acuracias null", () => {
-  seedContent(); // conteudo comum, sem preferencias
+test("F11-35. sem conteudo adaptado: hasData=false e acuracias null", () => {
+  seedContent();
   const r = learningInsightsService.getPerformanceByPreference();
   assert.equal(r.hasData, false);
   assert.equal(r.adaptive.accuracyRate, null);
-  assert.equal(r.byPreference.length, 4);
+  assert.equal(r.byPreference.length, LEARNING_PREFERENCE_KEYS.length);
   assert.ok(r.byPreference.every((p) => p.accuracyRate === null));
 });
 
-test("F10-32. acuracia agregada por preferencia ativa", () => {
-  // Visual: 10 questoes, 8 certas => 80%
-  seedAdaptiveContent({ prefs: { simplify: false, focus: false, visual: true, stepByStep: false }, quiz: [10, 8] });
-  // Simplificar: 4 flashcards, 1 certo => 25%
-  seedAdaptiveContent({ prefs: { simplify: true, focus: false, visual: false, stepByStep: false }, flash: [true, false, false, false] });
+test("F11-36. acuracia agregada por necessidade ativa", () => {
+  seedAdaptiveContent({ prefs: { ...EMPTY_NEEDS, textTracking: true }, quiz: [10, 8] }); // 80%
+  seedAdaptiveContent({ prefs: { ...EMPTY_NEEDS, concentration: true }, flash: [true, false, false, false] }); // 25%
 
   const r = learningInsightsService.getPerformanceByPreference();
-  const visual = r.byPreference.find((p) => p.key === "visual");
-  const simplify = r.byPreference.find((p) => p.key === "simplify");
-  assert.equal(visual.accuracyRate, 80);
-  assert.equal(simplify.accuracyRate, 25);
-  assert.equal(r.byPreference.find((p) => p.key === "focus").accuracyRate, null);
+  assert.equal(r.byPreference.find((p) => p.key === "textTracking").accuracyRate, 80);
+  assert.equal(r.byPreference.find((p) => p.key === "concentration").accuracyRate, 25);
+  assert.equal(r.byPreference.find((p) => p.key === "longText").accuracyRate, null);
   assert.equal(r.hasData, true);
 });
 
-test("F10-33. conteudo com varias preferencias entra em cada linha correspondente", () => {
-  seedAdaptiveContent({ prefs: { simplify: true, focus: true, visual: false, stepByStep: false }, quiz: [2, 2] });
+test("F11-37. conteudo com varias necessidades entra em cada linha correspondente", () => {
+  seedAdaptiveContent({ prefs: { ...EMPTY_NEEDS, concentration: true, complexContent: true }, quiz: [2, 2] });
   const r = learningInsightsService.getPerformanceByPreference();
-  assert.equal(r.byPreference.find((p) => p.key === "simplify").accuracyRate, 100);
-  assert.equal(r.byPreference.find((p) => p.key === "focus").accuracyRate, 100);
-  assert.equal(r.byPreference.find((p) => p.key === "visual").accuracyRate, null);
+  assert.equal(r.byPreference.find((p) => p.key === "concentration").accuracyRate, 100);
+  assert.equal(r.byPreference.find((p) => p.key === "complexContent").accuracyRate, 100);
+  assert.equal(r.byPreference.find((p) => p.key === "textTracking").accuracyRate, null);
 });
 
-test("F10-34. adaptive vs standard separa por presenca de preferencia ativa", () => {
-  seedAdaptiveContent({ prefs: { simplify: true, focus: false, visual: false, stepByStep: false }, quiz: [4, 4] }); // adaptado 100%
-  // conteudo comum com tentativa: 4 questoes, 1 certa => standard 25%
-  const { content: plain } = seedContent();
+test("F11-38. conteudo com o conjunto antigo (Fase 10) cai no balde standard", () => {
+  // adaptado no conjunto novo: 4 questoes, 4 certas => 100%
+  seedAdaptiveContent({ prefs: { ...EMPTY_NEEDS, longText: true }, quiz: [4, 4] });
+  // conteudo com chaves antigas -> nenhuma chave nova ativa -> standard
+  const legacy = createContent({ title: "Historico", summary: "h" });
+  legacy.learningPreferences = { simplify: true, focus: true, visual: false, stepByStep: false };
   withDb((db) => ({
     ...db,
-    quizAttempts: [...db.quizAttempts, createQuizAttempt({ contentId: plain.id, answers: buildAnswers(4, 1) })],
+    contents: [...db.contents, legacy],
+    quizAttempts: [...db.quizAttempts, createQuizAttempt({ contentId: legacy.id, answers: buildAnswers(4, 1) })],
   }));
-  // conteudo com learningPreferences={} (todas false) conta como standard
-  seedAdaptiveContent({ prefs: { simplify: false, focus: false, visual: false, stepByStep: false }, quiz: [2, 0] });
 
   const r = learningInsightsService.getPerformanceByPreference();
-  assert.equal(r.adaptive.accuracyRate, 100, "só o conteudo com preferencia ativa");
-  assert.equal(r.standard.answered, 6, "4 do comum + 2 do learningPreferences vazio");
+  assert.equal(r.adaptive.accuracyRate, 100, "so o conteudo com necessidade nova ativa");
+  assert.equal(r.standard.answered, 4, "as 4 questoes do conteudo legado");
   assert.equal(r.standard.correct, 1);
 });
 
