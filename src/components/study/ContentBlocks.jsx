@@ -4,25 +4,44 @@ import Card from "../ui/Card";
 import SectionLabel from "../ui/SectionLabel";
 import Badge from "../ui/Badge";
 import { getSubjectVisual } from "../../constants";
+import { getPreferenceOptions } from "../../services/learningPreferencesService";
 
 const P_STYLE = { fontFamily: "Inter,sans-serif", fontSize: 14, lineHeight: 1.75, color: "#374151", margin: 0 };
 
+// Perfil de leitura. `comfort` = necessidade "acompanhar textos" (textTracking)
+// ativa AGORA na preferência do usuário: mais espaço entre linhas e blocos,
+// corpo ligeiramente maior, subtítulos mais destacados — vale para todo
+// conteúdo, inclusive o antigo. `comfort` falso → styles idênticos aos de antes.
+function readingStyles(comfort) {
+  const p = comfort
+    ? { ...P_STYLE, fontSize: 15, lineHeight: 2.05 }
+    : P_STYLE;
+  return {
+    p,
+    h: { ...p, fontWeight: 700, color: "#1F2937", margin: comfort ? "18px 0 6px" : "8px 0 2px" },
+    paraMargin: comfort ? 12 : 6,
+    liMargin: comfort ? 8 : 4,
+    listMargin: comfort ? "6px 0 12px" : "4px 0 8px",
+    listPad: comfort ? 24 : 20,
+  };
+}
+
 // Renderiza o resumo (string única) reconhecendo os marcadores que o Modo
-// Inclusão (Visual / Passo a passo) instrui a IA a emitir — ver lib/prompts.js.
+// Inclusão instrui a IA a emitir — ver lib/prompts.js.
 // CONTRATO: "- "/"• " no início da linha = item de lista; "1. "/"1) " = etapa
 // numerada; linha terminada em ":" = subtítulo. Tolerância: se a IA juntar
 // "Rótulo: texto" na mesma linha, o rótulo vira subtítulo e o texto, parágrafo.
 // Um resumo sem "\n" (todo o conteúdo legado) cai no caminho de um único <p>,
-// visualmente idêntico ao anterior.
-const H_STYLE = { ...P_STYLE, fontWeight: 700, color: "#1F2937", margin: "8px 0 2px" };
+// visualmente idêntico ao anterior (quando comfort está desligado).
 // Rótulo curto no início da linha: 1ª letra maiúscula, só letras/espaços antes
 // do ":". "u" para acentos (Conceito, Aplicação).
 const INLINE_LABEL_RE = /^(\p{Lu}[\p{L} ]{1,26}):\s+(\S.*)$/u;
 
-function SummaryBody({ text }) {
+function SummaryBody({ text, comfort = false }) {
+  const s = readingStyles(comfort);
   const raw = String(text || "");
   const lines = raw.split("\n");
-  if (lines.length <= 1) return <p style={P_STYLE}>{raw}</p>;
+  if (lines.length <= 1) return <p style={s.p}>{raw}</p>;
 
   const blocks = [];
   let list = null; // { ordered: boolean, items: string[] }
@@ -31,17 +50,17 @@ function SummaryBody({ text }) {
     if (!list) return;
     const Tag = list.ordered ? "ol" : "ul";
     blocks.push(
-      <Tag key={`l${blocks.length}`} style={{ margin: "4px 0 8px", paddingLeft: 20, ...P_STYLE }}>
+      <Tag key={`l${blocks.length}`} style={{ margin: s.listMargin, paddingLeft: s.listPad, ...s.p }}>
         {list.items.map((it, i) => (
-          <li key={i} style={{ marginBottom: 4 }}>{it}</li>
+          <li key={i} style={{ marginBottom: s.liMargin }}>{it}</li>
         ))}
       </Tag>
     );
     list = null;
   };
 
-  const pushHeading = (label, key) => blocks.push(<p key={key} style={H_STYLE}>{label}</p>);
-  const pushParagraph = (t, key) => blocks.push(<p key={key} style={{ ...P_STYLE, marginBottom: 6 }}>{t}</p>);
+  const pushHeading = (label, key) => blocks.push(<p key={key} style={s.h}>{label}</p>);
+  const pushParagraph = (t, key) => blocks.push(<p key={key} style={{ ...s.p, marginBottom: s.paraMargin }}>{t}</p>);
 
   lines.forEach((line, idx) => {
     const trimmed = line.trim();
@@ -100,6 +119,15 @@ export default function ContentBlocks({ content, variant = "summary", onSaveSumm
 
   const [editingSummary, setEditingSummary] = useState(false);
   const [summaryDraft, setSummaryDraft] = useState(content.summary);
+  // Conforto de leitura: necessidade "acompanhar textos" ativa AGORA na
+  // preferência do usuário (não no snapshot do conteúdo) — lido uma vez.
+  const [comfort] = useState(() => {
+    try {
+      return getPreferenceOptions().textTracking === true;
+    } catch {
+      return false;
+    }
+  });
 
   const handleStartEdit = () => {
     setSummaryDraft(content.summary);
@@ -139,7 +167,7 @@ export default function ContentBlocks({ content, variant = "summary", onSaveSumm
             </div>
           </>
         ) : (
-          <SummaryBody text={content.summary} />
+          <SummaryBody text={content.summary} comfort={comfort} />
         )}
       </Card>
 
