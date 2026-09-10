@@ -88,6 +88,7 @@ const { createReview } = await import("../src/data/models/review.js");
 const { migrateItems } = await import("../src/data/storage/migrations.js");
 const { LEARNING_PREFERENCE_KEYS } = await import("../src/constants.js");
 const { createContent } = await import("../src/data/models/content.js");
+const learningPreferencesService = await import("../src/services/learningPreferencesService.js");
 
 // helper: cria um conteúdo mínimo já com matéria
 // helper: gera `total` respostas de quiz com `correct` delas certas.
@@ -2110,6 +2111,61 @@ test("F10-9. conteudo criado com preferencias mantem o registro apos reload", ()
   assert.deepEqual(reloaded.learningPreferences, {
     simplify: true, focus: true, visual: false, stepByStep: false,
   });
+});
+
+// ─── Fase 10: Modo Inclusão — serviço de preferências ────────────────────────
+
+test("F10-10. padrao de fabrica: nao configurado, nenhuma ativa", () => {
+  const prefs = learningPreferencesService.getLearningPreferences();
+  assert.equal(prefs.configured, false);
+  assert.equal(prefs.updatedAt, null);
+  assert.equal(learningPreferencesService.hasActivePreference(prefs.options), false);
+});
+
+test("F10-11. salvar uma preferencia marca configured e persiste", () => {
+  learningPreferencesService.setLearningPreferences({ visual: true });
+  const prefs = learningPreferencesService.getLearningPreferences();
+  assert.equal(prefs.configured, true);
+  assert.ok(prefs.updatedAt);
+  assert.deepEqual(prefs.options, { simplify: false, focus: false, visual: true, stepByStep: false });
+});
+
+test("F10-12. salvar varias preferencias", () => {
+  learningPreferencesService.setLearningPreferences({ simplify: true, focus: true, stepByStep: true });
+  assert.deepEqual(learningPreferencesService.getPreferenceOptions(), {
+    simplify: true, focus: true, visual: false, stepByStep: true,
+  });
+});
+
+test("F10-13. salvar nenhuma preferencia ainda marca configured=true", () => {
+  learningPreferencesService.setLearningPreferences({});
+  const prefs = learningPreferencesService.getLearningPreferences();
+  assert.equal(prefs.configured, true);
+  assert.equal(learningPreferencesService.hasActivePreference(prefs.options), false);
+});
+
+test("F10-14. preferencias sobrevivem ao reload (novo readDb)", () => {
+  learningPreferencesService.setLearningPreferences({ focus: true, visual: true });
+  const again = readDb().learningPreferences;
+  assert.equal(again.configured, true);
+  assert.deepEqual(again.options, { simplify: false, focus: true, visual: true, stepByStep: false });
+});
+
+test("F10-15. alterar preferencias nao altera contents, reviews, flameGoals nem updatedAt de conteudo", () => {
+  const { content } = seedContent();
+  content.reviewPlan = "weekly";
+  contentService.updateContent(content.id, { reviewPlan: "weekly" });
+  knowledgeFlameService.setPreferredWeeklyTarget(5);
+
+  const contentBefore = JSON.stringify(contentService.getContent(content.id));
+  const reviewsBefore = JSON.stringify(readDb().reviews);
+  const flameBefore = JSON.stringify(readDb().flameGoals);
+
+  learningPreferencesService.setLearningPreferences({ simplify: true, stepByStep: true });
+
+  assert.equal(JSON.stringify(contentService.getContent(content.id)), contentBefore, "content intacto");
+  assert.equal(JSON.stringify(readDb().reviews), reviewsBefore, "reviews intactos");
+  assert.equal(JSON.stringify(readDb().flameGoals), flameBefore, "flameGoals intacto");
 });
 
 // ─── relatório ───────────────────────────────────────────────────────────────
