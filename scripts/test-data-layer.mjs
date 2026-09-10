@@ -91,6 +91,7 @@ const { createContent } = await import("../src/data/models/content.js");
 const learningPreferencesService = await import("../src/services/learningPreferencesService.js");
 const prompts = await import("../lib/prompts.js");
 const studyVisionService = await import("../src/services/studyVisionService.js");
+const learningInsightsService = await import("../src/services/learningInsightsService.js");
 
 // helper: cria um conteúdo mínimo já com matéria
 // helper: gera `total` respostas de quiz com `correct` delas certas.
@@ -2290,6 +2291,82 @@ test("F10-30. Visual e/ou Passo a passo injetam o bloco de formatação por linh
   // Simplificar/Foco sozinhos NÃO precisam do bloco de formatação por linha.
   const simpleOnly = prompts.buildAnalysisPrompt({ ...NONE, simplify: true, focus: true });
   assert.ok(!simpleOnly.includes('Formatação do "summary"'), "sem formatação por linha quando só Simplificar/Foco");
+});
+
+// ─── Fase 10: Modo Inclusão — desempenho por formato de adaptação ───────────
+
+// helper: cria conteúdo com preferências e registra tentativas reais.
+function seedAdaptiveContent({ prefs, quiz = [0, 0], flash = [] } = {}) {
+  const subject = subjectService.createSubjectEntry("Matemática");
+  const { content } = contentService.createContentEntry({
+    subjectId: subject.id, subjectName: subject.name, title: "T", summary: "s",
+    learningPreferences: prefs,
+  });
+  if (quiz[0] > 0) {
+    withDb((db) => ({
+      ...db,
+      quizAttempts: [...db.quizAttempts, createQuizAttempt({
+        contentId: content.id,
+        answers: buildAnswers(quiz[0], quiz[1]),
+      })],
+    }));
+  }
+  for (const correct of flash) {
+    withDb((db) => ({
+      ...db,
+      flashcardAttempts: [...db.flashcardAttempts, createFlashcardAttempt({ contentId: content.id, correct })],
+    }));
+  }
+  return content;
+}
+
+test("F10-31. sem conteudo adaptado: hasData=false e acuracias null", () => {
+  seedContent(); // conteudo comum, sem preferencias
+  const r = learningInsightsService.getPerformanceByPreference();
+  assert.equal(r.hasData, false);
+  assert.equal(r.adaptive.accuracyRate, null);
+  assert.equal(r.byPreference.length, 4);
+  assert.ok(r.byPreference.every((p) => p.accuracyRate === null));
+});
+
+test("F10-32. acuracia agregada por preferencia ativa", () => {
+  // Visual: 10 questoes, 8 certas => 80%
+  seedAdaptiveContent({ prefs: { simplify: false, focus: false, visual: true, stepByStep: false }, quiz: [10, 8] });
+  // Simplificar: 4 flashcards, 1 certo => 25%
+  seedAdaptiveContent({ prefs: { simplify: true, focus: false, visual: false, stepByStep: false }, flash: [true, false, false, false] });
+
+  const r = learningInsightsService.getPerformanceByPreference();
+  const visual = r.byPreference.find((p) => p.key === "visual");
+  const simplify = r.byPreference.find((p) => p.key === "simplify");
+  assert.equal(visual.accuracyRate, 80);
+  assert.equal(simplify.accuracyRate, 25);
+  assert.equal(r.byPreference.find((p) => p.key === "focus").accuracyRate, null);
+  assert.equal(r.hasData, true);
+});
+
+test("F10-33. conteudo com varias preferencias entra em cada linha correspondente", () => {
+  seedAdaptiveContent({ prefs: { simplify: true, focus: true, visual: false, stepByStep: false }, quiz: [2, 2] });
+  const r = learningInsightsService.getPerformanceByPreference();
+  assert.equal(r.byPreference.find((p) => p.key === "simplify").accuracyRate, 100);
+  assert.equal(r.byPreference.find((p) => p.key === "focus").accuracyRate, 100);
+  assert.equal(r.byPreference.find((p) => p.key === "visual").accuracyRate, null);
+});
+
+test("F10-34. adaptive vs standard separa por presenca de preferencia ativa", () => {
+  seedAdaptiveContent({ prefs: { simplify: true, focus: false, visual: false, stepByStep: false }, quiz: [4, 4] }); // adaptado 100%
+  // conteudo comum com tentativa: 4 questoes, 1 certa => standard 25%
+  const { content: plain } = seedContent();
+  withDb((db) => ({
+    ...db,
+    quizAttempts: [...db.quizAttempts, createQuizAttempt({ contentId: plain.id, answers: buildAnswers(4, 1) })],
+  }));
+  // conteudo com learningPreferences={} (todas false) conta como standard
+  seedAdaptiveContent({ prefs: { simplify: false, focus: false, visual: false, stepByStep: false }, quiz: [2, 0] });
+
+  const r = learningInsightsService.getPerformanceByPreference();
+  assert.equal(r.adaptive.accuracyRate, 100, "só o conteudo com preferencia ativa");
+  assert.equal(r.standard.answered, 6, "4 do comum + 2 do learningPreferences vazio");
+  assert.equal(r.standard.correct, 1);
 });
 
 // ─── relatório ───────────────────────────────────────────────────────────────
