@@ -1,8 +1,12 @@
-// Modo Inclusão (Fase 10) — medição de desempenho por FORMATO de adaptação.
+// Modo Inclusão — medição de desempenho por NECESSIDADE de acessibilidade.
 // Deriva tudo de ações reais (quizAttempts / flashcardAttempts) e do rastro
 // Content.learningPreferences; NÃO persiste nada (mesma postura de
-// evolutionService). Prepara a evolução do briefing §12 sem construir um
-// dashboard novo — é só a camada de leitura.
+// evolutionService). Prepara a evolução do briefing sem construir um dashboard
+// novo — é só a camada de leitura.
+//
+// Conteúdo gerado com o conjunto antigo (Fase 10: simplify/focus/visual/
+// stepByStep) não tem nenhuma das chaves atuais ativa, então cai no balde
+// `standard` — é histórico, não é reescrito nem remapeado.
 
 import { readDb } from "../data/storage/index.js";
 import { LEARNING_PREFERENCE_KEYS, LEARNING_PREFERENCE_META } from "../constants.js";
