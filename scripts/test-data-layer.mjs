@@ -87,6 +87,7 @@ const { createFlashcardAttempt } = await import("../src/data/models/flashcard.js
 const { createReview } = await import("../src/data/models/review.js");
 const { migrateItems } = await import("../src/data/storage/migrations.js");
 const { LEARNING_PREFERENCE_KEYS } = await import("../src/constants.js");
+const { createContent } = await import("../src/data/models/content.js");
 
 // helper: cria um conteúdo mínimo já com matéria
 // helper: gera `total` respostas de quiz com `correct` delas certas.
@@ -2076,6 +2077,38 @@ test("F10-6. migracao v1->v2 produz o bloco de preferencias no padrao", () => {
     configured: false,
     updatedAt: null,
     options: { simplify: false, focus: false, visual: false, stepByStep: false },
+  });
+});
+
+test("F10-7. Content legado sem o campo continua valido e vira null", () => {
+  const content = createContent({ title: "Antigo", summary: "x" });
+  assert.equal(content.learningPreferences, null);
+  assert.equal(validate.validateContent(content).valid, true);
+});
+
+test("F10-8. learningPreferences do input e sanitizado para as 4 chaves booleanas", () => {
+  const content = createContent({
+    title: "Adaptado",
+    learningPreferences: { simplify: true, focus: 1, visual: "x", stepByStep: true, hackKey: true },
+  });
+  assert.deepEqual(content.learningPreferences, {
+    simplify: true, focus: false, visual: false, stepByStep: true,
+  });
+  assert.equal(validate.validateContent(content).valid, true);
+});
+
+test("F10-9. conteudo criado com preferencias mantem o registro apos reload", () => {
+  const subject = subjectService.createSubjectEntry("Matemática");
+  const { content } = contentService.createContentEntry({
+    subjectId: subject.id,
+    subjectName: subject.name,
+    title: "Com preferencias",
+    summary: "y",
+    learningPreferences: { simplify: true, focus: true, visual: false, stepByStep: false },
+  });
+  const reloaded = contentService.getContent(content.id);
+  assert.deepEqual(reloaded.learningPreferences, {
+    simplify: true, focus: true, visual: false, stepByStep: false,
   });
 });
 

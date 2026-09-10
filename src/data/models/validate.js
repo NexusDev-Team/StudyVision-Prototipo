@@ -25,6 +25,16 @@ export function validateContent(content) {
   if (content.recommendedDifficulty != null && !["easy", "medium", "hard"].includes(content.recommendedDifficulty)) {
     errors.push("recommendedDifficulty inválido");
   }
+  // learningPreferences é opcional (null = conteúdo sem Modo Inclusão). Quando
+  // presente, precisa ser um objeto plano de booleanos.
+  if (content.learningPreferences != null) {
+    const lp = content.learningPreferences;
+    if (typeof lp !== "object" || Array.isArray(lp)) {
+      errors.push("learningPreferences deveria ser um objeto ou null");
+    } else if (Object.values(lp).some((v) => typeof v !== "boolean")) {
+      errors.push("learningPreferences só aceita valores booleanos");
+    }
+  }
   for (const field of ["images", "flashcards", "quizzes", "openQuestions", "keyConcepts", "keywords"]) {
     if (!Array.isArray(content[field])) {
       errors.push(`${field} deveria ser um array`);

@@ -2,8 +2,20 @@ import { newId, ID_PREFIX } from "../../utils/id.js";
 import { nowIso } from "../../utils/date.js";
 import { createFlashcard } from "./flashcard.js";
 import { createQuiz } from "./quiz.js";
+import { LEARNING_PREFERENCE_KEYS } from "../../constants.js";
 
 export const REVIEW_PLANS = ["none", "weekly", "biweekly", "monthly"];
+
+// Modo Inclusão (Fase 10): rastro opcional de quais preferências de aprendizagem
+// geraram este material. `null` = conteúdo criado sem o Modo Inclusão (todo o
+// legado). Quando presente, é um objeto só com as chaves canônicas, booleanas.
+// Prepara — sem implementar agora — a futura análise de desempenho por formato.
+export function sanitizeLearningPreferences(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const options = {};
+  for (const key of LEARNING_PREFERENCE_KEYS) options[key] = raw[key] === true;
+  return options;
+}
 
 export function createImage({ contentId, dataUrl, order, createdAt } = {}) {
   return {
@@ -86,6 +98,7 @@ export function createContent(input = {}) {
     // revisão de plano. Conteúdo legado (sem o campo) é tratado como "none"
     // por reconcileReviews.
     reviewPlan: REVIEW_PLANS.includes(input.reviewPlan) ? input.reviewPlan : "none",
+    learningPreferences: sanitizeLearningPreferences(input.learningPreferences),
     createdAt,
     updatedAt: input.updatedAt || now,
   };
