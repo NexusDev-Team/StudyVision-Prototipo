@@ -2278,6 +2278,20 @@ test("F10-29. sem preferencia ativa o Content fica com learningPreferences null"
   }
 });
 
+// ─── Fase 10: Modo Inclusão — reforço de formatação do prompt ───────────────
+
+test("F10-30. Visual e/ou Passo a passo injetam o bloco de formatação por linha", () => {
+  const withVisual = prompts.buildAnalysisPrompt({ ...NONE, visual: true });
+  const withStep = prompts.buildAnalysisPrompt({ ...NONE, stepByStep: true });
+  for (const out of [withVisual, withStep]) {
+    assert.ok(out.includes('Formatação do "summary"'), "bloco de formatação presente");
+    assert.ok(out.includes("SOZINHO na sua linha") || out.includes("APENAS o rótulo curto"), "regra do subtítulo isolado presente");
+  }
+  // Simplificar/Foco sozinhos NÃO precisam do bloco de formatação por linha.
+  const simpleOnly = prompts.buildAnalysisPrompt({ ...NONE, simplify: true, focus: true });
+  assert.ok(!simpleOnly.includes('Formatação do "summary"'), "sem formatação por linha quando só Simplificar/Foco");
+});
+
 // ─── relatório ───────────────────────────────────────────────────────────────
 console.log(`\n${passed} passaram, ${failed} falharam`);
 if (failed > 0) {

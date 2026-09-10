@@ -9,9 +9,16 @@ const P_STYLE = { fontFamily: "Inter,sans-serif", fontSize: 14, lineHeight: 1.75
 
 // Renderiza o resumo (string única) reconhecendo os marcadores que o Modo
 // Inclusão (Visual / Passo a passo) instrui a IA a emitir — ver lib/prompts.js.
-// CONTRATO: "- " no início da linha = item de lista; "1. " = etapa numerada;
-// linha terminada em ":" = subtítulo. Um resumo sem "\n" (todo o conteúdo
-// legado) cai no caminho de um único <p>, visualmente idêntico ao anterior.
+// CONTRATO: "- "/"• " no início da linha = item de lista; "1. "/"1) " = etapa
+// numerada; linha terminada em ":" = subtítulo. Tolerância: se a IA juntar
+// "Rótulo: texto" na mesma linha, o rótulo vira subtítulo e o texto, parágrafo.
+// Um resumo sem "\n" (todo o conteúdo legado) cai no caminho de um único <p>,
+// visualmente idêntico ao anterior.
+const H_STYLE = { ...P_STYLE, fontWeight: 700, color: "#1F2937", margin: "8px 0 2px" };
+// Rótulo curto no início da linha: 1ª letra maiúscula, só letras/espaços antes
+// do ":". "u" para acentos (Conceito, Aplicação).
+const INLINE_LABEL_RE = /^(\p{Lu}[\p{L} ]{1,26}):\s+(\S.*)$/u;
+
 function SummaryBody({ text }) {
   const raw = String(text || "");
   const lines = raw.split("\n");
@@ -33,6 +40,9 @@ function SummaryBody({ text }) {
     list = null;
   };
 
+  const pushHeading = (label, key) => blocks.push(<p key={key} style={H_STYLE}>{label}</p>);
+  const pushParagraph = (t, key) => blocks.push(<p key={key} style={{ ...P_STYLE, marginBottom: 6 }}>{t}</p>);
+
   lines.forEach((line, idx) => {
     const trimmed = line.trim();
     if (!trimmed) { flushList(); return; }
@@ -52,13 +62,20 @@ function SummaryBody({ text }) {
     }
 
     flushList();
+
+    // Subtítulo sozinho na linha (formato canônico).
     if (/:$/.test(trimmed) && trimmed.length <= 60) {
-      blocks.push(
-        <p key={`h${idx}`} style={{ ...P_STYLE, fontWeight: 700, color: "#1F2937", margin: "8px 0 2px" }}>{trimmed}</p>
-      );
-    } else {
-      blocks.push(<p key={`p${idx}`} style={{ ...P_STYLE, marginBottom: 6 }}>{trimmed}</p>);
+      pushHeading(trimmed, `h${idx}`);
+      return;
     }
+    // Tolerância: "Rótulo: texto" na mesma linha → subtítulo + parágrafo.
+    const inline = trimmed.match(INLINE_LABEL_RE);
+    if (inline) {
+      pushHeading(`${inline[1]}:`, `hi${idx}`);
+      pushParagraph(inline[2], `pi${idx}`);
+      return;
+    }
+    pushParagraph(trimmed, `p${idx}`);
   });
   flushList();
 
