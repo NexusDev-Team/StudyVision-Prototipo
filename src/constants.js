@@ -41,6 +41,41 @@ export const REVIEW_FLAG_META = {
   overdue: { label: "Revisão atrasada", color: "#B45309", bg: "rgba(180,83,9,0.1)" },
 };
 
+// Modo Inclusão — preferências de aprendizagem. O estudante escolhe uma ou mais
+// formas de o Study Vision adaptar a APRESENTAÇÃO do conteúdo (nunca a verdade).
+// Estas chaves são o contrato canônico: o mesmo conjunto é replicado em
+// lib/prompts.js (a função serverless não importa src/) e um teste de paridade
+// trava o drift entre os dois lugares.
+export const LEARNING_PREFERENCE_KEYS = ["simplify", "focus", "visual", "stepByStep"];
+
+export const LEARNING_PREFERENCE_META = {
+  simplify: {
+    emoji: "🧩",
+    label: "Simplificar",
+    description: "Explicações mais simples e diretas.",
+  },
+  focus: {
+    emoji: "🎯",
+    label: "Foco",
+    description: "Destaque o que realmente importa.",
+  },
+  visual: {
+    emoji: "👁️",
+    label: "Visual",
+    description: "Organize o conteúdo de forma mais visual.",
+  },
+  stepByStep: {
+    emoji: "📖",
+    label: "Passo a passo",
+    description: "Divida explicações e exercícios em etapas.",
+  },
+};
+
+// Objeto de opções com todas as preferências desligadas — o padrão de fábrica.
+export function emptyPreferenceOptions() {
+  return { simplify: false, focus: false, visual: false, stepByStep: false };
+}
+
 export const PLANNING_TYPES = ["Prova", "Trabalho", "Revisão"];
 
 export const REMINDER_OPTIONS = [
