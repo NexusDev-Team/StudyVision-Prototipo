@@ -87,6 +87,13 @@ Fotos diferentes produzem resultados diferentes — testado com fotos reais de F
 - **Matérias são dinâmicas**: o filtro da Biblioteca (`LibraryScreen`) é derivado das matérias realmente presentes nos itens salvos, não de uma lista fixa — uma matéria nova identificada pela IA (Biologia, Filosofia, Geografia, Sociologia, Inglês, Artes, Redação, entre outras) aparece automaticamente no filtro.
 - `SUBJECT_META` (`src/constants.js`) tem entradas para as matérias mais comuns; `getSubjectMeta(nome)` gera um fallback de cor/ícone determinístico (hash do nome) para qualquer matéria fora da lista, então nada fica sem cor/ícone.
 
+### 5.12 Modo Inclusão — preferências de aprendizagem (Fase 10)
+- "Seu jeito de aprender": o estudante escolhe uma ou mais de quatro formas de o Study Vision **adaptar a apresentação** do conteúdo — **Simplificar**, **Foco**, **Visual**, **Passo a passo**. Não é diagnóstico, não classifica o usuário, não cita condição médica; muda só linguagem, ênfase e organização, nunca a veracidade ou as respostas corretas.
+- Configuração inicial (pulável) na primeira abertura da câmera; depois editável pelo ⚙️ do cluster central da câmera. Ambos usam o mesmo bottom sheet (`LearningPreferencesSheet`).
+- Depois da captura, um passo "Sua captura" mostra a foto e as preferências que serão usadas (pré-marcadas com o padrão do usuário); dá para ajustar só para aquela captura, ou marcar "Tornar meu padrão".
+- As preferências vão para a IA junto da imagem, via `buildAnalysisPrompt` (`lib/prompts.js`) — mesma chamada `POST /api/analyze`, mesmo modelo. Sem nenhuma preferência ativa o prompt é idêntico ao de antes do Modo Inclusão.
+- O resumo passa a ser renderizado (`ContentBlocks`) reconhecendo subtítulos, listas e etapas numeradas; conteúdo antigo (resumo em parágrafo corrido) renderiza igual. O conteúdo gerado continua sendo um `Content` normal — biblioteca, quiz, flashcards, revisões, evolução e Chama do Conhecimento não mudaram.
+
 ## 6. Modelo de dados (`localStorage`, alimentado por IA real)
 
 Camada de dados relacional (Fases 1-4; Fase 5 só lê, via `evolutionService`, nunca escreve nada novo em `sv_db`), versão de schema `2`, definida em
@@ -101,7 +108,10 @@ leitura; `subjectId: null` + `subjectName: ""` é um estado válido — conteúd
 `keywords[]`, `extractedText?`, `difficulty?` (vindo da IA), `recommendedDifficulty?`
 (derivado do desempenho real, nunca do `difficulty`), `images[]`, `flashcards[]`,
 `quizzes[]`, `openQuestions[]`, `mastery` (`score`, `level`, `updatedAt`),
-`createdAt`/`updatedAt`.
+`reviewPlan` (`none`/`weekly`/`biweekly`/`monthly`), `learningPreferences?`
+(Fase 10 — objeto `{ simplify, focus, visual, stepByStep }` de booleanos, ou
+`null` = conteúdo gerado sem o Modo Inclusão; rastro de qual adaptação gerou o
+material, prepara medição futura de desempenho por formato), `createdAt`/`updatedAt`.
 
 Entidades relacionadas, cada uma referenciando `content.id`:
 - `Subject` — `id`, `name`, `createdAt`/`updatedAt`. CRUD completo (`subjectService`), com reaproveitamento por nome (case/acento-insensitive) e destino obrigatório ao excluir matéria com conteúdo vinculado.
@@ -110,7 +120,7 @@ Entidades relacionadas, cada uma referenciando `content.id`:
 - `AcademicEvent` — `id`, `type` (`exam`/`assignment`/`class`/`deadline`/`other`), `title`, `date`, `time?`, `notes`, `reminders[]`, `contentIds[]` (N:N — um evento pode não ter nenhum conteúdo, ou vários). **Nunca inclui revisão** — Review e AcademicEvent são entidades e coleções distintas por decisão de arquitetura.
 
 Persistência:
-- `localStorage["sv_db"]` — `{ version, subjects[], contents[], flashcardAttempts[], quizAttempts[], reviews[], events[] }`. Se a cota estourar (fotos em base64 pesam), os conteúdos mais antigos são podados automaticamente e, em último caso, salvos sem imagem.
+- `localStorage["sv_db"]` — `{ version, subjects[], contents[], flashcardAttempts[], quizAttempts[], reviews[], events[], flameGoals, learningPreferences }`. `flameGoals` (Fase 9) guarda a meta semanal da Chama e o carimbo por semana; `learningPreferences` (Fase 10) guarda a preferência **padrão** do Modo Inclusão (`{ configured, updatedAt, options }`). Ambos entram por coerção defensiva no `readDb`, sem bump de `version`. Se a cota estourar (fotos em base64 pesam), os conteúdos mais antigos são podados automaticamente e, em último caso, salvos sem imagem.
 - `localStorage["sv_subscription"]` — estado do plano (`plan`, `status`, `trialStartedAt`, `trialEndsAt`), ver 5.6. Fica fora de `sv_db`: assinatura nunca influencia dado acadêmico.
 - `integrityService.sweepOrphans()` roda ao abrir o app: remove tentativas/revisões apontando para conteúdo inexistente, limpa `contentIds` órfãos em eventos (sem apagar o evento) e reseta `subjectId` de conteúdo cuja matéria não existe mais.
 
@@ -203,6 +213,23 @@ Ordem cronológica das principais entregas desde o baseline do PRD (2026-08-07).
 - **Limpeza**: campo `isSample` (lastro de seeds já removidos), componentes órfãos (`ScreenHeader`, `BackButton`, `FilterPills`), `data/models/attempt.js`, assets de exemplo não referenciados, `ANALYSIS_SCHEMA` não utilizado.
 - **Auditoria de segurança e responsividade** sem achados que exigissem mudança de código — resultado documentado em `PLANO-FASE-6-INTEGRACAO-FINAL.md`.
 - Suíte de testes: de 93 para 101 cenários (`F6-1` a `F6-8`), cobrindo exclusão em cascata, integridade de ciclo completo e estados de falha/dados inválidos.
+
+### 10.9 Fase 7 — revisões atreladas a plano/compromisso (2026-09)
+- `Review` ganha intenção (`reason`: `plan` / `commitment` / `manual`); `reviewService` passa a reconciliar as revisões de plano quando o `reviewPlan` do conteúdo muda e a sincronizar checkpoints de compromissos do calendário. Cap de 3 revisões concluídas por dia. Cobertura `F7-*` no runner.
+
+### 10.10 Fase 8 — Chama do Conhecimento (2026-09-06)
+- Indicador de **constância semanal** (não streak diário): meta de atividades por semana (Seg→Dom) e contagem de semanas consecutivas cumpridas, **100% derivado** de `quizAttempts` / `flashcardAttempts` / `reviews` — nada novo persistido. `src/services/knowledgeFlameService.js` + `KnowledgeFlameCard`, exibido na tela de Evolução (inclusive no estado vazio). Cobertura `F8-*`.
+- Calendário da Revisão redesenhado: dias coloridos pela matéria (gradiente cônico para vários assuntos no mesmo dia) e tipo de compromisso indicado por forma, não por cor; "Aula" removida dos compromissos (com coerção legada).
+
+### 10.11 Fase 9 — meta personalizada da Chama (2026-09-07)
+- `sv_db.flameGoals` = `{ preferredWeeklyTarget (1..7), weekTargets: { weekStartKey: n } }` — **histórico imutável**: mudar a meta hoje nunca recalcula uma semana passada. `WeeklyGoalModal` + botão "editar meta" no `KnowledgeFlameCard`, alinhados ao tema da chama. Coerção defensiva no `readDb` sem bump de `version`. Cobertura `F9-1` a `F9-16`.
+- Correção de fuso em `futureDateKey` (conversão UTC gerava erro de um dia e um checkpoint de revisão a mais).
+
+### 10.12 Fase 10 — Modo Inclusão: aprendizado adaptativo (2026-09-10)
+- Quatro preferências de apresentação (Simplificar, Foco, Visual, Passo a passo) que o estudante escolhe e que passam a compor o prompt do Gemini via `buildAnalysisPrompt` — mesma chamada `POST /api/analyze`, sem preferência = prompt idêntico ao anterior. Guardrails no prompt: só muda a apresentação, nunca a verdade; proibido diagnosticar ou citar condição médica.
+- Preferência **padrão** em `sv_db.learningPreferences`; preferência **de uma captura** é local da câmera. Onboarding pulável na 1ª abertura, edição pelo ⚙️, e passo "Sua captura" revisando as preferências antes da análise. Rastro opcional em `Content.learningPreferences`.
+- `ContentBlocks` passa a renderizar o resumo com subtítulos / listas / etapas (contrato de marcadores com o prompt); resumo legado (parágrafo corrido) renderiza idêntico. Biblioteca, quiz, flashcards, revisões, evolução e Chama do Conhecimento inalterados.
+- Suíte: de 149 para **175** cenários (`F10-1` a `F10-29`). Avaliação qualitativa real (mesma foto, 5 combinações, Gemini real) em `plans/AVALIACAO-FASE-10-INCLUSAO.md` — diferença perceptível e mensurável.
 
 ## 11. Análise — concluído vs. pendente
 
