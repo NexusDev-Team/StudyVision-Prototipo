@@ -90,6 +90,7 @@ const { LEARNING_PREFERENCE_KEYS } = await import("../src/constants.js");
 const { createContent } = await import("../src/data/models/content.js");
 const learningPreferencesService = await import("../src/services/learningPreferencesService.js");
 const prompts = await import("../lib/prompts.js");
+const studyVisionService = await import("../src/services/studyVisionService.js");
 
 // helper: cria um conteúdo mínimo já com matéria
 // helper: gera `total` respostas de quiz com `correct` delas certas.
@@ -2248,6 +2249,32 @@ test("F10-27. sanitizePreferences com entrada ausente/invalida vira tudo false",
     assert.deepEqual(prompts.sanitizePreferences(bad), {
       simplify: false, focus: false, visual: false, stepByStep: false,
     });
+  }
+});
+
+// ─── Fase 10: Modo Inclusão — normalização do resultado da IA ───────────────
+
+const FAKE_GEMINI = {
+  success: true, subject: "Matemática", topic: "Derivadas", title: "Derivadas",
+  summary: "Um resumo.", keyConcepts: ["taxa"], keywords: ["dx"],
+  flashcards: [{ question: "q", answer: "a" }], openQuestions: ["por que?"],
+  quiz: [{ question: "2+2?", options: ["3", "4", "5", "6"], answer: 1, explanation: "e" }],
+  difficulty: "easy",
+};
+
+test("F10-28. normalizeAnalysisResult grava as preferencias ativas no Content", () => {
+  const { content } = studyVisionService.normalizeAnalysisResult(FAKE_GEMINI, "data:image/jpeg;base64,AAA", {
+    simplify: true, focus: false, visual: true, stepByStep: false,
+  });
+  assert.deepEqual(content.learningPreferences, {
+    simplify: true, focus: false, visual: true, stepByStep: false,
+  });
+});
+
+test("F10-29. sem preferencia ativa o Content fica com learningPreferences null", () => {
+  for (const prefs of [undefined, null, {}, { simplify: false, focus: false, visual: false, stepByStep: false }]) {
+    const { content } = studyVisionService.normalizeAnalysisResult(FAKE_GEMINI, "data:image/jpeg;base64,AAA", prefs);
+    assert.equal(content.learningPreferences, null, `esperado null para ${JSON.stringify(prefs)}`);
   }
 });
 

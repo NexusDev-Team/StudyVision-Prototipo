@@ -14,10 +14,12 @@ export function useAnalysis() {
   const [error, setError] = useState(null);
   const [errorKind, setErrorKind] = useState(null); // "technical" | "not_academic"
   const lastPhotoRef = useRef(null);
+  const lastPreferencesRef = useRef(null);
   const controllerRef = useRef(null);
 
-  const run = useCallback(async (photoDataUrl) => {
+  const run = useCallback(async (photoDataUrl, preferences = null) => {
     lastPhotoRef.current = photoDataUrl;
+    lastPreferencesRef.current = preferences;
     controllerRef.current?.abort();
     const controller = new AbortController();
     controllerRef.current = controller;
@@ -29,11 +31,11 @@ export function useAnalysis() {
 
     try {
       const [result, thumbnail] = await Promise.all([
-        analyzeImage(photoDataUrl, { signal: controller.signal }),
+        analyzeImage(photoDataUrl, { signal: controller.signal, preferences }),
         makeThumbnail(photoDataUrl).catch(() => photoDataUrl),
       ]);
       if (controller.signal.aborted) return;
-      const { content: normalized } = normalizeAnalysisResult(result, thumbnail);
+      const { content: normalized } = normalizeAnalysisResult(result, thumbnail, preferences);
       setContent(normalized);
       setStatus("done");
     } catch (err) {
@@ -46,7 +48,8 @@ export function useAnalysis() {
   }, []);
 
   const retry = useCallback(() => {
-    if (lastPhotoRef.current) run(lastPhotoRef.current);
+    // Reenvia a MESMA captura com as MESMAS preferências (§15 do briefing).
+    if (lastPhotoRef.current) run(lastPhotoRef.current, lastPreferencesRef.current);
   }, [run]);
 
   const reset = useCallback(() => {
@@ -56,6 +59,7 @@ export function useAnalysis() {
     setError(null);
     setErrorKind(null);
     lastPhotoRef.current = null;
+    lastPreferencesRef.current = null;
   }, []);
 
   return { status, content, error, errorKind, run, retry, reset };
