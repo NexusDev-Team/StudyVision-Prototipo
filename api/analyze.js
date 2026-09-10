@@ -2,6 +2,7 @@
 // Roda como Serverless Function na Vercel (produção) e via plugin do Vite em dev.
 
 import { generateAnalysis, isConfigured, GeminiError } from "../lib/gemini.js";
+import { sanitizePreferences } from "../lib/prompts.js";
 
 const MAX_IMAGE_BYTES = 6 * 1024 * 1024; // ~6MB de base64, dentro do limite de body da Vercel
 const DATA_URL_RE = /^data:image\/(jpeg|jpg|png|webp);base64,(.+)$/i;
@@ -30,10 +31,14 @@ export default async function handler(req, res) {
     return res.status(405).json({ success: false, error: "Método não permitido." });
   }
 
-  const { image } = req.body || {};
+  const { image, preferences } = req.body || {};
   if (!image || typeof image !== "string") {
     return badRequest(res, "Nenhuma imagem foi enviada.");
   }
+
+  // Modo Inclusão: preferências vêm do body (não confiável) — sempre passam
+  // pela whitelist. Body malformado vira "nenhuma preferência", nunca erro 400.
+  const safePreferences = sanitizePreferences(preferences);
 
   const match = image.match(DATA_URL_RE);
   if (!match) {
@@ -53,7 +58,7 @@ export default async function handler(req, res) {
 
   let result;
   try {
-    result = await generateAnalysis({ mimeType, base64Data });
+    result = await generateAnalysis({ mimeType, base64Data, preferences: safePreferences });
   } catch (err) {
     if (err instanceof GeminiError) {
       console.error(`[api/analyze] ${err.code}: ${err.message}`);

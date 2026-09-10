@@ -2230,6 +2230,27 @@ test("F10-24. paridade: chaves do prompt == LEARNING_PREFERENCE_KEYS do src", ()
   assert.deepEqual([...prompts.PREFERENCE_KEYS].sort(), [...LEARNING_PREFERENCE_KEYS].sort());
 });
 
+// ─── Fase 10: Modo Inclusão — sanitização no endpoint ───────────────────────
+
+test("F10-25. sanitizePreferences descarta chave injetada", () => {
+  const out = prompts.sanitizePreferences({ simplify: true, __proto__: { polluted: true }, dropMe: true });
+  assert.deepEqual(out, { simplify: true, focus: false, visual: false, stepByStep: false });
+  assert.ok(!("dropMe" in out));
+});
+
+test("F10-26. sanitizePreferences forca cada valor a booleano estrito", () => {
+  const out = prompts.sanitizePreferences({ simplify: 1, focus: "true", visual: {}, stepByStep: true });
+  assert.deepEqual(out, { simplify: false, focus: false, visual: false, stepByStep: true });
+});
+
+test("F10-27. sanitizePreferences com entrada ausente/invalida vira tudo false", () => {
+  for (const bad of [undefined, null, "x", 42, [], [1, 2]]) {
+    assert.deepEqual(prompts.sanitizePreferences(bad), {
+      simplify: false, focus: false, visual: false, stepByStep: false,
+    });
+  }
+});
+
 // ─── relatório ───────────────────────────────────────────────────────────────
 console.log(`\n${passed} passaram, ${failed} falharam`);
 if (failed > 0) {
