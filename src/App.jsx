@@ -116,6 +116,7 @@ export default function App() {
               onCapture={attachTargetId ? handleAttachCapture : (dataUrl) => { analysis.run(dataUrl); go("analysis"); }}
               onLibraryNav={() => openLibrary()}
               onClose={() => { setAttachTargetId(null); goBack(); }}
+              onToast={showToast}
             />
           )}
           {screen === "analysis" && (

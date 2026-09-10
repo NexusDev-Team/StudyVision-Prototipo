@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Zap, Settings, FlipHorizontal, BookOpen, Eye, CameraOff, X } from "lucide-react";
 import LogoSVG from "../components/brand/LogoSVG";
+import LearningPreferencesSheet from "../components/study/LearningPreferencesSheet";
+import { getLearningPreferences, setLearningPreferences } from "../services/learningPreferencesService";
 import { captureFrame } from "../utils/image";
 
 const FOCUS_CORNERS = [
@@ -14,7 +16,7 @@ const FOCUS_CORNERS = [
 // mode "capture" (padrão): fluxo normal câmera -> análise por IA.
 // mode "attach": anexar mais uma foto a um Content já existente, sem
 // disparar nenhuma chamada de IA — usa onClose para cancelar e voltar.
-export default function CameraScreen({ onCapture, onLibraryNav, mode = "capture", onClose }) {
+export default function CameraScreen({ onCapture, onLibraryNav, mode = "capture", onClose, onToast }) {
   const isAttach = mode === "attach";
   const [flash, setFlash] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -22,6 +24,10 @@ export default function CameraScreen({ onCapture, onLibraryNav, mode = "capture"
   const [flashWhite, setFlashWhite] = useState(false);
   const [cameraError, setCameraError] = useState(null);
   const [cameraReady, setCameraReady] = useState(false);
+  // Modo Inclusão (Fase 10): preferência PADRÃO carregada do storage.
+  const [learningPrefs, setLearningPrefs] = useState(() => getLearningPreferences());
+  // sheet: null | "settings" (edita o padrão pelo ⚙️)
+  const [sheet, setSheet] = useState(null);
   const videoRef = useRef(null);
   const streamRef = useRef(null);
 
@@ -151,7 +157,8 @@ export default function CameraScreen({ onCapture, onLibraryNav, mode = "capture"
               <Eye size={16} color="white" />
             </button>
 
-            <button style={{ width: 34, height: 34, flexShrink: 0, borderRadius: "50%", background: "rgba(255,255,255,0.1)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(8px)" }}>
+            <button onClick={() => setSheet("settings")} aria-label="Seu jeito de aprender"
+              style={{ width: 34, height: 34, flexShrink: 0, borderRadius: "50%", background: "rgba(255,255,255,0.1)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(8px)" }}>
               <Settings size={16} color="white" />
             </button>
           </div>
@@ -218,6 +225,22 @@ export default function CameraScreen({ onCapture, onLibraryNav, mode = "capture"
           )}
         </div>
       </div>
+
+      {/* Modo Inclusão — "Seu jeito de aprender" pelo ⚙️: edita a preferência PADRÃO. */}
+      <AnimatePresence>
+        {sheet === "settings" && (
+          <LearningPreferencesSheet
+            key="settings"
+            value={learningPrefs.options}
+            onClose={() => setSheet(null)}
+            onSave={(options) => {
+              setLearningPrefs(setLearningPreferences(options));
+              setSheet(null);
+              onToast?.("✓ Preferências salvas");
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
