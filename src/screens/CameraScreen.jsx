@@ -26,10 +26,23 @@ export default function CameraScreen({ onCapture, onLibraryNav, mode = "capture"
   const [cameraReady, setCameraReady] = useState(false);
   // Modo Inclusão (Fase 10): preferência PADRÃO carregada do storage.
   const [learningPrefs, setLearningPrefs] = useState(() => getLearningPreferences());
-  // sheet: null | "settings" (edita o padrão pelo ⚙️)
+  // sheet: null | "settings" (⚙️, edita o padrão) | "onboarding" (1ª vez)
   const [sheet, setSheet] = useState(null);
   const videoRef = useRef(null);
   const streamRef = useRef(null);
+
+  // Configuração inicial "Como você prefere estudar?" — só na primeira vez
+  // relevante (nunca no modo attach, nunca se o usuário já configurou/pulou).
+  useEffect(() => {
+    if (!isAttach && !learningPrefs.configured) setSheet("onboarding");
+  }, [isAttach, learningPrefs.configured]);
+
+  // Fechar o onboarding (pular, backdrop ou Esc) ainda conta como escolha
+  // consciente: grava configured=true para não reaparecer no próximo acesso.
+  const dismissOnboarding = () => {
+    setLearningPrefs(setLearningPreferences(learningPrefs.options));
+    setSheet(null);
+  };
 
   const startCamera = () => {
     setCameraError(null);
@@ -65,9 +78,11 @@ export default function CameraScreen({ onCapture, onLibraryNav, mode = "capture"
   }, []);
 
   useEffect(() => {
+    // Não empilha o painel auto-abrível "Study Vision" por cima de um sheet.
+    if (sheet) return;
     const t = setTimeout(() => setPanelOpen(true), 700);
     return () => clearTimeout(t);
-  }, []);
+  }, [sheet]);
 
   useEffect(() => {
     if (panelOpen) {
@@ -226,8 +241,23 @@ export default function CameraScreen({ onCapture, onLibraryNav, mode = "capture"
         </div>
       </div>
 
-      {/* Modo Inclusão — "Seu jeito de aprender" pelo ⚙️: edita a preferência PADRÃO. */}
+      {/* Modo Inclusão — "Seu jeito de aprender". */}
       <AnimatePresence>
+        {sheet === "onboarding" && (
+          <LearningPreferencesSheet
+            key="onboarding"
+            title="Como você prefere estudar?"
+            subtitle="Escolha uma ou mais formas para o Study Vision adaptar seus conteúdos. Você pode mudar isso depois no ⚙️."
+            value={learningPrefs.options}
+            onClose={dismissOnboarding}
+            onSkip={dismissOnboarding}
+            onSave={(options) => {
+              setLearningPrefs(setLearningPreferences(options));
+              setSheet(null);
+              onToast?.("✓ Preferências salvas");
+            }}
+          />
+        )}
         {sheet === "settings" && (
           <LearningPreferencesSheet
             key="settings"
