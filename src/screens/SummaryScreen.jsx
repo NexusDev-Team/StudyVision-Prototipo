@@ -12,7 +12,8 @@ import { createContentEntry } from "../services/contentService";
 import { ensureSubject } from "../services/subjectService";
 import { applyReviewPlan } from "../services/reviewService";
 import { scheduleCommitment } from "../services/calendarService";
-import { getSubjectVisual } from "../constants";
+import Badge from "../components/ui/Badge";
+import { getSubjectVisual, LEARNING_PREFERENCE_KEYS, LEARNING_PREFERENCE_META } from "../constants";
 import { fadeUp } from "../styles/motion";
 
 // capturedContent: Content normalizado ainda não persistido (vem de useAnalysis).
@@ -43,6 +44,8 @@ export default function SummaryScreen({ capturedContent, onSave, onLibrary, onTo
     );
   }
   const visual = getSubjectVisual(capturedContent.subjectName);
+  // Modo Inclusão: adaptações que geraram este material (só leitura).
+  const appliedPrefs = LEARNING_PREFERENCE_KEYS.filter((k) => capturedContent.learningPreferences?.[k]);
 
   // O agendamento fica só em memória até o usuário confirmar "Salvar" — não
   // persiste um conteúdo pela metade se ele fechar a tela sem salvar.
@@ -112,6 +115,18 @@ export default function SummaryScreen({ capturedContent, onSave, onLibrary, onTo
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }} style={{ marginBottom: 12 }}>
           <CapturedPageVisual content={capturedContent} />
         </motion.div>
+
+        {/* Adaptações do Modo Inclusão aplicadas a este material */}
+        {appliedPrefs.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, marginBottom: 12 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: 0.5 }}>ADAPTADO PARA</span>
+            {appliedPrefs.map((k) => (
+              <Badge key={k} color="#7C3AED" background="#F5F3FF" fontSize={11} fontWeight={600} padding="3px 10px">
+                {LEARNING_PREFERENCE_META[k].emoji} {LEARNING_PREFERENCE_META[k].label}
+              </Badge>
+            ))}
+          </div>
+        )}
 
         {/* Content blocks */}
         <ContentBlocks content={capturedContent} variant="summary" />
