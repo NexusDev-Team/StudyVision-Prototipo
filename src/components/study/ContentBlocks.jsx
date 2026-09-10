@@ -5,6 +5,66 @@ import SectionLabel from "../ui/SectionLabel";
 import Badge from "../ui/Badge";
 import { getSubjectVisual } from "../../constants";
 
+const P_STYLE = { fontFamily: "Inter,sans-serif", fontSize: 14, lineHeight: 1.75, color: "#374151", margin: 0 };
+
+// Renderiza o resumo (string única) reconhecendo os marcadores que o Modo
+// Inclusão (Visual / Passo a passo) instrui a IA a emitir — ver lib/prompts.js.
+// CONTRATO: "- " no início da linha = item de lista; "1. " = etapa numerada;
+// linha terminada em ":" = subtítulo. Um resumo sem "\n" (todo o conteúdo
+// legado) cai no caminho de um único <p>, visualmente idêntico ao anterior.
+function SummaryBody({ text }) {
+  const raw = String(text || "");
+  const lines = raw.split("\n");
+  if (lines.length <= 1) return <p style={P_STYLE}>{raw}</p>;
+
+  const blocks = [];
+  let list = null; // { ordered: boolean, items: string[] }
+
+  const flushList = () => {
+    if (!list) return;
+    const Tag = list.ordered ? "ol" : "ul";
+    blocks.push(
+      <Tag key={`l${blocks.length}`} style={{ margin: "4px 0 8px", paddingLeft: 20, ...P_STYLE }}>
+        {list.items.map((it, i) => (
+          <li key={i} style={{ marginBottom: 4 }}>{it}</li>
+        ))}
+      </Tag>
+    );
+    list = null;
+  };
+
+  lines.forEach((line, idx) => {
+    const trimmed = line.trim();
+    if (!trimmed) { flushList(); return; }
+
+    const bullet = trimmed.match(/^[-•]\s+(.*)$/);
+    const step = trimmed.match(/^\d+[.)]\s+(.*)$/);
+
+    if (bullet) {
+      if (!list || list.ordered) { flushList(); list = { ordered: false, items: [] }; }
+      list.items.push(bullet[1]);
+      return;
+    }
+    if (step) {
+      if (!list || !list.ordered) { flushList(); list = { ordered: true, items: [] }; }
+      list.items.push(step[1]);
+      return;
+    }
+
+    flushList();
+    if (/:$/.test(trimmed) && trimmed.length <= 60) {
+      blocks.push(
+        <p key={`h${idx}`} style={{ ...P_STYLE, fontWeight: 700, color: "#1F2937", margin: "8px 0 2px" }}>{trimmed}</p>
+      );
+    } else {
+      blocks.push(<p key={`p${idx}`} style={{ ...P_STYLE, marginBottom: 6 }}>{trimmed}</p>);
+    }
+  });
+  flushList();
+
+  return <div>{blocks}</div>;
+}
+
 // Renders the RESUMO / CONCEITOS / PALAVRAS-CHAVE trio shared by SummaryScreen
 // and ContentDetailScreen. They differ only in label wording, concept pill
 // color (fixed blue on Summary vs. the content's subject color on Detail),
@@ -62,7 +122,7 @@ export default function ContentBlocks({ content, variant = "summary", onSaveSumm
             </div>
           </>
         ) : (
-          <p style={{ fontFamily: "Inter,sans-serif", fontSize: 14, lineHeight: 1.75, color: "#374151", margin: 0 }}>{content.summary}</p>
+          <SummaryBody text={content.summary} />
         )}
       </Card>
 
