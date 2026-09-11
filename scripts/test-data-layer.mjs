@@ -2053,21 +2053,22 @@ test("F11-3. necessidades no formato novo sobrevivem a um novo readDb", () => {
   assert.deepEqual(lp.options, { ...EMPTY_NEEDS, longText: true, complexContent: true });
 });
 
-test("F11-4. preferencia salva no formato da Fase 10 e resetada e o onboarding volta a perguntar", () => {
-  // conjunto antigo: 4 chaves genericas, ja configurado
-  withDb((db) => ({
-    ...db,
-    learningPreferences: {
-      keysVersion: 1,
-      configured: true,
-      updatedAt: "2026-09-09T10:00:00.000Z",
-      options: { simplify: true, focus: true, visual: false, stepByStep: true },
-    },
-  }));
-  const lp = readDb().learningPreferences;
-  assert.equal(lp.keysVersion, LEARNING_KEYS_VERSION, "keysVersion atualizado");
-  assert.equal(lp.configured, false, "configured resetado -> onboarding volta");
-  assert.deepEqual(lp.options, EMPTY_NEEDS, "options no padrao de fabrica");
+test("F11-4. qualquer conjunto de chaves anterior e resetado e o onboarding volta a perguntar", () => {
+  const stale = [
+    { keysVersion: 1, options: { simplify: true, focus: true, visual: false, stepByStep: true } }, // Fase 10
+    { keysVersion: 2, options: { concentration: true, longText: true, textTracking: true, complexContent: false, manySteps: false } }, // Fase 11 com 5 chaves
+  ];
+  for (const s of stale) {
+    resetDb();
+    withDb((db) => ({
+      ...db,
+      learningPreferences: { ...s, configured: true, updatedAt: "2026-09-09T10:00:00.000Z" },
+    }));
+    const lp = readDb().learningPreferences;
+    assert.equal(lp.keysVersion, LEARNING_KEYS_VERSION, `keysVersion atualizado (de ${s.keysVersion})`);
+    assert.equal(lp.configured, false, `configured resetado (de ${s.keysVersion})`);
+    assert.deepEqual(lp.options, EMPTY_NEEDS, `options no padrao de fabrica (de ${s.keysVersion})`);
+  }
 });
 
 test("F11-5. bloco sem keysVersion (Fase 10 antes do carimbo) tambem e resetado", () => {
@@ -2102,7 +2103,7 @@ test("F11-7. chave desconhecida e valores nao-boolean sao normalizados", () => {
       keysVersion: LEARNING_KEYS_VERSION,
       configured: "sim",
       updatedAt: 12345,
-      options: { concentration: 1, longText: "true", textTracking: null, manySteps: true, hackKey: true, simplify: true },
+      options: { concentration: 1, longText: "true", manySteps: true, hackKey: true, simplify: true, textTracking: true },
     },
   }));
   const lp = readDb().learningPreferences;
@@ -2110,7 +2111,8 @@ test("F11-7. chave desconhecida e valores nao-boolean sao normalizados", () => {
   assert.equal(lp.updatedAt, null, "updatedAt nao-string vira null");
   assert.deepEqual(lp.options, { ...EMPTY_NEEDS, manySteps: true });
   assert.ok(!("hackKey" in lp.options), "chave fora da whitelist descartada");
-  assert.ok(!("simplify" in lp.options), "chave do conjunto antigo descartada");
+  assert.ok(!("simplify" in lp.options), "chave da Fase 10 descartada");
+  assert.ok(!("textTracking" in lp.options), "chave da Fase 11 v2 (fundida) descartada");
 });
 
 test("F11-8. migracao v1->v2 produz o bloco de necessidades no padrao carimbado", () => {
@@ -2140,12 +2142,13 @@ test("F11-10. Content salvo com chaves da Fase 10 continua valido e NAO e reescr
   assert.equal(validate.validateContent(reloaded).valid, true, "continua valido");
 });
 
-test("F11-11. learningPreferences do input e sanitizado para as 5 chaves novas", () => {
+test("F11-11. learningPreferences do input e sanitizado para as 4 chaves atuais", () => {
   const content = createContent({
     title: "Adaptado",
     learningPreferences: { concentration: true, longText: 1, textTracking: "x", manySteps: true, hackKey: true },
   });
   assert.deepEqual(content.learningPreferences, { ...EMPTY_NEEDS, concentration: true, manySteps: true });
+  assert.ok(!("textTracking" in content.learningPreferences), "chave fundida descartada");
   assert.equal(validate.validateContent(content).valid, true);
 });
 
@@ -2173,12 +2176,12 @@ test("F11-13. padrao de fabrica: nao configurado, nenhuma ativa", () => {
 });
 
 test("F11-14. salvar uma necessidade marca configured, carimba versao e persiste", () => {
-  learningPreferencesService.setLearningPreferences({ textTracking: true });
+  learningPreferencesService.setLearningPreferences({ longText: true });
   const prefs = learningPreferencesService.getLearningPreferences();
   assert.equal(prefs.configured, true);
   assert.ok(prefs.updatedAt);
   assert.equal(prefs.keysVersion, LEARNING_KEYS_VERSION);
-  assert.deepEqual(prefs.options, { ...EMPTY_NEEDS, textTracking: true });
+  assert.deepEqual(prefs.options, { ...EMPTY_NEEDS, longText: true });
 });
 
 test("F11-15. salvar varias necessidades", () => {
@@ -2196,11 +2199,11 @@ test("F11-16. salvar nenhuma necessidade ainda marca configured=true", () => {
 });
 
 test("F11-17. necessidades sobrevivem ao reload (novo readDb)", () => {
-  learningPreferencesService.setLearningPreferences({ longText: true, textTracking: true });
+  learningPreferencesService.setLearningPreferences({ longText: true, manySteps: true });
   const again = readDb().learningPreferences;
   assert.equal(again.configured, true);
   assert.equal(again.keysVersion, LEARNING_KEYS_VERSION);
-  assert.deepEqual(again.options, { ...EMPTY_NEEDS, longText: true, textTracking: true });
+  assert.deepEqual(again.options, { ...EMPTY_NEEDS, longText: true, manySteps: true });
 });
 
 test("F11-18. alterar necessidades nao altera contents, reviews, flameGoals nem conteudo", () => {
@@ -2224,12 +2227,11 @@ test("F11-18. alterar necessidades nao altera contents, reviews, flameGoals nem 
 const NONE = { ...EMPTY_NEEDS };
 const RULE_SNIPPET = {
   concentration: "Dificuldade de concentração: apresente UMA ideia por vez",
-  longText: "Dificuldade com textos longos: quebre paredes de texto",
-  textTracking: "Dificuldade para acompanhar textos: priorize a DISPOSIÇÃO",
+  longText: "Dificuldade para ler e acompanhar textos: quebre paredes de texto",
   complexContent: "Dificuldade com conteúdos complexos: construa a explicação em progressão",
   manySteps: "Dificuldade com muitas etapas: divida todo processo",
 };
-const FORMATTING_NEEDS = ["longText", "textTracking", "manySteps"];
+const FORMATTING_NEEDS = ["longText", "manySteps"];
 
 test("F11-19. sem necessidade ativa o prompt e byte a byte igual ao ANALYSIS_PROMPT", () => {
   assert.equal(prompts.buildAnalysisPrompt(NONE), prompts.ANALYSIS_PROMPT);
@@ -2239,7 +2241,7 @@ test("F11-19. sem necessidade ativa o prompt e byte a byte igual ao ANALYSIS_PRO
   assert.equal(prompts.buildAnalysisPrompt({ simplify: true }), prompts.ANALYSIS_PROMPT, "chave do conjunto antigo e ignorada");
 });
 
-test("F11-20..24. cada necessidade isolada inclui a propria regra e exclui as outras quatro", () => {
+test("F11-20..23. cada necessidade isolada inclui a propria regra e exclui as outras tres", () => {
   for (const key of prompts.PREFERENCE_KEYS) {
     const out = prompts.buildAnalysisPrompt({ ...NONE, [key]: true });
     assert.ok(out.includes(RULE_SNIPPET[key]), `${key}: deveria conter a propria regra`);
@@ -2255,7 +2257,6 @@ test("F11-25. combinacao longText + complexContent contem exatamente essas duas 
   assert.ok(out.includes(RULE_SNIPPET.longText));
   assert.ok(out.includes(RULE_SNIPPET.complexContent));
   assert.ok(!out.includes(RULE_SNIPPET.concentration));
-  assert.ok(!out.includes(RULE_SNIPPET.textTracking));
   assert.ok(!out.includes(RULE_SNIPPET.manySteps));
 });
 
@@ -2263,7 +2264,6 @@ test("F11-26. combinacao concentration + longText + manySteps combina as tres", 
   const out = prompts.buildAnalysisPrompt({ ...NONE, concentration: true, longText: true, manySteps: true });
   for (const k of ["concentration", "longText", "manySteps"]) assert.ok(out.includes(RULE_SNIPPET[k]), `falta ${k}`);
   assert.ok(!out.includes(RULE_SNIPPET.complexContent));
-  assert.ok(!out.includes(RULE_SNIPPET.textTracking));
 });
 
 test("F11-27. prompt adaptado preserva o bloco de formato JSON e as regras anti-invencao", () => {
@@ -2305,7 +2305,7 @@ test("F11-30. sanitizePreferences descarta chave injetada e do conjunto antigo",
 });
 
 test("F11-31. sanitizePreferences forca cada valor a booleano estrito", () => {
-  const out = prompts.sanitizePreferences({ concentration: 1, longText: "true", textTracking: {}, manySteps: true });
+  const out = prompts.sanitizePreferences({ concentration: 1, longText: "true", textTracking: true, manySteps: true });
   assert.deepEqual(out, { ...EMPTY_NEEDS, manySteps: true });
 });
 
@@ -2327,9 +2327,9 @@ const FAKE_GEMINI = {
 
 test("F11-33. normalizeAnalysisResult grava as necessidades ativas no Content", () => {
   const { content } = studyVisionService.normalizeAnalysisResult(FAKE_GEMINI, "data:image/jpeg;base64,AAA", {
-    concentration: true, longText: false, textTracking: true, complexContent: false, manySteps: false,
+    concentration: true, longText: true, textTracking: true, complexContent: false, manySteps: false,
   });
-  assert.deepEqual(content.learningPreferences, { ...EMPTY_NEEDS, concentration: true, textTracking: true });
+  assert.deepEqual(content.learningPreferences, { ...EMPTY_NEEDS, concentration: true, longText: true });
 });
 
 test("F11-34. sem necessidade ativa o Content fica com learningPreferences null", () => {
@@ -2372,13 +2372,13 @@ test("F11-35. sem conteudo adaptado: hasData=false e acuracias null", () => {
 });
 
 test("F11-36. acuracia agregada por necessidade ativa", () => {
-  seedAdaptiveContent({ prefs: { ...EMPTY_NEEDS, textTracking: true }, quiz: [10, 8] }); // 80%
+  seedAdaptiveContent({ prefs: { ...EMPTY_NEEDS, longText: true }, quiz: [10, 8] }); // 80%
   seedAdaptiveContent({ prefs: { ...EMPTY_NEEDS, concentration: true }, flash: [true, false, false, false] }); // 25%
 
   const r = learningInsightsService.getPerformanceByPreference();
-  assert.equal(r.byPreference.find((p) => p.key === "textTracking").accuracyRate, 80);
+  assert.equal(r.byPreference.find((p) => p.key === "longText").accuracyRate, 80);
   assert.equal(r.byPreference.find((p) => p.key === "concentration").accuracyRate, 25);
-  assert.equal(r.byPreference.find((p) => p.key === "longText").accuracyRate, null);
+  assert.equal(r.byPreference.find((p) => p.key === "manySteps").accuracyRate, null);
   assert.equal(r.hasData, true);
 });
 
@@ -2387,7 +2387,7 @@ test("F11-37. conteudo com varias necessidades entra em cada linha correspondent
   const r = learningInsightsService.getPerformanceByPreference();
   assert.equal(r.byPreference.find((p) => p.key === "concentration").accuracyRate, 100);
   assert.equal(r.byPreference.find((p) => p.key === "complexContent").accuracyRate, 100);
-  assert.equal(r.byPreference.find((p) => p.key === "textTracking").accuracyRate, null);
+  assert.equal(r.byPreference.find((p) => p.key === "longText").accuracyRate, null);
 });
 
 test("F11-38. conteudo com o conjunto antigo (Fase 10) cai no balde standard", () => {

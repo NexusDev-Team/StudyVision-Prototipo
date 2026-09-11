@@ -29,7 +29,10 @@ function emptyFlameGoals() {
 // resposta. Então: bloco salvo com keysVersion diferente do atual é resetado
 // (`configured: false`, `options` no padrão), e o onboarding pergunta de novo,
 // uma única vez. Não é migração de dado — é invalidação consciente.
-export const LEARNING_KEYS_VERSION = 2;
+// 1 = Fase 10 (simplify/focus/visual/stepByStep)
+// 2 = Fase 11 (5 necessidades)
+// 3 = "acompanhar textos" fundida em "longText" (4 necessidades)
+export const LEARNING_KEYS_VERSION = 3;
 
 function emptyLearningPreferences() {
   return {

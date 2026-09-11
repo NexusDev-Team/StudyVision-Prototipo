@@ -52,7 +52,6 @@ export const REVIEW_FLAG_META = {
 export const LEARNING_PREFERENCE_KEYS = [
   "concentration",
   "longText",
-  "textTracking",
   "complexContent",
   "manySteps",
 ];
@@ -63,15 +62,14 @@ export const LEARNING_PREFERENCE_META = {
     label: "Tenho dificuldade para me concentrar",
     description: "Reduza estímulos e divida o conteúdo em pequenas partes.",
   },
+  // "longText" cobre ler textos longos E acompanhar a leitura — eram opções
+  // separadas, fundidas por serem quase a mesma barreira. Age no prompt
+  // (frase curta + disposição, sem cortar conteúdo) e na UI (conforto de
+  // leitura em ContentBlocks).
   longText: {
     emoji: "📖",
-    label: "Tenho dificuldade para ler textos longos",
-    description: "Transforme textos extensos em partes menores e mais objetivas.",
-  },
-  textTracking: {
-    emoji: "🔤",
-    label: "Tenho dificuldade para acompanhar textos",
-    description: "Organize a leitura para facilitar o acompanhamento linha por linha.",
+    label: "Tenho dificuldade para ler e acompanhar textos",
+    description: "Textos mais curtos, bem espaçados e fáceis de acompanhar.",
   },
   complexContent: {
     emoji: "🧩",

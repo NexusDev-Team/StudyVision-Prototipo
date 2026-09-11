@@ -8,9 +8,9 @@ import { getPreferenceOptions } from "../../services/learningPreferencesService"
 
 const P_STYLE = { fontFamily: "Inter,sans-serif", fontSize: 14, lineHeight: 1.75, color: "#374151", margin: 0 };
 
-// Perfil de leitura. `comfort` = necessidade "acompanhar textos" (textTracking)
-// ativa AGORA na preferência do usuário: mais espaço entre linhas e blocos,
-// corpo ligeiramente maior, subtítulos mais destacados — vale para todo
+// Perfil de leitura. `comfort` = necessidade "ler e acompanhar textos"
+// (longText) ativa AGORA na preferência do usuário: mais espaço entre linhas e
+// blocos, corpo ligeiramente maior, subtítulos mais destacados — vale para todo
 // conteúdo, inclusive o antigo. `comfort` falso → styles idênticos aos de antes.
 function readingStyles(comfort) {
   const p = comfort
@@ -119,11 +119,11 @@ export default function ContentBlocks({ content, variant = "summary", onSaveSumm
 
   const [editingSummary, setEditingSummary] = useState(false);
   const [summaryDraft, setSummaryDraft] = useState(content.summary);
-  // Conforto de leitura: necessidade "acompanhar textos" ativa AGORA na
+  // Conforto de leitura: necessidade "ler e acompanhar textos" ativa AGORA na
   // preferência do usuário (não no snapshot do conteúdo) — lido uma vez.
   const [comfort] = useState(() => {
     try {
-      return getPreferenceOptions().textTracking === true;
+      return getPreferenceOptions().longText === true;
     } catch {
       return false;
     }
