@@ -91,6 +91,7 @@ const { LEARNING_KEYS_VERSION } = await import("../src/data/storage/db.js");
 const { createContent } = await import("../src/data/models/content.js");
 const learningPreferencesService = await import("../src/services/learningPreferencesService.js");
 const prompts = await import("../lib/prompts.js");
+const { repairJson } = await import("../lib/gemini.js");
 const studyVisionService = await import("../src/services/studyVisionService.js");
 const learningInsightsService = await import("../src/services/learningInsightsService.js");
 
@@ -2285,12 +2286,12 @@ test("F11-28. paridade: chaves do prompt == LEARNING_PREFERENCE_KEYS do src", ()
 test("F11-29. so as necessidades de formatacao por linha injetam o bloco SUMMARY_FORMATTING", () => {
   for (const key of FORMATTING_NEEDS) {
     const out = prompts.buildAnalysisPrompt({ ...NONE, [key]: true });
-    assert.ok(out.includes('Formatação do "summary"'), `${key}: bloco de formatacao presente`);
+    assert.ok(out.includes('Formatação — vale APENAS para o texto do campo'), `${key}: bloco de formatacao presente`);
     assert.ok(out.includes("APENAS o rótulo curto"), `${key}: regra do subtitulo isolado presente`);
   }
   for (const key of ["concentration", "complexContent"]) {
     const out = prompts.buildAnalysisPrompt({ ...NONE, [key]: true });
-    assert.ok(!out.includes('Formatação do "summary"'), `${key}: sem formatacao por linha`);
+    assert.ok(!out.includes('Formatação — vale APENAS para o texto do campo'), `${key}: sem formatacao por linha`);
   }
 });
 
@@ -2405,6 +2406,49 @@ test("F11-38. conteudo com o conjunto antigo (Fase 10) cai no balde standard", (
   assert.equal(r.adaptive.accuracyRate, 100, "so o conteudo com necessidade nova ativa");
   assert.equal(r.standard.answered, 4, "as 4 questoes do conteudo legado");
   assert.equal(r.standard.correct, 1);
+});
+
+// ─── Fase 11: recuperação de JSON quase-válido (BAD_JSON do Gemini) ─────────
+
+test("F11-39. repairJson escapa quebra de linha crua dentro de string", () => {
+  const broken = '{"summary": "Primeira linha\nSegunda linha", "n": 1}';
+  assert.throws(() => JSON.parse(broken), "sanity: o original e invalido");
+  const fixed = JSON.parse(repairJson(broken));
+  assert.equal(fixed.summary, "Primeira linha\nSegunda linha");
+  assert.equal(fixed.n, 1);
+});
+
+test("F11-40. repairJson preserva \\n / \\t JA escapados e nao mexe fora de string", () => {
+  const ok = '{"a": "linha1\\nlinha2\\tfim", "b": [1,2,3]}';
+  assert.equal(repairJson(ok), ok, "JSON valido passa intacto");
+  // tab/newline crus ENTRE tokens (fora de string) tambem sao preservados
+  const spaced = '{\n\t"a": "x"\n}';
+  assert.deepEqual(JSON.parse(repairJson(spaced)), { a: "x" });
+});
+
+test("F11-41. repairJson lida com aspas escapadas dentro da string", () => {
+  const broken = '{"q": "ele disse \\"oi\\" e\nfoi embora"}';
+  const fixed = JSON.parse(repairJson(broken));
+  assert.equal(fixed.q, 'ele disse "oi" e\nfoi embora');
+});
+
+test("F11-42. repairJson nao conserta truncamento (segue invalido)", () => {
+  const truncated = '{"summary": "texto sem fim';
+  assert.throws(() => JSON.parse(repairJson(truncated)), "truncamento nao e recuperavel aqui");
+});
+
+test("F11-43. repairJson remove marcador de lista vazado para dentro de array", () => {
+  // defeito real observado: modelo prefixa cada item de openQuestions com "- "
+  const broken = '{"openQuestions": [\n  - "Pergunta um?",\n  - "Pergunta dois?"\n]}';
+  assert.throws(() => JSON.parse(broken));
+  const fixed = JSON.parse(repairJson(broken));
+  assert.deepEqual(fixed.openQuestions, ["Pergunta um?", "Pergunta dois?"]);
+});
+
+test("F11-44. repairJson nao mexe em numeros negativos de array valido", () => {
+  const ok = '{"xs": [-1, -2, -3], "y": "a - b"}';
+  assert.equal(repairJson(ok), ok);
+  assert.deepEqual(JSON.parse(repairJson(ok)), { xs: [-1, -2, -3], y: "a - b" });
 });
 
 // ─── relatório ───────────────────────────────────────────────────────────────
