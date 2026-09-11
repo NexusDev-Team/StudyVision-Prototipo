@@ -24,27 +24,16 @@ export default function CameraScreen({ onCapture, onLibraryNav, mode = "capture"
   const [flashWhite, setFlashWhite] = useState(false);
   const [cameraError, setCameraError] = useState(null);
   const [cameraReady, setCameraReady] = useState(false);
-  // Modo Inclusão (Fase 10): preferência PADRÃO carregada do storage.
+  // Modo Inclusão: preferência PADRÃO carregada do storage.
   const [learningPrefs, setLearningPrefs] = useState(() => getLearningPreferences());
-  // sheet: null | "settings" (⚙️, edita o padrão) | "onboarding" (1ª vez)
-  //      | "capture" (revisa as preferências ANTES de analisar a foto tirada)
+  // sheet: null | "settings" (⚙️, edita o padrão)
+  //      | "capture" (revisa as necessidades ANTES de analisar a foto tirada)
+  // Sem onboarding automático ao abrir a câmera — o usuário encontra as
+  // necessidades pelo ⚙️ e no passo "Sua captura" (que aparece em toda captura).
   const [sheet, setSheet] = useState(null);
   const [pendingCapture, setPendingCapture] = useState(null); // dataUrl aguardando análise
   const videoRef = useRef(null);
   const streamRef = useRef(null);
-
-  // Configuração inicial "Como podemos adaptar seus estudos?" — só na primeira
-  // vez relevante (nunca no modo attach, nunca se o usuário já configurou/pulou).
-  useEffect(() => {
-    if (!isAttach && !learningPrefs.configured) setSheet("onboarding");
-  }, [isAttach, learningPrefs.configured]);
-
-  // Fechar o onboarding (pular, backdrop ou Esc) ainda conta como escolha
-  // consciente: grava configured=true para não reaparecer no próximo acesso.
-  const dismissOnboarding = () => {
-    setLearningPrefs(setLearningPreferences(learningPrefs.options));
-    setSheet(null);
-  };
 
   const startCamera = () => {
     setCameraError(null);
@@ -271,20 +260,6 @@ export default function CameraScreen({ onCapture, onLibraryNav, mode = "capture"
 
       {/* Modo Inclusão — "Como podemos adaptar seus estudos?" */}
       <AnimatePresence>
-        {sheet === "onboarding" && (
-          <LearningPreferencesSheet
-            key="onboarding"
-            subtitle="Selecione as dificuldades que você encontra durante seus estudos. O Study Vision usará suas escolhas para adaptar os conteúdos para você. Você pode mudar isso depois no ⚙️."
-            value={learningPrefs.options}
-            onClose={dismissOnboarding}
-            onSkip={dismissOnboarding}
-            onSave={(options) => {
-              setLearningPrefs(setLearningPreferences(options));
-              setSheet(null);
-              onToast?.("✓ Preferências salvas");
-            }}
-          />
-        )}
         {sheet === "settings" && (
           <LearningPreferencesSheet
             key="settings"
