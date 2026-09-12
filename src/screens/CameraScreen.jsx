@@ -27,9 +27,11 @@ export default function CameraScreen({ onCapture, onLibraryNav, mode = "capture"
   // Modo Inclusão: preferência PADRÃO carregada do storage.
   const [learningPrefs, setLearningPrefs] = useState(() => getLearningPreferences());
   // sheet: null | "settings" (⚙️, edita o padrão)
-  //      | "capture" (revisa as necessidades ANTES de analisar a foto tirada)
+  //      | "capture" (revisa as necessidades ANTES de analisar a foto tirada —
+  //        só aparece enquanto não existe preferência padrão configurada)
   // Sem onboarding automático ao abrir a câmera — o usuário encontra as
-  // necessidades pelo ⚙️ e no passo "Sua captura" (que aparece em toda captura).
+  // necessidades pelo ⚙️. Uma vez configurado o padrão, toda captura usa ele
+  // direto, sem perguntar de novo.
   const [sheet, setSheet] = useState(null);
   const [pendingCapture, setPendingCapture] = useState(null); // dataUrl aguardando análise
   const videoRef = useRef(null);
@@ -95,8 +97,14 @@ export default function CameraScreen({ onCapture, onLibraryNav, mode = "capture"
         onCapture(dataUrl);
         return;
       }
-      // Capture: revisa/ajusta as preferências desta captura antes da IA.
       setCapturing(false);
+      // Preferência já configurada: segue direto pra IA sem pedir de novo.
+      // Só sem preferência padrão definida é que revisamos antes de analisar
+      // (o usuário ajusta e pode marcar como padrão pra não ver mais isso).
+      if (learningPrefs.configured) {
+        onCapture(dataUrl, learningPrefs.options);
+        return;
+      }
       setPendingCapture(dataUrl);
       setSheet("capture");
     }, 350);
