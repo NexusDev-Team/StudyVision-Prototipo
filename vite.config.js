@@ -1,14 +1,23 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 
-// Serve api/analyze.js dentro do próprio `vite dev`, já que o dev server não
-// executa Serverless Functions. Em produção a Vercel usa o mesmo arquivo direto.
+// Serve as Serverless Functions de api/ dentro do próprio `vite dev`, já que o
+// dev server não as executa nativamente. Em produção a Vercel usa os mesmos
+// arquivos direto. Tabela de rotas com match EXATO (nunca startsWith) — uma
+// rota nova aqui não pode afetar nenhuma outra rota existente nem cair no
+// index.html por engano.
+const API_ROUTES = {
+  "/api/analyze": "/api/analyze.js",
+  "/api/focus": "/api/focus.js",
+};
+
 function apiPlugin(env) {
   return {
     name: "study-vision-api",
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
-        if (req.url !== "/api/analyze") return next();
+        const modulePath = API_ROUTES[req.url];
+        if (!modulePath) return next();
 
         Object.assign(process.env, env);
 
@@ -35,10 +44,10 @@ function apiPlugin(env) {
         };
 
         try {
-          const mod = await server.ssrLoadModule("/api/analyze.js");
+          const mod = await server.ssrLoadModule(modulePath);
           await mod.default(req, shimRes);
         } catch (err) {
-          console.error("[dev api] erro ao executar api/analyze.js:", err);
+          console.error(`[dev api] erro ao executar ${modulePath}:`, err);
           res.statusCode = 500;
           res.setHeader("Content-Type", "application/json");
           res.end(JSON.stringify({ success: false, error: "Erro interno ao processar a imagem." }));
