@@ -53,6 +53,7 @@ export function deleteContent(id) {
       reviews: db.reviews.filter((r) => r.contentId !== id),
       flashcardAttempts: db.flashcardAttempts.filter((a) => a.contentId !== id),
       quizAttempts: db.quizAttempts.filter((a) => a.contentId !== id),
+      focusSessions: db.focusSessions.filter((s) => s.contentId !== id),
       events: db.events
         .map((e) => ({ ...e, contentIds: e.contentIds.filter((cid) => cid !== id) }))
         .filter((e) => e.contentIds.length > 0),

@@ -54,7 +54,22 @@ function emptyDb() {
     events: [],
     flameGoals: emptyFlameGoals(),
     learningPreferences: emptyLearningPreferences(),
+    focusSessions: [],
   };
+}
+
+// Modo Foco: coleção nova de topo (não embutida em Content) — o mesmo padrão
+// de reviews/quizAttempts, para não engordar o array que writeDb() poda
+// primeiro (contents) quando a cota do localStorage estoura.
+//
+// Deliberadamente SEM bump de SCHEMA_VERSION: readDb() nunca ramifica por
+// versão (não existe `if (db.version < N)` neste arquivo), e um array vazio
+// para uma chave ausente é retrocompatível por construção. Bumpar aqui só
+// criaria um número que nada lê, e destoaria de migrateItems() que grava
+// `version: 2` fixo. Reavaliar apenas se algum campo existente mudar de tipo
+// ou significado — não é o caso de uma coleção nova.
+function coerceFocusSessions(value) {
+  return Array.isArray(value) ? value : [];
 }
 
 // Coerção defensiva de learningPreferences: nunca lança. Descarta chaves fora
@@ -134,6 +149,7 @@ export function readDb() {
     events: Array.isArray(parsed.events) ? parsed.events : [],
     flameGoals: coerceFlameGoals(parsed.flameGoals),
     learningPreferences: coerceLearningPreferences(parsed.learningPreferences),
+    focusSessions: coerceFocusSessions(parsed.focusSessions),
   };
 }
 

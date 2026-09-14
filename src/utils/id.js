@@ -13,6 +13,8 @@ export const ID_PREFIX = {
   quizAttempt: "qa",
   review: "rev",
   event: "evt",
+  focusSession: "fcs",
+  focusStep: "fst",
 };
 
 function randomPart() {

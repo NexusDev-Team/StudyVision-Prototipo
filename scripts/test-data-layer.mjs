@@ -94,6 +94,12 @@ const prompts = await import("../lib/prompts.js");
 const { repairJson } = await import("../lib/gemini.js");
 const studyVisionService = await import("../src/services/studyVisionService.js");
 const learningInsightsService = await import("../src/services/learningInsightsService.js");
+const { FOCUS_DURATIONS, FOCUS_STEP_TYPES, FOCUS_STEP_BOUNDS } = await import("../src/constants.js");
+const { ID_PREFIX, newId } = await import("../src/utils/id.js");
+const { createFocusSession, createFocusStep, FOCUS_SESSION_STATUSES } = await import("../src/data/models/focusSession.js");
+const { validateFocusSession } = await import("../src/data/models/validate.js");
+const { SCHEMA_VERSION } = await import("../src/data/storage/db.js");
+const focusSessionService = await import("../src/services/focusSessionService.js");
 
 // helper: cria um conteúdo mínimo já com matéria
 // helper: gera `total` respostas de quiz com `correct` delas certas.
@@ -959,7 +965,7 @@ test("F4-19. excluir conteudo com evento compartilhado preserva o evento para o 
 
   // nenhuma referência quebrada sobra para a varredura de integridade encontrar
   const removed = integrityService.sweepOrphans();
-  assert.deepEqual(removed, { reviews: 0, flashcardAttempts: 0, quizAttempts: 0, eventContentRefs: 0, contentSubjectRefs: 0 });
+  assert.deepEqual(removed, { reviews: 0, flashcardAttempts: 0, quizAttempts: 0, eventContentRefs: 0, contentSubjectRefs: 0, focusSessions: 0 });
 });
 
 // ─── Fase 4 — mover conteudo entre materias preserva tudo ─────────────────────
@@ -2449,6 +2455,229 @@ test("F11-44. repairJson nao mexe em numeros negativos de array valido", () => {
   const ok = '{"xs": [-1, -2, -3], "y": "a - b"}';
   assert.equal(repairJson(ok), ok);
   assert.deepEqual(JSON.parse(repairJson(ok)), { xs: [-1, -2, -3], y: "a - b" });
+});
+
+// ─── Modo Foco — Etapa 1 (motor) ──────────────────────────────────────────────
+
+test("MF-01. FOCUS_DURATIONS e FOCUS_STEP_BOUNDS sao exatamente 2/5/10 e coerentes", () => {
+  assert.deepEqual(FOCUS_DURATIONS, [2, 5, 10]);
+  assert.deepEqual(Object.keys(FOCUS_STEP_BOUNDS).map(Number).sort((a, b) => a - b), [2, 5, 10]);
+  for (const d of FOCUS_DURATIONS) {
+    const bound = FOCUS_STEP_BOUNDS[d];
+    assert.ok(bound, `duracao ${d} sem faixa definida`);
+    assert.ok(bound.min >= 2, `min da duracao ${d} abaixo de 2`);
+    assert.ok(bound.min < bound.max, `min >= max na duracao ${d}`);
+  }
+});
+
+test("MF-02. newId gera ids de sessao e etapa de foco com o prefixo certo", () => {
+  const sessionId = newId(ID_PREFIX.focusSession);
+  const stepId = newId(ID_PREFIX.focusStep);
+  assert.match(sessionId, /^fcs_[a-z0-9]+$/);
+  assert.match(stepId, /^fst_[a-z0-9]+$/);
+});
+
+test("MF-03. createFocusSession ignora id/sessionId vindos do input e gera os proprios", () => {
+  const session = createFocusSession({
+    id: "HACKED",
+    contentId: "cnt_1",
+    durationMinutes: 5,
+    steps: [{ id: "HACKED_STEP", sessionId: "OUTRA", order: 99, type: "concept", title: "t", content: "c" }],
+  });
+  assert.match(session.id, /^fcs_/);
+  assert.notEqual(session.id, "HACKED");
+  assert.match(session.steps[0].id, /^fst_/);
+  assert.notEqual(session.steps[0].id, "HACKED_STEP");
+  assert.equal(session.steps[0].sessionId, session.id);
+});
+
+test("MF-04. createFocusSession reatribui order sequencial aos steps", () => {
+  const session = createFocusSession({
+    contentId: "cnt_1",
+    durationMinutes: 5,
+    steps: [
+      { order: 99, type: "concept", title: "a", content: "x" },
+      { order: 1, type: "example", title: "b", content: "y" },
+    ],
+  });
+  assert.deepEqual(session.steps.map((s) => s.order), [0, 1]);
+});
+
+test("MF-05. createFocusStep com type desconhecido vira explanation", () => {
+  const step = createFocusStep({ sessionId: "fcs_1", order: 0, type: "banana", title: "t", content: "c" });
+  assert.equal(step.type, "explanation");
+});
+
+test("MF-06. createFocusSession clampeia currentStepIndex na faixa valida", () => {
+  const steps = [
+    { type: "concept", title: "a", content: "x" },
+    { type: "example", title: "b", content: "y" },
+  ];
+  const alto = createFocusSession({ contentId: "cnt_1", durationMinutes: 5, steps, currentStepIndex: 99 });
+  assert.equal(alto.currentStepIndex, 1);
+  const negativo = createFocusSession({ contentId: "cnt_1", durationMinutes: 5, steps, currentStepIndex: -5 });
+  assert.equal(negativo.currentStepIndex, 0);
+});
+
+test("MF-07. createFocusSession sempre grava o snapshot com as 4 chaves booleanas", () => {
+  const session = createFocusSession({
+    contentId: "cnt_1",
+    durationMinutes: 5,
+    steps: [{ type: "concept", title: "a", content: "x" }],
+    inclusionPreferencesSnapshot: { longText: true, lixo: "nope" },
+  });
+  assert.deepEqual(Object.keys(session.inclusionPreferencesSnapshot).sort(), [...LEARNING_PREFERENCE_KEYS].sort());
+  assert.equal(session.inclusionPreferencesSnapshot.longText, true);
+  assert.equal(session.inclusionPreferencesSnapshot.concentration, false);
+  assert.equal(session.inclusionPreferencesSnapshot.lixo, undefined);
+});
+
+test("MF-08. validateFocusSession reprova steps vazio, duracao e status invalidos", () => {
+  const base = createFocusSession({
+    contentId: "cnt_1",
+    durationMinutes: 5,
+    steps: [{ type: "concept", title: "a", content: "x" }],
+  });
+  assert.equal(validateFocusSession(base).valid, true);
+
+  assert.equal(validateFocusSession({ ...base, steps: [] }).valid, false);
+  assert.equal(validateFocusSession({ ...base, durationMinutes: 7 }).valid, false);
+  assert.equal(validateFocusSession({ ...base, status: "paused" }).valid, false);
+  assert.equal(
+    validateFocusSession({ ...base, steps: [{ ...base.steps[0], sessionId: "outra" }] }).valid,
+    false
+  );
+  assert.equal(validateFocusSession({ ...base, currentStepIndex: 5 }).valid, false);
+});
+
+test("MF-09. readDb traz focusSessions vazio em storage recem-criado", () => {
+  const db = readDb();
+  assert.deepEqual(db.focusSessions, []);
+});
+
+test("MF-10. readDb nao lanca com sv_db legado gravado sem a chave focusSessions", () => {
+  storage.setItem(
+    "sv_db",
+    JSON.stringify({ version: 2, subjects: [], contents: [], flashcardAttempts: [], quizAttempts: [], reviews: [], events: [] })
+  );
+  const db = readDb();
+  assert.deepEqual(db.focusSessions, []);
+});
+
+test("MF-11. readDb coage focusSessions malformado para array vazio", () => {
+  storage.setItem("sv_db", JSON.stringify({ version: 2, focusSessions: "lixo" }));
+  const db = readDb();
+  assert.deepEqual(db.focusSessions, []);
+});
+
+test("MF-12. migrateItems traz focusSessions vazio", () => {
+  const db = migrateItems([{ id: "1", subject: "Matemática", concept: "Teste", summary: "x" }]);
+  assert.deepEqual(db.focusSessions, []);
+});
+
+test("MF-contra-01. SCHEMA_VERSION continua 2 — coleção nova nao exige bump", () => {
+  assert.equal(SCHEMA_VERSION, 2);
+});
+
+function seedFocusSession(overrides = {}) {
+  return createFocusSession({
+    contentId: "cnt_1",
+    durationMinutes: 5,
+    steps: [
+      { type: "concept", title: "a", content: "x" },
+      { type: "example", title: "b", content: "y" },
+    ],
+    ...overrides,
+  });
+}
+
+test("MF-13. persistFocusSession grava e getFocusSession relê a mesma sessao", () => {
+  const session = seedFocusSession();
+  focusSessionService.persistFocusSession(session);
+  const found = focusSessionService.getFocusSession(session.id);
+  assert.deepEqual(found, session);
+});
+
+test("MF-14. getActiveFocusSession devolve null sem sessao ativa", () => {
+  assert.equal(focusSessionService.getActiveFocusSession("cnt_1"), null);
+});
+
+test("MF-15. getActiveFocusSession devolve a in_progress e ignora completed", () => {
+  const completed = seedFocusSession({ status: "completed", completedAt: nowIso() });
+  focusSessionService.persistFocusSession(completed);
+  assert.equal(focusSessionService.getActiveFocusSession("cnt_1"), null);
+
+  const active = seedFocusSession();
+  focusSessionService.persistFocusSession(active);
+  assert.equal(focusSessionService.getActiveFocusSession("cnt_1").id, active.id);
+});
+
+test("MF-16. getActiveFocusSession com duas ativas devolve a mais recente", () => {
+  const older = { ...seedFocusSession(), createdAt: "2020-01-01T00:00:00.000Z" };
+  const newer = { ...seedFocusSession(), createdAt: "2024-01-01T00:00:00.000Z" };
+  focusSessionService.persistFocusSession(older);
+  focusSessionService.persistFocusSession(newer);
+  assert.equal(focusSessionService.getActiveFocusSession("cnt_1").id, newer.id);
+});
+
+test("MF-17. advanceFocusStep avanca e para no ultimo step", () => {
+  const session = seedFocusSession();
+  focusSessionService.persistFocusSession(session);
+  const after1 = focusSessionService.advanceFocusStep(session.id);
+  assert.equal(after1.currentStepIndex, 1);
+  const after2 = focusSessionService.advanceFocusStep(session.id);
+  assert.equal(after2.currentStepIndex, 1);
+});
+
+test("MF-18. completeFocusSession carimba status/completedAt e some do ativo", () => {
+  const session = seedFocusSession();
+  focusSessionService.persistFocusSession(session);
+  const completed = focusSessionService.completeFocusSession(session.id);
+  assert.equal(completed.status, "completed");
+  assert.ok(completed.completedAt);
+  assert.equal(focusSessionService.getActiveFocusSession("cnt_1"), null);
+});
+
+test("MF-19. setFocusStepIndex clampeia dentro da faixa valida", () => {
+  const session = seedFocusSession();
+  focusSessionService.persistFocusSession(session);
+  const alto = focusSessionService.setFocusStepIndex(session.id, 99);
+  assert.equal(alto.currentStepIndex, 1);
+  const negativo = focusSessionService.setFocusStepIndex(session.id, -5);
+  assert.equal(negativo.currentStepIndex, 0);
+});
+
+test("MF-20. persistFocusSession poda alem do teto, descartando completed mais antiga primeiro", () => {
+  const antiga = { ...seedFocusSession({ status: "completed", completedAt: nowIso() }), createdAt: "2020-01-01T00:00:00.000Z" };
+  const meio = { ...seedFocusSession(), createdAt: "2021-01-01T00:00:00.000Z" };
+  const recente = { ...seedFocusSession(), createdAt: "2022-01-01T00:00:00.000Z" };
+  const novissima = { ...seedFocusSession(), createdAt: "2023-01-01T00:00:00.000Z" };
+  for (const s of [antiga, meio, recente, novissima]) focusSessionService.persistFocusSession(s);
+
+  const remaining = focusSessionService.getFocusSessionsForContent("cnt_1");
+  assert.equal(remaining.length, focusSessionService.MAX_SESSIONS_PER_CONTENT);
+  assert.ok(!remaining.some((s) => s.id === antiga.id), "a completed mais antiga deveria ter sido descartada primeiro");
+});
+
+test("MF-21. deleteContent apaga sessoes de foco do conteudo e preserva as de outro", () => {
+  const a = contentService.createContentEntry({ title: "A" });
+  const b = contentService.createContentEntry({ title: "B" });
+  focusSessionService.persistFocusSession(seedFocusSession({ contentId: a.content.id }));
+  focusSessionService.persistFocusSession(seedFocusSession({ contentId: b.content.id }));
+
+  contentService.deleteContent(a.content.id);
+
+  assert.equal(focusSessionService.getFocusSessionsForContent(a.content.id).length, 0);
+  assert.equal(focusSessionService.getFocusSessionsForContent(b.content.id).length, 1);
+});
+
+test("MF-22. sweepOrphans remove sessao de foco orfa", () => {
+  const session = seedFocusSession({ contentId: "cnt_inexistente" });
+  withDb((db) => ({ ...db, focusSessions: [...db.focusSessions, session] }));
+
+  const removed = integrityService.sweepOrphans();
+  assert.equal(removed.focusSessions, 1);
+  assert.equal(focusSessionService.getFocusSession(session.id), null);
 });
 
 // ─── relatório ───────────────────────────────────────────────────────────────

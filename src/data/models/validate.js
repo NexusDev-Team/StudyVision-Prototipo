@@ -3,6 +3,8 @@
 // que o chamador decida (aplicar defaults, rejeitar, logar) sem quebrar o app.
 
 import { EVENT_TYPES, LEGACY_EVENT_TYPES } from "./event.js";
+import { FOCUS_SESSION_STATUSES } from "./focusSession.js";
+import { FOCUS_DURATIONS, FOCUS_STEP_TYPES, LEARNING_PREFERENCE_KEYS } from "../../constants.js";
 
 export function validateContent(content) {
   const errors = [];
@@ -80,6 +82,52 @@ export function validateSubject(subject) {
 }
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+// Modo Foco — a geração NUNCA é considerada válida (e portanto nunca é
+// persistida) se qualquer uma destas regras falhar. Sem exceção silenciosa.
+export function validateFocusSession(session) {
+  const errors = [];
+  if (!session || typeof session !== "object") {
+    return { valid: false, errors: ["sessão de foco ausente ou inválida"] };
+  }
+  if (!session.id || typeof session.id !== "string") errors.push("id ausente");
+  if (!session.contentId || typeof session.contentId !== "string") errors.push("contentId ausente");
+  if (!FOCUS_DURATIONS.includes(session.durationMinutes)) errors.push("durationMinutes inválido");
+  if (!FOCUS_SESSION_STATUSES.includes(session.status)) errors.push("status inválido");
+
+  if (!Array.isArray(session.steps) || session.steps.length === 0) {
+    errors.push("steps deveria ser um array não vazio");
+  } else {
+    session.steps.forEach((step, i) => {
+      if (!step || typeof step !== "object") { errors.push(`steps[${i}] inválido`); return; }
+      if (!step.id) errors.push(`steps[${i}] sem id`);
+      if (step.sessionId !== session.id) errors.push(`steps[${i}] não referencia a sessão correta`);
+      if (!FOCUS_STEP_TYPES.includes(step.type)) errors.push(`steps[${i}] com type inválido`);
+      if (!step.title || !String(step.title).trim()) errors.push(`steps[${i}] sem title`);
+      if (!step.content || !String(step.content).trim()) errors.push(`steps[${i}] sem content`);
+    });
+  }
+
+  const maxIndex = Array.isArray(session.steps) ? Math.max(0, session.steps.length - 1) : 0;
+  if (!Number.isInteger(session.currentStepIndex) || session.currentStepIndex < 0 || session.currentStepIndex > maxIndex) {
+    errors.push("currentStepIndex fora da faixa");
+  }
+
+  const snapshot = session.inclusionPreferencesSnapshot;
+  if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) {
+    errors.push("inclusionPreferencesSnapshot ausente ou inválido");
+  } else {
+    for (const key of LEARNING_PREFERENCE_KEYS) {
+      if (typeof snapshot[key] !== "boolean") errors.push(`inclusionPreferencesSnapshot.${key} deveria ser booleano`);
+    }
+  }
+
+  if (session.status === "completed" && !session.completedAt) {
+    errors.push("sessão completed sem completedAt");
+  }
+
+  return { valid: errors.length === 0, errors };
+}
 
 export function validateEvent(event) {
   const errors = [];

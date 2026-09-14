@@ -146,6 +146,7 @@ export function migrateItems(legacyItems) {
       updatedAt: null,
       options: emptyPreferenceOptions(),
     },
+    focusSessions: [],
   };
 }
 

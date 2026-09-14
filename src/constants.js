@@ -89,6 +89,26 @@ export function emptyPreferenceOptions() {
   return Object.fromEntries(LEARNING_PREFERENCE_KEYS.map((key) => [key, false]));
 }
 
+// Modo Foco — durações suportadas no MVP (minutos). Fonte única: nenhuma
+// tela ou service deve hardcodar 2/5/10 soltos. A mesma lista é replicada em
+// lib/focusPrompts.js (a função serverless não importa src/) com teste de
+// paridade travando o drift.
+export const FOCUS_DURATIONS = [2, 5, 10];
+export const FOCUS_DEFAULT_DURATION = 5;
+
+// Tipos de etapa de uma FocusSession. "explanation" é o fallback seguro para
+// qualquer tipo desconhecido vindo do Gemini — nunca invalida a sessão inteira.
+export const FOCUS_STEP_TYPES = ["concept", "explanation", "example", "practice", "question", "summary"];
+
+// Faixa de etapas esperada por duração — usada para validar (não gerar) a
+// resposta do Gemini. A duração muda a PROFUNDIDADE do conteúdo, não só o
+// timer: ver FOCUS_DEPTH_PROFILES em lib/focusPrompts.js.
+export const FOCUS_STEP_BOUNDS = {
+  2: { min: 2, max: 4 },
+  5: { min: 4, max: 7 },
+  10: { min: 6, max: 10 },
+};
+
 export const PLANNING_TYPES = ["Prova", "Trabalho", "Revisão"];
 
 export const REMINDER_OPTIONS = [
