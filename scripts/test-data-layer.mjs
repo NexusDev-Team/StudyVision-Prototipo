@@ -91,7 +91,7 @@ const { LEARNING_KEYS_VERSION } = await import("../src/data/storage/db.js");
 const { createContent } = await import("../src/data/models/content.js");
 const learningPreferencesService = await import("../src/services/learningPreferencesService.js");
 const prompts = await import("../lib/prompts.js");
-const { repairJson } = await import("../lib/gemini.js");
+const { repairJson, parseModelJson, GeminiError } = await import("../lib/gemini.js");
 const studyVisionService = await import("../src/services/studyVisionService.js");
 const learningInsightsService = await import("../src/services/learningInsightsService.js");
 const { FOCUS_DURATIONS, FOCUS_STEP_TYPES, FOCUS_STEP_BOUNDS } = await import("../src/constants.js");
@@ -2763,6 +2763,24 @@ test("MF-30. buildFocusPrompt nunca vaza campos fora da whitelist do payload", (
   });
   assert.ok(!built.includes("mastery"));
   assert.ok(!built.includes("dataUrl"));
+});
+
+test("MF-31. parseModelJson aceita JSON valido diretamente", () => {
+  const parsed = parseModelJson('{"success": true, "steps": []}');
+  assert.deepEqual(parsed, { success: true, steps: [] });
+});
+
+test("MF-32. parseModelJson recupera JSON quase-valido via repairJson", () => {
+  const quaseValido = '{"success": true, "steps": [{"content": "linha um\nlinha dois"}]}';
+  const parsed = parseModelJson(quaseValido);
+  assert.equal(parsed.steps[0].content, "linha um\nlinha dois");
+});
+
+test("MF-33. parseModelJson lanca GeminiError BAD_JSON para lixo irrecuperavel", () => {
+  assert.throws(
+    () => parseModelJson('{"success": true, "steps": [texto sem aspas'),
+    (err) => err instanceof GeminiError && err.code === "BAD_JSON"
+  );
 });
 
 test("MF-21. deleteContent apaga sessoes de foco do conteudo e preserva as de outro", () => {
