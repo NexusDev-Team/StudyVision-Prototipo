@@ -2659,6 +2659,23 @@ test("MF-20. persistFocusSession poda alem do teto, descartando completed mais a
   assert.ok(!remaining.some((s) => s.id === antiga.id), "a completed mais antiga deveria ter sido descartada primeiro");
 });
 
+test("MF-23. buildAnalysisPrompt com preferencias contem guardrails, regras e formatacao antes do JSON", () => {
+  const built = prompts.buildAnalysisPrompt({ concentration: true, manySteps: true });
+  const guardIdx = built.indexOf(prompts.PREFERENCE_GUARDRAILS);
+  const ruleIdx = built.indexOf(prompts.PREFERENCE_RULES.concentration);
+  const manyIdx = built.indexOf(prompts.PREFERENCE_RULES.manySteps);
+  const jsonIdx = built.indexOf("Responda EXATAMENTE no formato JSON abaixo");
+  assert.ok(guardIdx >= 0, "guardrails ausentes");
+  assert.ok(ruleIdx > guardIdx, "regra de concentration deveria vir depois dos guardrails");
+  assert.ok(manyIdx > guardIdx, "regra de manySteps deveria vir depois dos guardrails");
+  assert.ok(jsonIdx > manyIdx, "secao de formato JSON deveria vir por ultimo");
+});
+
+test("MF-24. buildAnalysisPrompt sem preferencias e identico byte a byte ao prompt legado", () => {
+  assert.equal(prompts.buildAnalysisPrompt(undefined), prompts.ANALYSIS_PROMPT);
+  assert.equal(prompts.buildAnalysisPrompt({}), prompts.ANALYSIS_PROMPT);
+});
+
 test("MF-21. deleteContent apaga sessoes de foco do conteudo e preserva as de outro", () => {
   const a = contentService.createContentEntry({ title: "A" });
   const b = contentService.createContentEntry({ title: "B" });
