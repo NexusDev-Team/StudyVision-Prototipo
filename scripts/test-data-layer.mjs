@@ -100,6 +100,7 @@ const { createFocusSession, createFocusStep, FOCUS_SESSION_STATUSES } = await im
 const { validateFocusSession } = await import("../src/data/models/validate.js");
 const { SCHEMA_VERSION } = await import("../src/data/storage/db.js");
 const focusSessionService = await import("../src/services/focusSessionService.js");
+const focusPrompts = await import("../lib/focusPrompts.js");
 
 // helper: cria um conteúdo mínimo já com matéria
 // helper: gera `total` respostas de quiz com `correct` delas certas.
@@ -2674,6 +2675,94 @@ test("MF-23. buildAnalysisPrompt com preferencias contem guardrails, regras e fo
 test("MF-24. buildAnalysisPrompt sem preferencias e identico byte a byte ao prompt legado", () => {
   assert.equal(prompts.buildAnalysisPrompt(undefined), prompts.ANALYSIS_PROMPT);
   assert.equal(prompts.buildAnalysisPrompt({}), prompts.ANALYSIS_PROMPT);
+});
+
+test("MF-25. paridade: FOCUS_DURATIONS/FOCUS_STEP_TYPES/FOCUS_STEP_BOUNDS do lib batem com src/constants.js", () => {
+  assert.deepEqual(focusPrompts.FOCUS_DURATIONS, FOCUS_DURATIONS);
+  assert.deepEqual(focusPrompts.FOCUS_STEP_TYPES, FOCUS_STEP_TYPES);
+  assert.deepEqual(focusPrompts.FOCUS_STEP_BOUNDS, FOCUS_STEP_BOUNDS);
+});
+
+const FOCUS_TEST_PAYLOAD = {
+  title: "Derivadas",
+  subject: "Matemática",
+  topic: "Regra da cadeia",
+  summary: "A derivada mede a taxa de variação instantânea de uma função.",
+  keyConcepts: ["derivada", "taxa de variação"],
+  keywords: ["f'(x)", "limite"],
+  extractedText: "Texto extraído de exemplo sobre derivadas e regra da cadeia.",
+  difficulty: "medium",
+};
+
+test("MF-26. buildFocusPrompt gera prompts distintos por duracao, cada um so com seu profile", () => {
+  const p2 = focusPrompts.buildFocusPrompt({ durationMinutes: 2, payload: FOCUS_TEST_PAYLOAD });
+  const p5 = focusPrompts.buildFocusPrompt({ durationMinutes: 5, payload: FOCUS_TEST_PAYLOAD });
+  const p10 = focusPrompts.buildFocusPrompt({ durationMinutes: 10, payload: FOCUS_TEST_PAYLOAD });
+
+  assert.ok(p2.includes(focusPrompts.FOCUS_DEPTH_PROFILES[2]));
+  assert.ok(!p2.includes(focusPrompts.FOCUS_DEPTH_PROFILES[5]));
+  assert.ok(!p2.includes(focusPrompts.FOCUS_DEPTH_PROFILES[10]));
+
+  assert.ok(p5.includes(focusPrompts.FOCUS_DEPTH_PROFILES[5]));
+  assert.ok(!p5.includes(focusPrompts.FOCUS_DEPTH_PROFILES[2]));
+  assert.ok(!p5.includes(focusPrompts.FOCUS_DEPTH_PROFILES[10]));
+
+  assert.ok(p10.includes(focusPrompts.FOCUS_DEPTH_PROFILES[10]));
+  assert.ok(!p10.includes(focusPrompts.FOCUS_DEPTH_PROFILES[2]));
+  assert.ok(!p10.includes(focusPrompts.FOCUS_DEPTH_PROFILES[5]));
+});
+
+test("MF-27. profundidade cresce: prompt de 10 min mais longo que 5, que e mais longo que 2", () => {
+  const p2 = focusPrompts.buildFocusPrompt({ durationMinutes: 2, payload: FOCUS_TEST_PAYLOAD });
+  const p5 = focusPrompts.buildFocusPrompt({ durationMinutes: 5, payload: FOCUS_TEST_PAYLOAD });
+  const p10 = focusPrompts.buildFocusPrompt({ durationMinutes: 10, payload: FOCUS_TEST_PAYLOAD });
+  assert.ok(p10.length > p5.length, "prompt de 10min deveria ser mais longo que o de 5min");
+  assert.ok(p5.length > p2.length, "prompt de 5min deveria ser mais longo que o de 2min");
+});
+
+test("MF-28. cada prompt cita a faixa min..max correta da propria duracao", () => {
+  for (const duration of FOCUS_DURATIONS) {
+    const built = focusPrompts.buildFocusPrompt({ durationMinutes: duration, payload: FOCUS_TEST_PAYLOAD });
+    const bound = FOCUS_STEP_BOUNDS[duration];
+    assert.ok(built.includes(`${bound.min} e ${bound.max}`), `prompt de ${duration}min nao cita a faixa ${bound.min}..${bound.max}`);
+  }
+});
+
+test("MF-29. buildFocusPrompt reflete preferencias ativas A vs B e reusa a MESMA string de regra", () => {
+  const comConcentracao = focusPrompts.buildFocusPrompt({
+    durationMinutes: 5,
+    preferences: { concentration: true },
+    payload: FOCUS_TEST_PAYLOAD,
+  });
+  const comManySteps = focusPrompts.buildFocusPrompt({
+    durationMinutes: 5,
+    preferences: { manySteps: true },
+    payload: FOCUS_TEST_PAYLOAD,
+  });
+  const semPreferencia = focusPrompts.buildFocusPrompt({ durationMinutes: 5, payload: FOCUS_TEST_PAYLOAD });
+
+  assert.ok(comConcentracao.includes(prompts.PREFERENCE_RULES.concentration));
+  assert.ok(!comConcentracao.includes(prompts.PREFERENCE_RULES.manySteps));
+  assert.ok(comManySteps.includes(prompts.PREFERENCE_RULES.manySteps));
+  assert.ok(!comManySteps.includes(prompts.PREFERENCE_RULES.concentration));
+  assert.ok(!semPreferencia.includes(prompts.PREFERENCE_GUARDRAILS));
+
+  // reuso real, nao uma copia: a mesma string de regra usada em buildAnalysisPrompt
+  const promptAnalise = prompts.buildAnalysisPrompt({ concentration: true });
+  assert.ok(promptAnalise.includes(prompts.PREFERENCE_RULES.concentration));
+  assert.equal(
+    comConcentracao.match(/Dificuldade de concentração:[^]*?(?=\n\n|\nFormatação)/)?.[0]?.trim(),
+    promptAnalise.match(/Dificuldade de concentração:[^]*?(?=\n\n|$)/)?.[0]?.trim()
+  );
+});
+
+test("MF-30. buildFocusPrompt nunca vaza campos fora da whitelist do payload", () => {
+  const built = focusPrompts.buildFocusPrompt({
+    durationMinutes: 5,
+    payload: { ...FOCUS_TEST_PAYLOAD, mastery: { score: 99 }, images: [{ dataUrl: "data:xxx" }] },
+  });
+  assert.ok(!built.includes("mastery"));
+  assert.ok(!built.includes("dataUrl"));
 });
 
 test("MF-21. deleteContent apaga sessoes de foco do conteudo e preserva as de outro", () => {
