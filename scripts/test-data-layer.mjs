@@ -101,6 +101,7 @@ const { validateFocusSession } = await import("../src/data/models/validate.js");
 const { SCHEMA_VERSION } = await import("../src/data/storage/db.js");
 const focusSessionService = await import("../src/services/focusSessionService.js");
 const focusPrompts = await import("../lib/focusPrompts.js");
+const focusModeService = await import("../src/services/focusModeService.js");
 
 // helper: cria um conteúdo mínimo já com matéria
 // helper: gera `total` respostas de quiz com `correct` delas certas.
@@ -2781,6 +2782,111 @@ test("MF-33. parseModelJson lanca GeminiError BAD_JSON para lixo irrecuperavel",
     () => parseModelJson('{"success": true, "steps": [texto sem aspas'),
     (err) => err instanceof GeminiError && err.code === "BAD_JSON"
   );
+});
+
+test("MF-34. buildFocusPayload devolve exatamente os 8 campos academicos, sem vazar o resto", () => {
+  const { content } = contentService.createContentEntry({
+    title: "Derivadas",
+    subjectName: "Matemática",
+    topic: "Regra da cadeia",
+    summary: "resumo",
+    keyConcepts: ["a"],
+    keywords: ["b"],
+    extractedText: "texto",
+    difficulty: "medium",
+    images: [{ dataUrl: "data:xxx" }],
+    flashcards: [{ front: "f", back: "b" }],
+  });
+  const payload = focusModeService.buildFocusPayload(content);
+  assert.deepEqual(
+    Object.keys(payload).sort(),
+    ["difficulty", "extractedText", "keyConcepts", "keywords", "subject", "summary", "title", "topic"]
+  );
+  assert.equal(payload.images, undefined);
+  assert.equal(payload.flashcards, undefined);
+  assert.equal(payload.mastery, undefined);
+});
+
+test("MF-35. hasEnoughContent reprova content so com titulo vazio", () => {
+  assert.equal(focusModeService.hasEnoughContent({ title: "", summary: "", extractedText: "" }), false);
+  assert.equal(focusModeService.hasEnoughContent({ title: "Algo" }), true);
+});
+
+test("MF-36. normalizeFocusPlan ignora id vindo do Gemini e gera os proprios", () => {
+  const raw = { steps: [
+    { id: "HACKED", type: "concept", title: "a", content: "conteudo da etapa um" },
+    { type: "example", title: "b", content: "conteudo da etapa dois" },
+  ] };
+  const session = focusModeService.normalizeFocusPlan(raw, { contentId: "cnt_1", durationMinutes: 2, preferences: {} });
+  assert.match(session.id, /^fcs_/);
+  assert.notEqual(session.steps[0].id, "HACKED");
+});
+
+test("MF-37. normalizeFocusPlan descarta chave inesperada do step", () => {
+  const raw = { steps: [
+    { type: "concept", title: "a", content: "conteudo da etapa um", audioUrl: "http://x" },
+    { type: "example", title: "b", content: "conteudo da etapa dois" },
+  ] };
+  const session = focusModeService.normalizeFocusPlan(raw, { contentId: "cnt_1", durationMinutes: 2, preferences: {} });
+  assert.equal(session.steps[0].audioUrl, undefined);
+});
+
+test("MF-38. normalizeFocusPlan com type desconhecido vira explanation", () => {
+  const raw = { steps: [
+    { type: "banana", title: "a", content: "conteudo da etapa um" },
+    { type: "example", title: "b", content: "conteudo da etapa dois" },
+  ] };
+  const session = focusModeService.normalizeFocusPlan(raw, { contentId: "cnt_1", durationMinutes: 2, preferences: {} });
+  assert.equal(session.steps[0].type, "explanation");
+});
+
+test("MF-39. normalizeFocusPlan rejeita plano abaixo do minimo de etapas da duracao", () => {
+  const raw = { steps: [{ type: "concept", title: "a", content: "conteudo unico" }] };
+  assert.throws(
+    () => focusModeService.normalizeFocusPlan(raw, { contentId: "cnt_1", durationMinutes: 10, preferences: {} }),
+    (err) => err instanceof focusModeService.FocusError && err.kind === "invalid_plan"
+  );
+});
+
+test("MF-40. normalizeFocusPlan trunca plano acima do maximo de etapas da duracao", () => {
+  const raw = { steps: Array.from({ length: 15 }, (_, i) => ({ type: "concept", title: `t${i}`, content: `conteudo ${i}` })) };
+  const session = focusModeService.normalizeFocusPlan(raw, { contentId: "cnt_1", durationMinutes: 2, preferences: {} });
+  assert.equal(session.steps.length, FOCUS_STEP_BOUNDS[2].max);
+});
+
+test("MF-41. normalizeFocusPlan rejeita steps que nao sao array", () => {
+  assert.throws(
+    () => focusModeService.normalizeFocusPlan({ steps: "nope" }, { contentId: "cnt_1", durationMinutes: 5, preferences: {} }),
+    (err) => err instanceof focusModeService.FocusError && err.kind === "invalid_plan"
+  );
+  assert.throws(
+    () => focusModeService.normalizeFocusPlan({ steps: [] }, { contentId: "cnt_1", durationMinutes: 5, preferences: {} }),
+    (err) => err instanceof focusModeService.FocusError && err.kind === "invalid_plan"
+  );
+});
+
+test("MF-42. normalizeFocusPlan rejeita duracao invalida antes de olhar os steps", () => {
+  assert.throws(
+    () => focusModeService.normalizeFocusPlan({ steps: [] }, { contentId: "cnt_1", durationMinutes: 7, preferences: {} }),
+    (err) => err instanceof focusModeService.FocusError && err.kind === "invalid_duration"
+  );
+});
+
+test("MF-43. normalizeFocusPlan grava o snapshot normalizado das preferencias", () => {
+  const raw = { steps: [
+    { type: "concept", title: "a", content: "conteudo da etapa um" },
+    { type: "example", title: "b", content: "conteudo da etapa dois" },
+  ] };
+  const session = focusModeService.normalizeFocusPlan(raw, { contentId: "cnt_1", durationMinutes: 2, preferences: { longText: true } });
+  assert.equal(session.inclusionPreferencesSnapshot.longText, true);
+  assert.equal(session.inclusionPreferencesSnapshot.concentration, false);
+});
+
+test("MF-44. getOrResumeFocusSession devolve a sessao ativa sem tocar em rede", () => {
+  assert.equal(focusModeService.getOrResumeFocusSession("cnt_inexistente"), null);
+  const session = seedFocusSession({ contentId: "cnt_9" });
+  focusSessionService.persistFocusSession(session);
+  assert.equal(focusModeService.getOrResumeFocusSession("cnt_9").id, session.id);
 });
 
 test("MF-21. deleteContent apaga sessoes de foco do conteudo e preserva as de outro", () => {
