@@ -262,7 +262,7 @@ export default function ReadingScreen({ content, onExit }) {
         <div style={{ display: "flex", justifyContent: "center", gap: 8 }} role="group" aria-label="Velocidade da leitura">
           {READING_RATES.map((r) => (
             <button key={r} onClick={() => handleRateChange(r)} aria-pressed={rate === r}
-              style={{ minWidth: 52, height: 36, borderRadius: 10, border: rate === r ? "1.5px solid #2563EB" : "1.5px solid #E2E8F0", background: rate === r ? "#EFF6FF" : "white", color: rate === r ? "#2563EB" : "#64748B", fontFamily: "Inter,sans-serif", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>
+              style={{ minWidth: 52, height: 44, borderRadius: 10, border: rate === r ? "1.5px solid #2563EB" : "1.5px solid #E2E8F0", background: rate === r ? "#EFF6FF" : "white", color: rate === r ? "#2563EB" : "#64748B", fontFamily: "Inter,sans-serif", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>
               {r}x
             </button>
           ))}

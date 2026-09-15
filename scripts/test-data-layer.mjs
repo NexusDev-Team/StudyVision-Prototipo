@@ -3845,6 +3845,21 @@ test("LC-51. readingHelpErrorMessage mapeia kinds conhecidos e cai no fallback p
   assert.equal(readingService.readingHelpErrorMessage("desconhecido"), readingService.readingHelpErrorMessage("technical"));
 });
 
+test("LC-52. segmentationProfile usa perfil compacto com manySteps mesmo sem longText", () => {
+  const text = Array.from({ length: 12 }, (_, i) => `Esta é a sentença número ${i} do texto de teste, bem completa.`).join(" ");
+  const defaultProfile = segmentationProfile({});
+  const manyStepsProfile = segmentationProfile({ manySteps: true });
+  const defaultSegments = segmentText(text, defaultProfile);
+  const manyStepsSegments = segmentText(text, manyStepsProfile);
+  assert.equal(manyStepsProfile.maxChars, READING_SEGMENT_BOUNDS.compactMaxChars);
+  assert.ok(manyStepsSegments.length >= defaultSegments.length);
+});
+
+test("LC-53. segmentationProfile com preferencias ausentes/null nao quebra e usa o padrao", () => {
+  assert.equal(segmentationProfile(null).maxChars, READING_SEGMENT_BOUNDS.maxChars);
+  assert.equal(segmentationProfile(undefined).maxChars, READING_SEGMENT_BOUNDS.maxChars);
+});
+
 // ─── relatório ───────────────────────────────────────────────────────────────
 console.log(`\n${passed} passaram, ${failed} falharam`);
 if (failed > 0) {

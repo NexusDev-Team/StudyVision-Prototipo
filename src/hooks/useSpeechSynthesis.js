@@ -34,9 +34,16 @@ export function useSpeechSynthesis() {
   const keepAliveRef = useRef(null);
   const suppressStatusRef = useRef(false);
 
+  // Getter defensivo: além do `supported` calculado na renderização, callers
+  // assíncronos (interval do keep-alive, timeout do fallback de resume,
+  // cleanup de desmontagem) podem rodar depois que `win.speechSynthesis`
+  // deixou de existir entre um render e outro. `?.` em cada acesso evita um
+  // TypeError nesse intervalo — nunca deixa a página quebrar.
+  const getSynth = useCallback(() => win?.speechSynthesis, [win]);
+
   useEffect(() => {
-    if (!supported) return undefined;
-    const synth = win.speechSynthesis;
+    const synth = getSynth();
+    if (!synth) return undefined;
 
     function loadVoices() {
       voicesRef.current = synth.getVoices() || [];
@@ -44,7 +51,7 @@ export function useSpeechSynthesis() {
     loadVoices();
     synth.addEventListener("voiceschanged", loadVoices);
     return () => synth.removeEventListener("voiceschanged", loadVoices);
-  }, [supported, win]);
+  }, [getSynth]);
 
   const stopKeepAlive = useCallback(() => {
     if (keepAliveRef.current) {
@@ -54,34 +61,35 @@ export function useSpeechSynthesis() {
   }, []);
 
   const startKeepAlive = useCallback(() => {
-    if (!supported || keepAliveRef.current) return;
+    if (keepAliveRef.current) return;
     keepAliveRef.current = setInterval(() => {
-      const synth = win.speechSynthesis;
-      if (!synth.speaking || synth.paused) return;
+      const synth = getSynth();
+      if (!synth || !synth.speaking || synth.paused) return;
       suppressStatusRef.current = true;
       synth.pause();
       synth.resume();
       suppressStatusRef.current = false;
     }, KEEP_ALIVE_INTERVAL_MS);
-  }, [supported, win]);
+  }, [getSynth]);
 
   const cancel = useCallback(() => {
     stopKeepAlive();
-    if (!supported) return;
+    const synth = getSynth();
+    if (!synth) return;
     tokenRef.current += 1;
-    win.speechSynthesis.cancel();
+    synth.cancel();
     setStatus("idle");
-  }, [supported, win, stopKeepAlive]);
+  }, [getSynth, stopKeepAlive]);
 
   const speak = useCallback(
     (text, { rate, lang = "pt-BR", onEnd } = {}) => {
-      if (!supported || !text) return;
+      const synth = getSynth();
+      if (!synth || !win?.SpeechSynthesisUtterance || !text) return;
 
       // Nunca duas utterances ativas: cancela a fila antes de falar de novo,
       // e invalida qualquer callback de uma utterance anterior via token.
       tokenRef.current += 1;
       const myToken = tokenRef.current;
-      const synth = win.speechSynthesis;
       synth.cancel();
       stopKeepAlive();
 
@@ -118,15 +126,16 @@ export function useSpeechSynthesis() {
 
       synth.speak(utterance);
     },
-    [supported, win, startKeepAlive, stopKeepAlive]
+    [getSynth, win, startKeepAlive, stopKeepAlive]
   );
 
   const pause = useCallback(() => {
-    if (!supported) return;
     stopKeepAlive();
-    win.speechSynthesis.pause();
+    const synth = getSynth();
+    if (!synth) return;
+    synth.pause();
     setStatus("paused");
-  }, [supported, win, stopKeepAlive]);
+  }, [getSynth, stopKeepAlive]);
 
   // Retomada: usa o pause/resume nativos. Em algumas plataformas o browser
   // não volta a falar de fato após resume() (bug conhecido) — quando o
@@ -135,13 +144,13 @@ export function useSpeechSynthesis() {
   // um offset exato dentro da frase; ver decisão T9 do plano).
   const resume = useCallback(
     (fallback) => {
-      if (!supported) return;
-      const synth = win.speechSynthesis;
+      const synth = getSynth();
+      if (!synth) return;
       synth.resume();
       setStatus("speaking");
       if (fallback?.text) {
         setTimeout(() => {
-          if (!synth.speaking) {
+          if (!getSynth()?.speaking) {
             speak(fallback.text, { rate: fallback.rate, lang: fallback.lang, onEnd: fallback.onEnd });
           } else {
             startKeepAlive();
@@ -151,23 +160,23 @@ export function useSpeechSynthesis() {
         startKeepAlive();
       }
     },
-    [supported, win, speak, startKeepAlive]
+    [getSynth, speak, startKeepAlive]
   );
 
   // Cleanup obrigatório (seção 27/56 do briefing): a voz nunca sobrevive à
   // desmontagem, troca de conteúdo ou fechamento/troca de aba.
   useEffect(() => {
-    if (!supported) return undefined;
-    const handleUnload = () => win.speechSynthesis.cancel();
+    if (!win) return undefined;
+    const handleUnload = () => getSynth()?.cancel();
     win.addEventListener("pagehide", handleUnload);
     win.addEventListener("beforeunload", handleUnload);
     return () => {
       stopKeepAlive();
-      win.speechSynthesis.cancel();
+      getSynth()?.cancel();
       win.removeEventListener("pagehide", handleUnload);
       win.removeEventListener("beforeunload", handleUnload);
     };
-  }, [supported, win, stopKeepAlive]);
+  }, [win, getSynth, stopKeepAlive]);
 
   return { supported, status, speak, pause, resume, cancel };
 }
