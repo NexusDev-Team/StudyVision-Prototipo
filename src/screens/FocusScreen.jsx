@@ -124,7 +124,7 @@ export default function FocusScreen({ content, onExit }) {
       {/* Header mínimo — só sair, título curto, tempo e pausa. */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "52px 16px 14px", flexShrink: 0 }}>
         <button onClick={handleExit} aria-label="Sair do Modo Foco"
-          style={{ width: 40, height: 40, borderRadius: 12, background: "white", border: "1px solid #E2E8F0", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          style={{ width: 44, height: 44, borderRadius: 12, background: "white", border: "1px solid #E2E8F0", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <ChevronLeft size={20} color="#374151" />
         </button>
         <p style={{ flex: 1, textAlign: "center", fontSize: 13, fontWeight: 700, color: "#374151", margin: "0 8px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -135,7 +135,7 @@ export default function FocusScreen({ content, onExit }) {
             {timeUp ? "✓" : formatClock(remainingMs)}
           </span>
           <button onClick={handlePauseToggle} aria-label={session.pausedAt ? "Retomar temporizador" : "Pausar temporizador"}
-            style={{ width: 40, height: 40, borderRadius: 12, background: "white", border: "1px solid #E2E8F0", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            style={{ width: 44, height: 44, borderRadius: 12, background: "white", border: "1px solid #E2E8F0", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
             {session.pausedAt ? <Play size={16} color="#2563EB" /> : <Pause size={16} color="#2563EB" />}
           </button>
         </div>
@@ -178,17 +178,23 @@ export default function FocusScreen({ content, onExit }) {
           </motion.button>
         </div>
 
-        {/* Auxílio contextual discreto — nunca compete com a ação principal. */}
-        <div style={{ display: "flex", justifyContent: "center", gap: 20 }}>
-          <button onClick={() => setHelpMode("lost")}
-            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, color: "#94A3B8", fontFamily: "Inter,sans-serif", padding: "8px 4px", minHeight: 36 }}>
-            Me perdi
-          </button>
-          <button onClick={() => setHelpMode("rephrase")}
-            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, color: "#94A3B8", fontFamily: "Inter,sans-serif", padding: "8px 4px", minHeight: 36 }}>
-            Outro jeito
-          </button>
-        </div>
+        {/* Auxílio contextual discreto — nunca compete com a ação principal.
+            Com "dificuldade de concentração" declarada, some daqui: interface
+            mais limpa, menos elementos secundários (seção 36). A recapitulação
+            e a reexplicação continuam existindo, só não ficam à mostra por
+            padrão nesse caso. */}
+        {!lowStimulus && (
+          <div style={{ display: "flex", justifyContent: "center", gap: 20 }}>
+            <button onClick={() => setHelpMode("lost")}
+              style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, color: "#94A3B8", fontFamily: "Inter,sans-serif", padding: "10px 4px", minHeight: 44 }}>
+              Me perdi
+            </button>
+            <button onClick={() => setHelpMode("rephrase")}
+              style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, color: "#94A3B8", fontFamily: "Inter,sans-serif", padding: "10px 4px", minHeight: 44 }}>
+              Outro jeito
+            </button>
+          </div>
+        )}
       </div>
 
       <AnimatePresence>
