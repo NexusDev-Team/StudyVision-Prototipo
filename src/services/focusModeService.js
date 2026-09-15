@@ -43,13 +43,13 @@ export function buildFocusPayload(content) {
 }
 
 // Barreira "conteúdo sem informação suficiente" — roda ANTES do fetch, para
-// nunca gastar uma chamada ao Gemini com um Content vazio.
+// nunca gastar uma chamada ao Gemini com um Content vazio. Não olha `title`:
+// createContent() sempre garante um título não-vazio (cai em topic, e por fim
+// em "Conteúdo sem título" — ver src/data/models/content.js), então checar
+// title nunca barraria nada. A substância real do material está em
+// summary/extractedText.
 export function hasEnoughContent(payload) {
-  return Boolean(
-    (payload?.title && payload.title.trim()) ||
-      (payload?.summary && payload.summary.trim()) ||
-      (payload?.extractedText && payload.extractedText.trim())
-  );
+  return Boolean((payload?.summary && payload.summary.trim()) || (payload?.extractedText && payload.extractedText.trim()));
 }
 
 const GENERIC_ERROR = "Não foi possível gerar a sessão de foco agora. Tente novamente.";

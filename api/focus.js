@@ -33,8 +33,12 @@ function sanitizePayload(raw) {
   return out;
 }
 
+// Não olha `title`: o frontend sempre manda um título não-vazio (a fábrica de
+// Content cai em "Conteúdo sem título" na ausência de um real — ver
+// src/data/models/content.js), então checar title nunca barraria nada. A
+// substância real do material está em summary/extractedText.
 function hasEnoughContent(payload) {
-  return Boolean((payload.title && payload.title.trim()) || (payload.summary && payload.summary.trim()) || (payload.extractedText && payload.extractedText.trim()));
+  return Boolean((payload.summary && payload.summary.trim()) || (payload.extractedText && payload.extractedText.trim()));
 }
 
 // Sem responseSchema forçado (ver lib/gemini.js), o modelo pode variar

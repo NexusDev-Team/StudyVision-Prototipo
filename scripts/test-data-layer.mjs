@@ -66,6 +66,24 @@ function test(name, fn) {
   }
 }
 
+// Variante assíncrona. O `test` síncrono acima chama fn() sem await — uma
+// função async que rejeita passaria despercebida (a rejeição vira uma
+// unhandledRejection solta, nunca contabilizada como falha). Usado pelos
+// testes do Modo Foco, que exercitam startFocusSession (async).
+async function testAsync(name, fn) {
+  try {
+    resetDb();
+    await fn();
+    passed += 1;
+    console.log(`  ok  ${name}`);
+  } catch (err) {
+    failed += 1;
+    failures.push({ name, err });
+    console.log(`FAIL  ${name}`);
+    console.log(`      ${err.message}`);
+  }
+}
+
 // ─── imports dos serviços (após o shim estar no lugar) ───────────────────────
 const contentService = await import("../src/services/contentService.js");
 const subjectService = await import("../src/services/subjectService.js");
@@ -2807,9 +2825,13 @@ test("MF-34. buildFocusPayload devolve exatamente os 8 campos academicos, sem va
   assert.equal(payload.mastery, undefined);
 });
 
-test("MF-35. hasEnoughContent reprova content so com titulo vazio", () => {
-  assert.equal(focusModeService.hasEnoughContent({ title: "", summary: "", extractedText: "" }), false);
-  assert.equal(focusModeService.hasEnoughContent({ title: "Algo" }), true);
+test("MF-35. hasEnoughContent ignora title (sempre preenchido pela fabrica) e olha summary/extractedText", () => {
+  // title sozinho NUNCA basta: createContent sempre garante um titulo
+  // nao-vazio, entao um content "vazio" de verdade ainda chega aqui com
+  // title preenchido — a substancia real esta em summary/extractedText.
+  assert.equal(focusModeService.hasEnoughContent({ title: "Conteúdo sem título", summary: "", extractedText: "" }), false);
+  assert.equal(focusModeService.hasEnoughContent({ title: "Conteúdo sem título", summary: "Um resumo real." }), true);
+  assert.equal(focusModeService.hasEnoughContent({ title: "Conteúdo sem título", extractedText: "Texto extraido real." }), true);
 });
 
 test("MF-36. normalizeFocusPlan ignora id vindo do Gemini e gera os proprios", () => {
@@ -2909,6 +2931,232 @@ test("MF-22. sweepOrphans remove sessao de foco orfa", () => {
   assert.equal(removed.focusSessions, 1);
   assert.equal(focusSessionService.getFocusSession(session.id), null);
 });
+
+// ─── Modo Foco — startFocusSession (async, transporte injetável) ─────────────
+
+function makeSteps(n, prefix = "etapa") {
+  return Array.from({ length: n }, (_, i) => ({
+    type: "concept",
+    title: `${prefix} ${i + 1}`,
+    content: `Conteúdo da ${prefix} ${i + 1}, com texto suficiente para passar na validação.`,
+  }));
+}
+
+// Transporte fake: nunca toca a rede. Registra cada chamada em `.calls` para
+// os testes de duplo clique / duração. `planByDuration[d]` pode ser um plano
+// { steps: [...] } ou uma instância de Error para simular falha do transporte.
+function fakeTransport(planByDuration) {
+  const calls = [];
+  const fn = async (payload, opts) => {
+    calls.push({ payload, ...opts });
+    const plan = planByDuration[opts.durationMinutes];
+    if (plan instanceof Error) throw plan;
+    return plan;
+  };
+  fn.calls = calls;
+  return fn;
+}
+
+// Bloqueio de rede acidental: qualquer teste do Modo Foco que esqueça de
+// injetar `transport` cai aqui em vez de tentar uma requisição real (e
+// travar/timeoutar em silêncio). Os poucos testes que precisam exercitar o
+// requestFocusPlan de verdade (network/upstream/invalid_plan) substituem
+// fetch localmente e restauram este bloqueio logo em seguida.
+const originalFetch = globalThis.fetch;
+function blockNetwork() {
+  globalThis.fetch = () => {
+    throw new Error("teste offline tentou usar a rede — injete opts.transport");
+  };
+}
+blockNetwork();
+
+function seedContentForFocus(overrides = {}) {
+  return contentService.createContentEntry({
+    title: "Derivadas",
+    subjectName: "Matemática",
+    summary: "A derivada mede a taxa de variação instantânea.",
+    extractedText: "Texto extraído de exemplo sobre derivadas.",
+    ...overrides,
+  }).content;
+}
+
+await testAsync("MF-45. startFocusSession de 2 minutos gera sessao com duracao e steps corretos", async () => {
+  const content = seedContentForFocus();
+  const transport = fakeTransport({ 2: { success: true, steps: makeSteps(3) } });
+  const { session, resumed } = await focusModeService.startFocusSession(content.id, 2, { transport });
+  assert.equal(resumed, false);
+  assert.equal(session.durationMinutes, 2);
+  assert.ok(session.steps.length >= FOCUS_STEP_BOUNDS[2].min && session.steps.length <= FOCUS_STEP_BOUNDS[2].max);
+  assert.equal(focusSessionService.getFocusSession(session.id).id, session.id);
+});
+
+await testAsync("MF-46. startFocusSession de 5 minutos gera sessao com duracao e steps corretos", async () => {
+  const content = seedContentForFocus();
+  const transport = fakeTransport({ 5: { success: true, steps: makeSteps(5) } });
+  const { session } = await focusModeService.startFocusSession(content.id, 5, { transport });
+  assert.equal(session.durationMinutes, 5);
+  assert.ok(session.steps.length >= FOCUS_STEP_BOUNDS[5].min && session.steps.length <= FOCUS_STEP_BOUNDS[5].max);
+});
+
+await testAsync("MF-47. startFocusSession de 10 minutos gera sessao com duracao e steps corretos", async () => {
+  const content = seedContentForFocus();
+  const transport = fakeTransport({ 10: { success: true, steps: makeSteps(8) } });
+  const { session } = await focusModeService.startFocusSession(content.id, 10, { transport });
+  assert.equal(session.durationMinutes, 10);
+  assert.ok(session.steps.length >= FOCUS_STEP_BOUNDS[10].min && session.steps.length <= FOCUS_STEP_BOUNDS[10].max);
+});
+
+await testAsync("MF-48. a duracao pedida chega intacta ao transporte", async () => {
+  const content = seedContentForFocus();
+  const transport = fakeTransport({ 10: { success: true, steps: makeSteps(8) } });
+  await focusModeService.startFocusSession(content.id, 10, { transport });
+  assert.equal(transport.calls.length, 1);
+  assert.equal(transport.calls[0].durationMinutes, 10);
+});
+
+await testAsync("MF-49. preferencias A vs B: sessao antiga preserva o snapshot mesmo apos trocar o padrao", async () => {
+  const contentA = seedContentForFocus({ title: "Conteúdo A" });
+  const contentB = seedContentForFocus({ title: "Conteúdo B" });
+
+  learningPreferencesService.setLearningPreferences({ concentration: true });
+  const transportA = fakeTransport({ 5: { success: true, steps: makeSteps(4) } });
+  const { session: sessionA } = await focusModeService.startFocusSession(contentA.id, 5, { transport: transportA });
+
+  learningPreferencesService.setLearningPreferences({ manySteps: true });
+  const transportB = fakeTransport({ 5: { success: true, steps: makeSteps(4) } });
+  const { session: sessionB } = await focusModeService.startFocusSession(contentB.id, 5, { transport: transportB });
+
+  const reread = focusSessionService.getFocusSession(sessionA.id);
+  assert.equal(reread.inclusionPreferencesSnapshot.concentration, true);
+  assert.equal(reread.inclusionPreferencesSnapshot.manySteps, false);
+  assert.equal(sessionB.inclusionPreferencesSnapshot.manySteps, true);
+});
+
+await testAsync("MF-50. persistencia + reload: getOrResumeFocusSession devolve a mesma sessao", async () => {
+  const content = seedContentForFocus();
+  const transport = fakeTransport({ 5: { success: true, steps: makeSteps(4) } });
+  const { session } = await focusModeService.startFocusSession(content.id, 5, { transport });
+
+  assert.equal(readDb().focusSessions.length, 1);
+  const resumed = focusModeService.getOrResumeFocusSession(content.id);
+  assert.equal(resumed.id, session.id);
+});
+
+await testAsync("MF-51. retomar sessao existente NUNCA chama o transporte nem a rede", async () => {
+  const content = seedContentForFocus();
+  const transport = fakeTransport({ 5: { success: true, steps: makeSteps(4) } });
+  const { session: first } = await focusModeService.startFocusSession(content.id, 5, { transport });
+
+  // segunda chamada: nem transport fake nem fetch real podem ser tocados —
+  // globalThis.fetch já está bloqueado por blockNetwork() neste bloco.
+  const { session: second, resumed } = await focusModeService.startFocusSession(content.id, 5);
+  assert.equal(resumed, true);
+  assert.equal(second.id, first.id);
+  assert.equal(transport.calls.length, 1, "transport da primeira chamada nao deveria ser reinvocado");
+});
+
+await testAsync("MF-52. duplo clique nao gera duas sessoes nem duas chamadas ao transporte", async () => {
+  const content = seedContentForFocus();
+  let resolvePlan;
+  const gate = new Promise((resolve) => { resolvePlan = resolve; });
+  const calls = [];
+  const slowTransport = async (payload, opts) => {
+    calls.push(opts);
+    await gate;
+    return { success: true, steps: makeSteps(4) };
+  };
+
+  const p1 = focusModeService.startFocusSession(content.id, 5, { transport: slowTransport });
+  const p2 = focusModeService.startFocusSession(content.id, 5, { transport: slowTransport });
+  resolvePlan();
+  const [r1, r2] = await Promise.all([p1, p2]);
+
+  assert.equal(calls.length, 1, "duplo clique deveria disparar so uma chamada ao transporte");
+  assert.equal(r1.session.id, r2.session.id);
+  assert.equal(readDb().focusSessions.length, 1);
+});
+
+await testAsync("MF-53. concluir a sessao permite gerar uma nova depois", async () => {
+  const content = seedContentForFocus();
+  const transport1 = fakeTransport({ 5: { success: true, steps: makeSteps(4) } });
+  const { session: first } = await focusModeService.startFocusSession(content.id, 5, { transport: transport1 });
+
+  focusSessionService.completeFocusSession(first.id);
+  assert.equal(focusModeService.getOrResumeFocusSession(content.id), null);
+
+  const transport2 = fakeTransport({ 5: { success: true, steps: makeSteps(4) } });
+  const { session: second, resumed } = await focusModeService.startFocusSession(content.id, 5, { transport: transport2 });
+  assert.equal(resumed, false);
+  assert.equal(transport2.calls.length, 1);
+  assert.notEqual(second.id, first.id);
+});
+
+await testAsync("MF-54a. content inexistente lanca FocusError not_found sem chamar o transporte", async () => {
+  const transport = fakeTransport({});
+  await assert.rejects(
+    () => focusModeService.startFocusSession("cnt_inexistente", 5, { transport }),
+    (err) => err instanceof focusModeService.FocusError && err.kind === "not_found"
+  );
+  assert.equal(transport.calls.length, 0);
+});
+
+await testAsync("MF-54b. duracao 7 lanca FocusError invalid_duration sem chamar o transporte", async () => {
+  const content = seedContentForFocus();
+  const transport = fakeTransport({});
+  await assert.rejects(
+    () => focusModeService.startFocusSession(content.id, 7, { transport }),
+    (err) => err instanceof focusModeService.FocusError && err.kind === "invalid_duration"
+  );
+  assert.equal(transport.calls.length, 0);
+});
+
+await testAsync("MF-54c. content sem informacao suficiente lanca insufficient_content sem chamar o transporte", async () => {
+  const content = seedContentForFocus({ title: "", summary: "", extractedText: "" });
+  const transport = fakeTransport({});
+  await assert.rejects(
+    () => focusModeService.startFocusSession(content.id, 5, { transport }),
+    (err) => err instanceof focusModeService.FocusError && err.kind === "insufficient_content"
+  );
+  assert.equal(transport.calls.length, 0);
+});
+
+await testAsync("MF-54d. falha de rede real vira FocusError network via requestFocusPlan", async () => {
+  const content = seedContentForFocus();
+  globalThis.fetch = async () => { throw new TypeError("failed to fetch"); };
+  try {
+    await assert.rejects(
+      () => focusModeService.startFocusSession(content.id, 5),
+      (err) => err instanceof focusModeService.FocusError && err.kind === "network"
+    );
+  } finally {
+    blockNetwork();
+  }
+});
+
+await testAsync("MF-54e. resposta HTTP nao-ok vira FocusError upstream via requestFocusPlan", async () => {
+  const content = seedContentForFocus();
+  globalThis.fetch = async () => ({ ok: false, json: async () => ({ success: false, error: "falha upstream" }) });
+  try {
+    await assert.rejects(
+      () => focusModeService.startFocusSession(content.id, 5),
+      (err) => err instanceof focusModeService.FocusError && err.kind === "upstream"
+    );
+  } finally {
+    blockNetwork();
+  }
+});
+
+await testAsync("MF-54f. plano invalido (success:false) nao e persistido", async () => {
+  const content = seedContentForFocus();
+  const transport = fakeTransport({ 5: { success: false, error: "sem conteudo suficiente" } });
+  await assert.rejects(
+    () => focusModeService.startFocusSession(content.id, 5, { transport }),
+    (err) => err instanceof focusModeService.FocusError
+  );
+  assert.equal(readDb().focusSessions.length, 0);
+});
+
+globalThis.fetch = originalFetch;
 
 // ─── relatório ───────────────────────────────────────────────────────────────
 console.log(`\n${passed} passaram, ${failed} falharam`);
