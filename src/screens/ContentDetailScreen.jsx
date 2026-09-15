@@ -4,6 +4,7 @@ import { ChevronLeft, CalendarClock, CreditCard, ListChecks, HelpCircle, Chevron
 import CapturedPageVisual from "../components/brand/CapturedPageVisual";
 import ContentBlocks from "../components/study/ContentBlocks";
 import PhotosSection from "../components/study/PhotosSection";
+import FocusEntryCard from "../components/study/FocusEntryCard";
 import NotesSection from "../components/study/NotesSection";
 import ExportSection from "../components/study/ExportSection";
 import CommitmentsSection from "../components/study/CommitmentsSection";
@@ -23,7 +24,7 @@ import { getEventsForContent, createEventEntry, updateEvent, unlinkContentFromEv
 import { moveContentToSubject, deleteContent, updateNotes, updateContent } from "../services/contentService";
 import { getSubjectVisual, UNASSIGNED_SUBJECT_LABEL } from "../constants";
 
-export default function ContentDetailScreen({ content, onBack, onDeleted, onFlashcards, onQuestions, onQuiz, onVisionPlus, onToast, onAddPhoto, onViewPhoto }) {
+export default function ContentDetailScreen({ content, onBack, onDeleted, onFlashcards, onQuestions, onQuiz, onVisionPlus, onToast, onAddPhoto, onViewPhoto, onFocusMode }) {
   const { mutate, subjects, contents, reviews: allReviews, events: allEvents } = useContentStore();
   const [subjectPickerOpen, setSubjectPickerOpen] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
@@ -244,6 +245,9 @@ export default function ContentDetailScreen({ content, onBack, onDeleted, onFlas
           onUnlink={handleUnlinkEvent}
           onDelete={handleDeleteEvent}
         />
+
+        {/* Modo Foco */}
+        <FocusEntryCard content={content} onEnterFocus={onFocusMode} />
 
         {/* Action buttons */}
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }}

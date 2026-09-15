@@ -22,6 +22,7 @@ import QuestionsScreen from "./screens/QuestionsScreen";
 import QuizScreen from "./screens/QuizScreen";
 import ReviewScreen from "./screens/ReviewScreen";
 import EvolutionScreen from "./screens/EvolutionScreen";
+import FocusScreen from "./screens/FocusScreen";
 import VisionPlusScreen from "./screens/VisionPlusScreen";
 import { useState } from "react";
 
@@ -94,11 +95,14 @@ export default function App() {
   const cameFromReview = prevScreens[prevScreens.length - 1] === "review";
   const navActive = (screen === "review" || (reviewMode && screen === "flashcards")) ? "review"
     : screen === "detail" && cameFromReview ? "review"
-    : ["library", "detail", "flashcards", "questions", "quiz"].includes(screen) ? "library"
+    : ["library", "detail", "focus", "flashcards", "questions", "quiz"].includes(screen) ? "library"
     : screen === "evolution" || screen === "visionplus" ? "evolution" : "camera";
 
   const isLight = !["camera", "analysis"].includes(screen);
-  const showNav = !["camera", "analysis"].includes(screen);
+  // Focus Lock (Etapa 2): esconde a navegação global enquanto dura a sessão —
+  // "uma coisa por vez" também vale para o shell do app, não só para o
+  // conteúdo. Volta ao normal assim que o usuário sai da tela.
+  const showNav = !["camera", "analysis", "focus"].includes(screen);
 
   const transitions = ["visionplus", "evolution", "library", "review"].includes(screen) ? fadeUp : slideIn;
 
@@ -158,7 +162,11 @@ export default function App() {
               onToast={showToast}
               onAddPhoto={() => openAttachCamera(selectedContent.id)}
               onViewPhoto={openPhotoViewer}
+              onFocusMode={() => go("focus")}
             />
+          )}
+          {screen === "focus" && selectedContent && (
+            <FocusScreen content={selectedContent} onExit={goBack} />
           )}
           {screen === "flashcards" && selectedContent && (
             <FlashcardsScreen

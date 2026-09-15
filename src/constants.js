@@ -96,6 +96,15 @@ export function emptyPreferenceOptions() {
 export const FOCUS_DURATIONS = [2, 5, 10];
 export const FOCUS_DEFAULT_DURATION = 5;
 
+// Descrição curta de cada duração no seletor da Etapa 2 (FocusDurationSheet).
+// Um teste (MF-68) trava que este mapa cubra exatamente FOCUS_DURATIONS —
+// nem a mais, nem a menos.
+export const FOCUS_DURATION_DESCRIPTIONS = {
+  2: "Essencial para revisar rapidamente.",
+  5: "Conceito, exemplo e prática.",
+  10: "Uma revisão mais completa.",
+};
+
 // Tipos de etapa de uma FocusSession. "explanation" é o fallback seguro para
 // qualquer tipo desconhecido vindo do Gemini — nunca invalida a sessão inteira.
 export const FOCUS_STEP_TYPES = ["concept", "explanation", "example", "practice", "question", "summary"];

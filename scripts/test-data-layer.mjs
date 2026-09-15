@@ -112,7 +112,7 @@ const prompts = await import("../lib/prompts.js");
 const { repairJson, parseModelJson, GeminiError } = await import("../lib/gemini.js");
 const studyVisionService = await import("../src/services/studyVisionService.js");
 const learningInsightsService = await import("../src/services/learningInsightsService.js");
-const { FOCUS_DURATIONS, FOCUS_STEP_TYPES, FOCUS_STEP_BOUNDS } = await import("../src/constants.js");
+const { FOCUS_DURATIONS, FOCUS_STEP_TYPES, FOCUS_STEP_BOUNDS, FOCUS_DURATION_DESCRIPTIONS } = await import("../src/constants.js");
 const { ID_PREFIX, newId } = await import("../src/utils/id.js");
 const { createFocusSession, createFocusStep, FOCUS_SESSION_STATUSES } = await import("../src/data/models/focusSession.js");
 const { validateFocusSession } = await import("../src/data/models/validate.js");
@@ -120,6 +120,8 @@ const { SCHEMA_VERSION } = await import("../src/data/storage/db.js");
 const focusSessionService = await import("../src/services/focusSessionService.js");
 const focusPrompts = await import("../lib/focusPrompts.js");
 const focusModeService = await import("../src/services/focusModeService.js");
+const { focusErrorMessage } = await import("../src/hooks/useFocusSession.js");
+const { getStepVisual, FOCUS_STEP_VISUALS } = await import("../src/utils/focusStepVisuals.js");
 
 // helper: cria um conteúdo mínimo já com matéria
 // helper: gera `total` respostas de quiz com `correct` delas certas.
@@ -3272,6 +3274,62 @@ test("MF-64. completeFocusSession congela o elapsed e para a contagem", () => {
   const elapsedNoMomento = completed.elapsedMs;
   const elapsedDepois = focusSessionService.getFocusElapsedMs(completed, Date.now() + 999999);
   assert.equal(elapsedDepois, elapsedNoMomento);
+});
+
+// ─── Etapa 2 · Bloco B — mensagens de erro do hook useFocusSession ───────────
+
+test("MF-65. focusErrorMessage mapeia cada FocusError.kind para uma mensagem em portugues", () => {
+  const kinds = ["not_found", "insufficient_content", "invalid_duration", "network", "upstream", "invalid_plan", "technical"];
+  for (const kind of kinds) {
+    const msg = focusErrorMessage(new focusModeService.FocusError("mensagem tecnica interna", kind));
+    assert.ok(typeof msg === "string" && msg.length > 0);
+    assert.notEqual(msg, "mensagem tecnica interna");
+  }
+});
+
+test("MF-66. focusErrorMessage nunca expõe err.message cru de um erro desconhecido", () => {
+  const erroGenerico = new Error("stack trace interno, detalhe tecnico do fetch");
+  const msg = focusErrorMessage(erroGenerico);
+  assert.notEqual(msg, erroGenerico.message);
+  assert.equal(msg, "Não conseguimos preparar sua sessão agora.");
+});
+
+test("MF-67. FocusError com kind desconhecido cai no fallback tecnico", () => {
+  const msg = focusErrorMessage(new focusModeService.FocusError("x", "kind_que_nao_existe"));
+  assert.equal(msg, "Não conseguimos preparar sua sessão agora.");
+});
+
+test("MF-68. FOCUS_DURATION_DESCRIPTIONS cobre exatamente FOCUS_DURATIONS", () => {
+  const chaves = Object.keys(FOCUS_DURATION_DESCRIPTIONS).map(Number).sort((a, b) => a - b);
+  const esperado = [...FOCUS_DURATIONS].sort((a, b) => a - b);
+  assert.deepEqual(chaves, esperado);
+  for (const minutos of FOCUS_DURATIONS) {
+    assert.ok(typeof FOCUS_DURATION_DESCRIPTIONS[minutos] === "string" && FOCUS_DURATION_DESCRIPTIONS[minutos].length > 0);
+  }
+});
+
+// ─── Etapa 2 · Bloco C — renderer de steps do Focus Lock ─────────────────────
+
+test("MF-69. getStepVisual cobre todos os FOCUS_STEP_TYPES com label e icone", () => {
+  for (const type of FOCUS_STEP_TYPES) {
+    const visual = getStepVisual(type);
+    assert.ok(visual && typeof visual.label === "string" && visual.label.length > 0, `sem label para ${type}`);
+    assert.ok(typeof visual.icon === "object" || typeof visual.icon === "function", `sem icone para ${type}`);
+    assert.ok(typeof visual.accent === "string" && visual.accent.startsWith("#"), `sem accent para ${type}`);
+  }
+});
+
+test("MF-70. getStepVisual de um type desconhecido cai no fallback de explanation", () => {
+  const desconhecido = getStepVisual("tipo_que_nao_existe");
+  assert.deepEqual(desconhecido, FOCUS_STEP_VISUALS.explanation);
+  const semTipo = getStepVisual(undefined);
+  assert.deepEqual(semTipo, FOCUS_STEP_VISUALS.explanation);
+});
+
+test("MF-71. FOCUS_STEP_VISUALS nao tem entradas extras alem de FOCUS_STEP_TYPES", () => {
+  const chaves = Object.keys(FOCUS_STEP_VISUALS).sort();
+  const esperado = [...FOCUS_STEP_TYPES].sort();
+  assert.deepEqual(chaves, esperado);
 });
 
 globalThis.fetch = originalFetch;
