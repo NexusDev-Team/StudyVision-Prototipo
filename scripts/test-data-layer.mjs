@@ -129,6 +129,7 @@ const { segmentText, segmentationProfile } = await import("../src/utils/readingS
 const { READING_RATES, READING_DEFAULT_RATE, READING_SEGMENT_BOUNDS } = await import("../src/constants.js");
 const { createReadingProgress } = await import("../src/data/models/readingProgress.js");
 const readingProgressService = await import("../src/services/readingProgressService.js");
+const { isSpeechSupported, pickVoice, normalizeRate } = await import("../src/utils/speech.js");
 
 // helper: cria um conteúdo mínimo já com matéria
 // helper: gera `total` respostas de quiz com `correct` delas certas.
@@ -3675,6 +3676,44 @@ test("LC-32. sweepOrphans remove progresso de leitura orfao", () => {
   const removed = integrityService.sweepOrphans();
   assert.equal(removed.readingProgress, 1);
   assert.deepEqual(readDb().readingProgress, []);
+});
+
+test("LC-33. pickVoice com lista vazia devolve null sem lancar", () => {
+  assert.equal(pickVoice([], "pt-BR"), null);
+  assert.equal(pickVoice(undefined, "pt-BR"), null);
+});
+
+test("LC-34. pickVoice so com en-US cai na primeira disponivel", () => {
+  const voices = [{ lang: "en-US", name: "Alex" }, { lang: "en-GB", name: "Daniel" }];
+  const picked = pickVoice(voices, "pt-BR");
+  assert.equal(picked.name, "Alex");
+});
+
+test("LC-35. pickVoice aceita pt-PT quando nao ha pt-BR", () => {
+  const voices = [{ lang: "en-US", name: "Alex" }, { lang: "pt-PT", name: "Joana" }];
+  const picked = pickVoice(voices, "pt-BR");
+  assert.equal(picked.name, "Joana");
+});
+
+test("LC-36. pickVoice prioriza match exato do idioma", () => {
+  const voices = [{ lang: "pt-PT", name: "Joana" }, { lang: "pt-BR", name: "Luciana" }];
+  const picked = pickVoice(voices, "pt-BR");
+  assert.equal(picked.name, "Luciana");
+});
+
+test("LC-37. isSpeechSupported false quando win nao tem as duas APIs", () => {
+  assert.equal(isSpeechSupported(undefined), false);
+  assert.equal(isSpeechSupported({}), false);
+  assert.equal(isSpeechSupported({ speechSynthesis: {} }), false);
+  assert.equal(isSpeechSupported({ speechSynthesis: {}, SpeechSynthesisUtterance: function () {} }), true);
+});
+
+test("LC-38. normalizeRate so aceita READING_RATES, resto cai no default", () => {
+  assert.equal(normalizeRate(0.8), 0.8);
+  assert.equal(normalizeRate(1.2), 1.2);
+  assert.equal(normalizeRate(5), READING_DEFAULT_RATE);
+  assert.equal(normalizeRate("lixo"), READING_DEFAULT_RATE);
+  assert.equal(normalizeRate(undefined), READING_DEFAULT_RATE);
 });
 
 // ─── relatório ───────────────────────────────────────────────────────────────
