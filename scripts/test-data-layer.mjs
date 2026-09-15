@@ -3156,6 +3156,124 @@ await testAsync("MF-54f. plano invalido (success:false) nao e persistido", async
   assert.equal(readDb().focusSessions.length, 0);
 });
 
+// ─── Etapa 2 · Bloco A — timer persistido no modelo ──────────────────────────
+
+test("MF-55. createFocusSession sem campos de timer aplica defaults (null/0/null)", () => {
+  const session = createFocusSession({ contentId: "ct_x", durationMinutes: 5, steps: makeSteps(3) });
+  assert.equal(session.timerStartedAt, null);
+  assert.equal(session.elapsedMs, 0);
+  assert.equal(session.pausedAt, null);
+});
+
+test("MF-56. sessao legada sem campos de timer passa em validateFocusSession", () => {
+  const session = createFocusSession({ contentId: "ct_x", durationMinutes: 5, steps: makeSteps(3) });
+  // simula sessão gravada antes da Etapa 2: campos de timer nem existem no objeto.
+  delete session.timerStartedAt;
+  delete session.elapsedMs;
+  delete session.pausedAt;
+  const { valid, errors } = validateFocusSession(session);
+  assert.equal(valid, true, errors.join("; "));
+});
+
+test("MF-57. elapsedMs invalido (negativo/NaN/string) normaliza para 0", () => {
+  const negativo = createFocusSession({ contentId: "ct_x", durationMinutes: 5, steps: makeSteps(2), elapsedMs: -50 });
+  const nanValor = createFocusSession({ contentId: "ct_x", durationMinutes: 5, steps: makeSteps(2), elapsedMs: NaN });
+  const string = createFocusSession({ contentId: "ct_x", durationMinutes: 5, steps: makeSteps(2), elapsedMs: "abc" });
+  assert.equal(negativo.elapsedMs, 0);
+  assert.equal(nanValor.elapsedMs, 0);
+  assert.equal(string.elapsedMs, 0);
+});
+
+test("MF-58. timerStartedAt/pausedAt invalidos viram null; validos normalizam para ISO", () => {
+  const invalido = createFocusSession({
+    contentId: "ct_x",
+    durationMinutes: 5,
+    steps: makeSteps(2),
+    timerStartedAt: "nao e uma data",
+    pausedAt: "tambem nao",
+  });
+  assert.equal(invalido.timerStartedAt, null);
+  assert.equal(invalido.pausedAt, null);
+
+  const epoch = Date.now();
+  const valido = createFocusSession({
+    contentId: "ct_x",
+    durationMinutes: 5,
+    steps: makeSteps(2),
+    timerStartedAt: epoch,
+    pausedAt: epoch,
+  });
+  assert.equal(valido.timerStartedAt, new Date(epoch).toISOString());
+  assert.equal(valido.pausedAt, new Date(epoch).toISOString());
+});
+
+test("MF-59. startFocusTimer define timerStartedAt so na primeira chamada", () => {
+  const content = seedContentForFocus();
+  const created = createFocusSession({ contentId: content.id, durationMinutes: 5, steps: makeSteps(3) });
+  const { session } = focusSessionService.persistFocusSession(created);
+  const started = focusSessionService.startFocusTimer(session.id);
+  assert.ok(started.timerStartedAt);
+  const startedAgain = focusSessionService.startFocusTimer(session.id);
+  assert.equal(startedAgain.timerStartedAt, started.timerStartedAt);
+});
+
+test("MF-60. pausar duas vezes seguidas nao duplica o acumulado", () => {
+  const content = seedContentForFocus();
+  const created = createFocusSession({ contentId: content.id, durationMinutes: 5, steps: makeSteps(3) });
+  focusSessionService.persistFocusSession(created);
+  focusSessionService.startFocusTimer(created.id);
+  const primeira = focusSessionService.pauseFocusTimer(created.id);
+  const segunda = focusSessionService.pauseFocusTimer(created.id);
+  assert.equal(segunda.elapsedMs, primeira.elapsedMs);
+  assert.equal(segunda.pausedAt, primeira.pausedAt);
+});
+
+test("MF-61. retomar apos pausa continua contando a partir do acumulado", () => {
+  const content = seedContentForFocus();
+  const created = createFocusSession({ contentId: content.id, durationMinutes: 5, steps: makeSteps(3) });
+  focusSessionService.persistFocusSession(created);
+  focusSessionService.startFocusTimer(created.id);
+  const paused = focusSessionService.pauseFocusTimer(created.id);
+  const acumuladoNaPausa = paused.elapsedMs;
+  const resumed = focusSessionService.resumeFocusTimer(created.id);
+  assert.equal(resumed.pausedAt, null);
+  assert.ok(resumed.timerStartedAt);
+  // elapsed derivado logo apos retomar deve continuar do que já estava acumulado,
+  // nunca voltar a zero.
+  const elapsedLogoDepois = focusSessionService.getFocusElapsedMs(resumed, Date.now());
+  assert.ok(elapsedLogoDepois >= acumuladoNaPausa);
+});
+
+test("MF-62. retomar sessao que nao esta pausada e no-op", () => {
+  const content = seedContentForFocus();
+  const created = createFocusSession({ contentId: content.id, durationMinutes: 5, steps: makeSteps(3) });
+  focusSessionService.persistFocusSession(created);
+  const started = focusSessionService.startFocusTimer(created.id);
+  const resumed = focusSessionService.resumeFocusTimer(created.id);
+  assert.equal(resumed.timerStartedAt, started.timerStartedAt);
+});
+
+test("MF-63. elapsed de sessao nunca iniciada e sempre 0", () => {
+  const content = seedContentForFocus();
+  const created = createFocusSession({ contentId: content.id, durationMinutes: 5, steps: makeSteps(3) });
+  const { session } = focusSessionService.persistFocusSession(created);
+  assert.equal(focusSessionService.getFocusElapsedMs(session, Date.now()), 0);
+  assert.equal(focusSessionService.getFocusElapsedMs(session, Date.now() + 999999), 0);
+});
+
+test("MF-64. completeFocusSession congela o elapsed e para a contagem", () => {
+  const content = seedContentForFocus();
+  const created = createFocusSession({ contentId: content.id, durationMinutes: 5, steps: makeSteps(3) });
+  focusSessionService.persistFocusSession(created);
+  focusSessionService.startFocusTimer(created.id);
+  const completed = focusSessionService.completeFocusSession(created.id);
+  assert.equal(completed.status, "completed");
+  assert.ok(completed.pausedAt);
+  const elapsedNoMomento = completed.elapsedMs;
+  const elapsedDepois = focusSessionService.getFocusElapsedMs(completed, Date.now() + 999999);
+  assert.equal(elapsedDepois, elapsedNoMomento);
+});
+
 globalThis.fetch = originalFetch;
 
 // ─── relatório ───────────────────────────────────────────────────────────────

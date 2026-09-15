@@ -4,7 +4,7 @@
 // gerados por esta camada — nunca confiar em um id vindo do Gemini.
 
 import { newId, ID_PREFIX } from "../../utils/id.js";
-import { nowIso } from "../../utils/date.js";
+import { nowIso, toIso } from "../../utils/date.js";
 import { FOCUS_STEP_TYPES, LEARNING_PREFERENCE_KEYS } from "../../constants.js";
 
 export const FOCUS_SESSION_STATUSES = ["in_progress", "completed"];
@@ -37,6 +37,14 @@ function sanitizeSnapshot(raw) {
   return snapshot;
 }
 
+// Tempo acumulado (ms) antes da pausa/estado atual em andamento. Nunca
+// negativo, nunca NaN — qualquer valor fora disso vira 0 em vez de invalidar
+// a sessão inteira (mesma filosofia de `type` inválido virando "explanation").
+function normalizeElapsedMs(value) {
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0;
+}
+
 export function createFocusSession({
   contentId,
   durationMinutes,
@@ -45,6 +53,9 @@ export function createFocusSession({
   currentStepIndex,
   inclusionPreferencesSnapshot,
   completedAt,
+  timerStartedAt,
+  elapsedMs,
+  pausedAt,
 } = {}) {
   const now = nowIso();
   const id = newId(ID_PREFIX.focusSession);
@@ -69,5 +80,11 @@ export function createFocusSession({
     createdAt: now,
     updatedAt: now,
     completedAt: completedAt || null,
+    // Timer não punitivo (Etapa 2): apenas timestamps, nunca um contador
+    // regravado a cada segundo. Elapsed real = elapsedMs + (agora - timerStartedAt)
+    // enquanto não pausado; ver getFocusElapsedMs em focusSessionService.js.
+    timerStartedAt: toIso(timerStartedAt),
+    elapsedMs: normalizeElapsedMs(elapsedMs),
+    pausedAt: toIso(pausedAt),
   };
 }

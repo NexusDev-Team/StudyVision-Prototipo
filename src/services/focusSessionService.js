@@ -93,7 +93,63 @@ export function completeFocusSession(sessionId) {
     status: "completed",
     completedAt: now,
     updatedAt: now,
+    // congela o tempo decorrido — depois de completed, getFocusElapsedMs não
+    // deve mais avançar mesmo se algo chamar com um `now` no futuro.
+    elapsedMs: getFocusElapsedMs(s, Date.now()),
+    pausedAt: now,
   }));
+}
+
+// ─── Timer (Etapa 2) ──────────────────────────────────────────────────────
+// Só timestamps são persistidos — nunca um contador regravado a cada
+// segundo. O tempo decorrido é sempre DERIVADO por getFocusElapsedMs, tanto
+// no cliente (a cada tick do relógio) quanto aqui.
+
+// Tempo decorrido real, em ms, no instante `now`. Pura — não lê nem grava
+// storage. Sessão nunca iniciada (timerStartedAt null) ou pausada devolve o
+// acumulado congelado em elapsedMs.
+export function getFocusElapsedMs(session, now = Date.now()) {
+  const elapsedMs = Number.isInteger(session?.elapsedMs) ? session.elapsedMs : 0;
+  if (!session?.timerStartedAt || session?.pausedAt) return elapsedMs;
+  const startedMs = new Date(session.timerStartedAt).getTime();
+  if (Number.isNaN(startedMs)) return elapsedMs;
+  return elapsedMs + Math.max(0, now - startedMs);
+}
+
+// Marca o início da contagem se ainda não tiver começado. Chamar de novo
+// numa sessão já iniciada é um no-op — não reinicia o relógio ao reabrir a
+// tela (reload/retomada usam isto sem risco de "zerar" o tempo já passado).
+export function startFocusTimer(sessionId) {
+  return updateSession(sessionId, (s) => {
+    if (s.timerStartedAt) return s;
+    return { ...s, timerStartedAt: nowIso(), pausedAt: null, updatedAt: nowIso() };
+  });
+}
+
+// Acumula o tempo corrido desde o último início/retomada em elapsedMs e
+// registra pausedAt. Pausar uma sessão já pausada é um no-op — evita
+// duplicar o acumulado em cliques repetidos no botão de pausa.
+export function pauseFocusTimer(sessionId) {
+  return updateSession(sessionId, (s) => {
+    if (s.pausedAt || !s.timerStartedAt) return s;
+    const now = nowIso();
+    return {
+      ...s,
+      elapsedMs: getFocusElapsedMs(s, Date.now()),
+      pausedAt: now,
+      updatedAt: now,
+    };
+  });
+}
+
+// Reinicia a contagem a partir de agora, preservando o acumulado em
+// elapsedMs. Retomar uma sessão que não está pausada é um no-op.
+export function resumeFocusTimer(sessionId) {
+  return updateSession(sessionId, (s) => {
+    if (!s.pausedAt) return s;
+    const now = nowIso();
+    return { ...s, timerStartedAt: now, pausedAt: null, updatedAt: now };
+  });
 }
 
 export function deleteFocusSessionsForContent(contentId) {

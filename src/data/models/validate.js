@@ -126,6 +126,19 @@ export function validateFocusSession(session) {
     errors.push("sessão completed sem completedAt");
   }
 
+  // Timer (Etapa 2) — campos opcionais: ausência (undefined/null) é válida
+  // porque sessões geradas antes desta etapa não os possuem. Só invalida
+  // quando presentes com o tipo errado.
+  if (session.timerStartedAt != null && typeof session.timerStartedAt !== "string") {
+    errors.push("timerStartedAt deveria ser string ISO ou null");
+  }
+  if (session.elapsedMs != null && (!Number.isInteger(session.elapsedMs) || session.elapsedMs < 0)) {
+    errors.push("elapsedMs deveria ser um inteiro não negativo");
+  }
+  if (session.pausedAt != null && typeof session.pausedAt !== "string") {
+    errors.push("pausedAt deveria ser string ISO ou null");
+  }
+
   return { valid: errors.length === 0, errors };
 }
 
