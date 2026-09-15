@@ -9,6 +9,7 @@ import react from "@vitejs/plugin-react";
 const API_ROUTES = {
   "/api/analyze": "/api/analyze.js",
   "/api/focus": "/api/focus.js",
+  "/api/rephrase": "/api/rephrase.js",
 };
 
 function apiPlugin(env) {

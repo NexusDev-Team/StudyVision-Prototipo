@@ -13,8 +13,10 @@ import { ChevronLeft, Pause, Play, CheckCircle2 } from "lucide-react";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import ProgressBar from "../components/ui/ProgressBar";
 import FocusStepRenderer from "../components/study/FocusStepRenderer";
+import { LostRecapSheet, RephraseSheet } from "../components/study/FocusHelpSheet";
 import { useFocusSession } from "../hooks/useFocusSession.js";
 import { getFocusElapsedMs } from "../services/focusSessionService.js";
+import { buildLostRecap } from "../utils/focusRecap.js";
 import { fadeUp } from "../styles/motion";
 
 function formatClock(ms) {
@@ -27,6 +29,7 @@ function formatClock(ms) {
 export default function FocusScreen({ content, onExit }) {
   const { session, status, advance, goBackStep, complete, startTimer, pauseTimer, resumeTimer } = useFocusSession(content.id);
   const [confirmExitOpen, setConfirmExitOpen] = useState(false);
+  const [helpMode, setHelpMode] = useState(null); // null | "lost" | "rephrase"
   const [tick, setTick] = useState(() => Date.now());
 
   // Inicia o relógio assim que a sessão está disponível — no-op se já tiver
@@ -174,6 +177,18 @@ export default function FocusScreen({ content, onExit }) {
             {isLastStep ? "Concluir sessão" : "Continuar"}
           </motion.button>
         </div>
+
+        {/* Auxílio contextual discreto — nunca compete com a ação principal. */}
+        <div style={{ display: "flex", justifyContent: "center", gap: 20 }}>
+          <button onClick={() => setHelpMode("lost")}
+            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, color: "#94A3B8", fontFamily: "Inter,sans-serif", padding: "8px 4px", minHeight: 36 }}>
+            Me perdi
+          </button>
+          <button onClick={() => setHelpMode("rephrase")}
+            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, color: "#94A3B8", fontFamily: "Inter,sans-serif", padding: "8px 4px", minHeight: 36 }}>
+            Outro jeito
+          </button>
+        </div>
       </div>
 
       <AnimatePresence>
@@ -186,6 +201,12 @@ export default function FocusScreen({ content, onExit }) {
             onConfirm={handleConfirmExit}
             onCancel={() => setConfirmExitOpen(false)}
           />
+        )}
+        {helpMode === "lost" && (
+          <LostRecapSheet recap={buildLostRecap(session)} onClose={() => setHelpMode(null)} />
+        )}
+        {helpMode === "rephrase" && currentStep && (
+          <RephraseSheet step={currentStep} preferences={session.inclusionPreferencesSnapshot} onClose={() => setHelpMode(null)} />
         )}
       </AnimatePresence>
     </div>

@@ -122,6 +122,8 @@ const focusPrompts = await import("../lib/focusPrompts.js");
 const focusModeService = await import("../src/services/focusModeService.js");
 const { focusErrorMessage } = await import("../src/hooks/useFocusSession.js");
 const { getStepVisual, FOCUS_STEP_VISUALS } = await import("../src/utils/focusStepVisuals.js");
+const { buildLostRecap } = await import("../src/utils/focusRecap.js");
+const { buildRephrasePrompt } = await import("../lib/rephrasePrompts.js");
 
 // helper: cria um conteúdo mínimo já com matéria
 // helper: gera `total` respostas de quiz com `correct` delas certas.
@@ -3330,6 +3332,59 @@ test("MF-71. FOCUS_STEP_VISUALS nao tem entradas extras alem de FOCUS_STEP_TYPES
   const chaves = Object.keys(FOCUS_STEP_VISUALS).sort();
   const esperado = [...FOCUS_STEP_TYPES].sort();
   assert.deepEqual(chaves, esperado);
+});
+
+// ─── Etapa 2 · Bloco E — auxílio contextual ("Me perdi" / "Outro jeito") ─────
+
+test("MF-75. buildLostRecap no primeiro step recapitula o proprio step atual", () => {
+  const session = createFocusSession({ contentId: "ct_x", durationMinutes: 5, steps: makeSteps(3) });
+  const recap = buildLostRecap(session);
+  assert.equal(recap.isFirstStep, true);
+  assert.equal(recap.stepNumber, 1);
+  assert.equal(recap.totalSteps, 3);
+  assert.equal(recap.recapTitle, session.steps[0].title);
+});
+
+test("MF-76. buildLostRecap depois do primeiro step recapitula o step anterior", () => {
+  const session = createFocusSession({ contentId: "ct_x", durationMinutes: 5, steps: makeSteps(3), currentStepIndex: 2 });
+  const recap = buildLostRecap(session);
+  assert.equal(recap.isFirstStep, false);
+  assert.equal(recap.stepNumber, 3);
+  assert.equal(recap.recapTitle, session.steps[1].title);
+});
+
+test("MF-77. buildRephrasePrompt trunca title/content e nunca inclui o Content inteiro", () => {
+  const tituloGigante = "x".repeat(500);
+  const conteudoGigante = "y".repeat(5000);
+  const prompt = buildRephrasePrompt({ title: tituloGigante, content: conteudoGigante, preferences: null });
+  assert.ok(!prompt.includes(tituloGigante), "titulo nao deveria entrar inteiro no prompt");
+  assert.ok(!prompt.includes(conteudoGigante), "conteudo nao deveria entrar inteiro no prompt");
+  assert.ok(prompt.includes("x".repeat(80)));
+  assert.ok(prompt.includes("y".repeat(1200)));
+});
+
+await testAsync("MF-78. requestRephrase mapeia falha de rede para FocusError network", async () => {
+  globalThis.fetch = async () => { throw new TypeError("failed to fetch"); };
+  try {
+    await assert.rejects(
+      () => focusModeService.requestRephrase({ title: "t", content: "c" }, {}),
+      (err) => err instanceof focusModeService.FocusError && err.kind === "network"
+    );
+  } finally {
+    blockNetwork();
+  }
+});
+
+await testAsync("MF-79. requestRephrase com success:true e content vazio vira FocusError invalid_plan", async () => {
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ success: true, content: "   " }) });
+  try {
+    await assert.rejects(
+      () => focusModeService.requestRephrase({ title: "t", content: "c" }, {}),
+      (err) => err instanceof focusModeService.FocusError && err.kind === "invalid_plan"
+    );
+  } finally {
+    blockNetwork();
+  }
 });
 
 globalThis.fetch = originalFetch;

@@ -88,6 +88,43 @@ export async function requestFocusPlan(payload, { durationMinutes, preferences, 
   return body;
 }
 
+// "Outro jeito" (Etapa 2) — reexplica APENAS o step atual em tela. Mesmo
+// padrão de requestFocusPlan (fetch isolado, FocusError por kind), mas para
+// um endpoint bem mais leve: nunca gera FocusSession, nunca envia imagem,
+// nunca o Content inteiro, nunca histórico. Transporte injetável para testes
+// offline, igual ao motor da Etapa 1.
+export async function requestRephrase({ title, content }, { preferences, signal } = {}) {
+  let response;
+  try {
+    response = await fetch("/api/rephrase", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, content, preferences: preferences || null }),
+      signal,
+    });
+  } catch (err) {
+    if (err?.name === "AbortError") throw err;
+    throw new FocusError("Sem conexão com a internet. Verifique sua rede e tente novamente.", "network");
+  }
+
+  let body;
+  try {
+    body = await response.json();
+  } catch {
+    throw new FocusError(GENERIC_ERROR, "upstream");
+  }
+
+  if (!response.ok) {
+    throw new FocusError(body?.error || GENERIC_ERROR, "upstream");
+  }
+
+  if (body.success === false || typeof body.content !== "string" || !body.content.trim()) {
+    throw new FocusError(body.error || "Não foi possível reexplicar esta etapa.", "invalid_plan");
+  }
+
+  return body.content;
+}
+
 const MAX_TITLE_CHARS = 80;
 const MAX_CONTENT_CHARS = 1200;
 
