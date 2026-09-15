@@ -98,3 +98,69 @@ const READING_ERROR_MESSAGES = {
 export function readingErrorMessage(kind) {
   return READING_ERROR_MESSAGES[kind] || READING_ERROR_MESSAGES.insufficient_content;
 }
+
+const GENERIC_HELP_ERROR = "Não foi possível preparar o auxílio agora.";
+
+// kind: "network" (falha de conexão) | "upstream" (erro HTTP do endpoint) |
+// "invalid_response" (resposta do Gemini não utilizável).
+export class ReadingHelpError extends Error {
+  constructor(message, kind = "technical") {
+    super(message);
+    this.kind = kind;
+  }
+}
+
+// "Me perdi" (mode: "lost") e "Outro jeito" (mode: "rephrase") via o mesmo
+// endpoint leve /api/reading-help — nunca gera ReadingProgress novo, nunca
+// envia imagem, nunca o Content inteiro, nunca histórico. `previous` é
+// contexto mínimo (no máximo 2 trechos anteriores), não histórico de chat.
+export async function requestReadingHelp({ mode, topic, current, previous } = {}, { preferences, signal } = {}) {
+  let response;
+  try {
+    response = await fetch("/api/reading-help", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mode,
+        topic: topic || "",
+        current: current || "",
+        previous: Array.isArray(previous) ? previous : [],
+        preferences: preferences || null,
+      }),
+      signal,
+    });
+  } catch (err) {
+    if (err?.name === "AbortError") throw err;
+    throw new ReadingHelpError("Sem conexão com a internet. Verifique sua rede e tente novamente.", "network");
+  }
+
+  let body;
+  try {
+    body = await response.json();
+  } catch {
+    throw new ReadingHelpError(GENERIC_HELP_ERROR, "upstream");
+  }
+
+  if (!response.ok) {
+    throw new ReadingHelpError(body?.error || GENERIC_HELP_ERROR, "upstream");
+  }
+
+  if (body.success === false || typeof body.content !== "string" || !body.content.trim()) {
+    throw new ReadingHelpError(body.error || GENERIC_HELP_ERROR, "invalid_response");
+  }
+
+  return body.content;
+}
+
+const READING_HELP_ERROR_MESSAGES = {
+  network: "Sem conexão com a internet. Verifique sua rede e tente novamente.",
+  upstream: GENERIC_HELP_ERROR,
+  invalid_response: GENERIC_HELP_ERROR,
+  technical: GENERIC_HELP_ERROR,
+};
+
+// Nunca expõe mensagem crua de erro — mesmo padrão de focusErrorMessage e
+// readingErrorMessage acima.
+export function readingHelpErrorMessage(kind) {
+  return READING_HELP_ERROR_MESSAGES[kind] || READING_HELP_ERROR_MESSAGES.technical;
+}

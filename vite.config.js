@@ -10,6 +10,7 @@ const API_ROUTES = {
   "/api/analyze": "/api/analyze.js",
   "/api/focus": "/api/focus.js",
   "/api/rephrase": "/api/rephrase.js",
+  "/api/reading-help": "/api/reading-help.js",
 };
 
 function apiPlugin(env) {

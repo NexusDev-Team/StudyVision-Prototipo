@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, Play, Pause, SkipBack, SkipForward, BookOpenCheck, VolumeX } from "lucide-react";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import ProgressBar from "../components/ui/ProgressBar";
+import { LostHelpSheet, RephraseHelpSheet } from "../components/study/ReadingHelpSheet";
 import { useReadingSession } from "../hooks/useReadingSession.js";
 import { useSpeechSynthesis } from "../hooks/useSpeechSynthesis.js";
 import { READING_RATES } from "../constants.js";
@@ -34,6 +35,7 @@ export default function ReadingScreen({ content, onExit }) {
 
   const { supported, status: speechStatus, speak, pause, resume, cancel } = useSpeechSynthesis();
   const [confirmExitOpen, setConfirmExitOpen] = useState(false);
+  const [helpMode, setHelpMode] = useState(null); // null | "lost" | "rephrase"
 
   const comfortReading = preferences?.longText === true;
   const lowStimulus = preferences?.concentration === true;
@@ -137,6 +139,14 @@ export default function ReadingScreen({ content, onExit }) {
     setConfirmExitOpen(false);
     cancel();
     onExit?.();
+  };
+
+  // "Me perdi" / "Outro jeito" (seção 39/42 do briefing): pausa/cancela a
+  // leitura antes de abrir a folha — nunca fala e mostra o auxílio ao mesmo
+  // tempo. Contexto mínimo: só o trecho atual + até 2 trechos anteriores.
+  const openHelp = (mode) => {
+    cancel();
+    setHelpMode(mode);
   };
 
   // Conteúdo sem texto suficiente — nunca deveria chegar aqui (o
@@ -257,6 +267,22 @@ export default function ReadingScreen({ content, onExit }) {
             </button>
           ))}
         </div>
+
+        {/* Auxílio contextual discreto — some com "dificuldade de
+            concentração" declarada, mesma regra do Modo Foco (interface mais
+            limpa, menos elementos secundários). */}
+        {!lowStimulus && (
+          <div style={{ display: "flex", justifyContent: "center", gap: 20 }}>
+            <button onClick={() => openHelp("lost")}
+              style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, color: "#94A3B8", fontFamily: "Inter,sans-serif", padding: "10px 4px", minHeight: 44 }}>
+              Me perdi
+            </button>
+            <button onClick={() => openHelp("rephrase")}
+              style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, color: "#94A3B8", fontFamily: "Inter,sans-serif", padding: "10px 4px", minHeight: 44 }}>
+              Outro jeito
+            </button>
+          </div>
+        )}
       </div>
 
       <AnimatePresence>
@@ -268,6 +294,24 @@ export default function ReadingScreen({ content, onExit }) {
             cancelLabel="Continuar lendo"
             onConfirm={handleConfirmExit}
             onCancel={() => setConfirmExitOpen(false)}
+          />
+        )}
+        {helpMode === "lost" && (
+          <LostHelpSheet
+            topic={content.title}
+            current={segments[index]}
+            previous={segments.slice(Math.max(0, index - 2), index)}
+            preferences={preferences}
+            onClose={() => setHelpMode(null)}
+          />
+        )}
+        {helpMode === "rephrase" && (
+          <RephraseHelpSheet
+            topic={content.title}
+            current={segments[index]}
+            previous={segments.slice(Math.max(0, index - 2), index)}
+            preferences={preferences}
+            onClose={() => setHelpMode(null)}
           />
         )}
       </AnimatePresence>

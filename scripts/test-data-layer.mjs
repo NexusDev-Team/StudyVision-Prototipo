@@ -130,6 +130,7 @@ const { READING_RATES, READING_DEFAULT_RATE, READING_SEGMENT_BOUNDS } = await im
 const { createReadingProgress } = await import("../src/data/models/readingProgress.js");
 const readingProgressService = await import("../src/services/readingProgressService.js");
 const { isSpeechSupported, pickVoice, normalizeRate } = await import("../src/utils/speech.js");
+const { buildReadingHelpPrompt } = await import("../lib/readingHelpPrompts.js");
 
 // helper: cria um conteúdo mínimo já com matéria
 // helper: gera `total` respostas de quiz com `correct` delas certas.
@@ -3745,6 +3746,103 @@ test("LC-42. computeSourceFingerprint e deterministico e muda com texto/perfil d
   assert.equal(fp1, fp2);
   assert.notEqual(fp1, fp3);
   assert.notEqual(fp1, fp4);
+});
+
+test("LC-43. buildReadingHelpPrompt trunca topic/current e limita previous a 2 itens", () => {
+  const prompt = buildReadingHelpPrompt({
+    mode: "lost",
+    topic: "x".repeat(200),
+    current: "y".repeat(2000),
+    previous: ["a".repeat(1000), "b".repeat(1000), "c".repeat(1000)],
+  });
+  assert.ok(prompt.includes("x".repeat(80)));
+  assert.ok(!prompt.includes("x".repeat(81)));
+  assert.ok(prompt.includes("y".repeat(1200)));
+  assert.ok(!prompt.includes("y".repeat(1201)));
+  assert.ok(prompt.includes("a".repeat(400)));
+  assert.ok(prompt.includes("b".repeat(400)));
+  assert.ok(!prompt.includes("Trecho anterior 3"));
+});
+
+test("LC-44. buildReadingHelpPrompt ignora campos extras que nao fazem parte do contrato", () => {
+  const prompt = buildReadingHelpPrompt({
+    mode: "rephrase",
+    topic: "Fotossíntese",
+    current: "As plantas convertem luz em energia.",
+    image: "data:image/png;base64,AAAA",
+    fullContent: "conteúdo completo que nunca deveria vazar",
+  });
+  assert.ok(!prompt.includes("base64"));
+  assert.ok(!prompt.includes("fullContent"));
+  assert.ok(!prompt.includes("nunca deveria vazar"));
+});
+
+test("LC-45. buildReadingHelpPrompt varia a instrucao conforme o mode", () => {
+  const base = { topic: "t", current: "c" };
+  const lost = buildReadingHelpPrompt({ ...base, mode: "lost" });
+  const rephrase = buildReadingHelpPrompt({ ...base, mode: "rephrase" });
+  assert.ok(lost.includes("se perdeu"));
+  assert.ok(rephrase.includes("de outra maneira"));
+  assert.notEqual(lost, rephrase);
+});
+
+test("LC-46. buildReadingHelpPrompt inclui o bloco de preferencias quando ativas", () => {
+  const withPrefs = buildReadingHelpPrompt({ mode: "lost", topic: "t", current: "c", preferences: { complexContent: true } });
+  const withoutPrefs = buildReadingHelpPrompt({ mode: "lost", topic: "t", current: "c" });
+  assert.notEqual(withPrefs, withoutPrefs);
+});
+
+await testAsync("LC-47. requestReadingHelp mapeia falha de rede para ReadingHelpError network", async () => {
+  globalThis.fetch = async () => { throw new TypeError("failed to fetch"); };
+  try {
+    await assert.rejects(
+      () => readingService.requestReadingHelp({ mode: "lost", current: "c" }, {}),
+      (err) => err instanceof readingService.ReadingHelpError && err.kind === "network"
+    );
+  } finally {
+    blockNetwork();
+  }
+});
+
+await testAsync("LC-48. requestReadingHelp com success:false vira ReadingHelpError invalid_response", async () => {
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ success: false, error: "não deu" }) });
+  try {
+    await assert.rejects(
+      () => readingService.requestReadingHelp({ mode: "rephrase", current: "c" }, {}),
+      (err) => err instanceof readingService.ReadingHelpError && err.kind === "invalid_response"
+    );
+  } finally {
+    blockNetwork();
+  }
+});
+
+await testAsync("LC-49. requestReadingHelp com content vazio vira ReadingHelpError invalid_response", async () => {
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ success: true, content: "   " }) });
+  try {
+    await assert.rejects(
+      () => readingService.requestReadingHelp({ mode: "lost", current: "c" }, {}),
+      (err) => err instanceof readingService.ReadingHelpError && err.kind === "invalid_response"
+    );
+  } finally {
+    blockNetwork();
+  }
+});
+
+await testAsync("LC-50. requestReadingHelp com resposta HTTP nao-ok vira ReadingHelpError upstream", async () => {
+  globalThis.fetch = async () => ({ ok: false, json: async () => ({ error: "falhou" }) });
+  try {
+    await assert.rejects(
+      () => readingService.requestReadingHelp({ mode: "lost", current: "c" }, {}),
+      (err) => err instanceof readingService.ReadingHelpError && err.kind === "upstream"
+    );
+  } finally {
+    blockNetwork();
+  }
+});
+
+test("LC-51. readingHelpErrorMessage mapeia kinds conhecidos e cai no fallback para desconhecido", () => {
+  assert.equal(readingService.readingHelpErrorMessage("network"), "Sem conexão com a internet. Verifique sua rede e tente novamente.");
+  assert.equal(readingService.readingHelpErrorMessage("desconhecido"), readingService.readingHelpErrorMessage("technical"));
 });
 
 // ─── relatório ───────────────────────────────────────────────────────────────
