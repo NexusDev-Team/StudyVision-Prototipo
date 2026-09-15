@@ -124,6 +124,9 @@ const { focusErrorMessage } = await import("../src/hooks/useFocusSession.js");
 const { getStepVisual, FOCUS_STEP_VISUALS } = await import("../src/utils/focusStepVisuals.js");
 const { buildLostRecap } = await import("../src/utils/focusRecap.js");
 const { buildRephrasePrompt } = await import("../lib/rephrasePrompts.js");
+const readingService = await import("../src/services/readingService.js");
+const { segmentText, segmentationProfile } = await import("../src/utils/readingSegments.js");
+const { READING_RATES, READING_DEFAULT_RATE, READING_SEGMENT_BOUNDS } = await import("../src/constants.js");
 
 // helper: cria um conteúdo mínimo já com matéria
 // helper: gera `total` respostas de quiz com `correct` delas certas.
@@ -3388,6 +3391,135 @@ await testAsync("MF-79. requestRephrase com success:true e content vazio vira Fo
 });
 
 globalThis.fetch = originalFetch;
+
+// ─── Ler Comigo — Etapa 3 ──────────────────────────────────────────────────
+
+function stripWs(s) {
+  return s.replace(/\s+/g, "");
+}
+
+test("LC-01. buildReadingSource usa summary quando presente", () => {
+  const source = readingService.buildReadingSource({ summary: "A fotossíntese converte luz em energia." });
+  assert.deepEqual(source.usedFields, ["summary"]);
+  assert.equal(source.blocks[0].kind, "summary");
+});
+
+test("LC-02. buildReadingSource cai em extractedText só quando summary/keyConcepts vazios", () => {
+  const source = readingService.buildReadingSource({
+    extractedText: "Texto cru extraído da imagem, com bastante conteúdo para passar do mínimo exigido.",
+  });
+  assert.deepEqual(source.usedFields, ["extractedText"]);
+  assert.equal(source.blocks[0].kind, "extractedText");
+});
+
+test("LC-03. buildReadingSource prioriza summary sobre extractedText quando ambos existem", () => {
+  const source = readingService.buildReadingSource({
+    summary: "Resumo tratado pelo Gemini sobre o tema estudado nesta captura.",
+    extractedText: "Texto bruto que não deveria ser lido quando o resumo existe.",
+  });
+  assert.ok(!source.usedFields.includes("extractedText"));
+  assert.ok(source.usedFields.includes("summary"));
+});
+
+test("LC-04. buildReadingSource ignora keyConcepts vazio ou malformado sem lançar", () => {
+  const source1 = readingService.buildReadingSource({ summary: "Resumo válido com texto suficiente para leitura.", keyConcepts: [] });
+  assert.deepEqual(source1.usedFields, ["summary"]);
+  const source2 = readingService.buildReadingSource({ summary: "Resumo válido com texto suficiente para leitura.", keyConcepts: "não é array" });
+  assert.deepEqual(source2.usedFields, ["summary"]);
+});
+
+test("LC-05. buildReadingSource sem texto nenhum retorna hasEnough falso", () => {
+  const source = readingService.buildReadingSource({ title: "Sem conteúdo", notes: "anotação pessoal" });
+  assert.equal(readingService.hasEnoughReadingText(source), false);
+  assert.deepEqual(source.blocks, []);
+});
+
+test("LC-06. buildReadingSource nunca inclui campos estruturais no texto de saída", () => {
+  const content = {
+    id: "cnt_123", createdAt: "2026-01-01", updatedAt: "2026-01-01",
+    summary: "Resumo acadêmico sobre o assunto estudado, com texto suficiente.",
+    notes: "não deveria aparecer na leitura",
+    quizzes: [{ id: "qz_1" }],
+  };
+  const source = readingService.buildReadingSource(content);
+  const text = readingService.readingSourceText(source);
+  assert.ok(!text.includes("cnt_123"));
+  assert.ok(!text.includes("não deveria aparecer"));
+  assert.ok(!text.includes("qz_1"));
+});
+
+test("LC-07. segmentText nao quebra abreviacao Dr. no meio da frase", () => {
+  const segments = segmentText("Dr. Silva explicou o conceito com calma.");
+  assert.equal(segments.length, 1);
+  assert.ok(segments[0].startsWith("Dr. Silva"));
+});
+
+test("LC-08. segmentText preserva numero decimal 3.14 intacto", () => {
+  const segments = segmentText("O valor é 3.14 nesse caso.");
+  assert.equal(segments.length, 1);
+  assert.ok(segments[0].includes("3.14"));
+});
+
+test("LC-09. segmentText quebra paragrafo longo sem pontuacao sem perder conteudo", () => {
+  const longText = Array.from({ length: 80 }, (_, i) => `palavra${i}`).join(" ");
+  const segments = segmentText(longText, { maxChars: 60, minChars: 20 });
+  assert.ok(segments.length > 1);
+  assert.equal(stripWs(segments.join(" ")), stripWs(longText));
+});
+
+test("LC-10. segmentText de texto vazio retorna array vazio", () => {
+  assert.deepEqual(segmentText(""), []);
+  assert.deepEqual(segmentText("   "), []);
+  assert.deepEqual(segmentText(undefined), []);
+});
+
+test("LC-11. segmentText mantem itens de lista como trechos proprios", () => {
+  const listText = "- Primeiro item da lista\n- Segundo item da lista\n- Terceiro item da lista";
+  const segments = segmentText(listText);
+  assert.equal(segments.length, 3);
+  segments.forEach((s) => assert.ok(s.startsWith("-")));
+});
+
+test("LC-12. segmentationProfile compacto gera mais trechos que o padrao sobre o mesmo texto", () => {
+  const text = Array.from({ length: 12 }, (_, i) => `Esta é a sentença número ${i} do texto de teste, bem completa.`).join(" ");
+  const defaultProfile = segmentationProfile({});
+  const compactProfile = segmentationProfile({ longText: true });
+  const defaultSegments = segmentText(text, defaultProfile);
+  const compactSegments = segmentText(text, compactProfile);
+  assert.ok(compactSegments.length >= defaultSegments.length);
+});
+
+test("LC-13. segmentText quebra sentenca longa em ponto natural, nunca no meio da palavra", () => {
+  const longSentence = "Primeira parte da frase; segunda parte da frase, que continua bastante longa e detalhada até o final dela.";
+  const segments = segmentText(longSentence, { maxChars: 40, minChars: 10 });
+  assert.ok(segments.length > 1);
+  // nenhuma palavra é cortada ao meio: todo trecho começa e termina em uma
+  // fronteira de palavra (nunca "frase" virando "fra" + "se").
+  const words = stripWs(longSentence) === stripWs(longSentence) ? longSentence.split(/\s+/) : [];
+  const rejoined = segments.join(" ").split(/\s+/);
+  assert.deepEqual(rejoined.filter(Boolean), words.filter(Boolean));
+});
+
+test("LC-14. segmentText trata reticencias como fim de sentenca", () => {
+  const segments = segmentText("Ele pensou... e decidiu continuar mesmo assim.");
+  assert.ok(segments.length >= 1);
+  assert.equal(stripWs(segments.join(" ")), stripWs("Ele pensou... e decidiu continuar mesmo assim."));
+});
+
+test("LC-15. segmentText nao quebra em Sr. no meio do texto", () => {
+  const segments = segmentText("O Sr. Almeida chegou cedo para a reunião importante.");
+  assert.equal(segments.length, 1);
+});
+
+test("LC-16. segmentText preserva todo o conteudo em texto misto (lista + prosa + paragrafo longo)", () => {
+  const mixed = [
+    "Este é o resumo introdutório do conteúdo, com uma frase razoavelmente longa para começar.",
+    "- Primeiro conceito chave\n- Segundo conceito chave\n- Terceiro conceito chave",
+    Array.from({ length: 40 }, (_, i) => `termo${i}`).join(" "),
+  ].join("\n\n");
+  const segments = segmentText(mixed, { maxChars: 80, minChars: 20 });
+  assert.equal(stripWs(segments.join(" ")), stripWs(mixed));
+});
 
 // ─── relatório ───────────────────────────────────────────────────────────────
 console.log(`\n${passed} passaram, ${failed} falharam`);

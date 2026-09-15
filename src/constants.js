@@ -118,6 +118,21 @@ export const FOCUS_STEP_BOUNDS = {
   10: { min: 6, max: 10 },
 };
 
+// Ler Comigo (Etapa 3) — velocidades de narração suportadas. Poucas opções
+// de propósito (seção 29 do briefing): nada de slider com dez passos.
+export const READING_RATES = [0.8, 1, 1.2];
+export const READING_DEFAULT_RATE = 1;
+
+// Tamanho-alvo dos trechos de leitura. `compactMaxChars` entra quando o Modo
+// Inclusão sinaliza "longText" ou "manySteps" (textos longos/muitas etapas
+// pesam mais) — ver segmentationProfile em src/utils/readingSegments.js.
+// `minChars` evita trechos curtos demais (uma sentença de 5 palavras sozinha).
+export const READING_SEGMENT_BOUNDS = {
+  maxChars: 320,
+  compactMaxChars: 180,
+  minChars: 40,
+};
+
 export const PLANNING_TYPES = ["Prova", "Trabalho", "Revisão"];
 
 export const REMINDER_OPTIONS = [
