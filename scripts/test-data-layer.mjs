@@ -127,6 +127,8 @@ const { buildRephrasePrompt } = await import("../lib/rephrasePrompts.js");
 const readingService = await import("../src/services/readingService.js");
 const { segmentText, segmentationProfile } = await import("../src/utils/readingSegments.js");
 const { READING_RATES, READING_DEFAULT_RATE, READING_SEGMENT_BOUNDS } = await import("../src/constants.js");
+const { createReadingProgress } = await import("../src/data/models/readingProgress.js");
+const readingProgressService = await import("../src/services/readingProgressService.js");
 
 // helper: cria um conteúdo mínimo já com matéria
 // helper: gera `total` respostas de quiz com `correct` delas certas.
@@ -992,7 +994,15 @@ test("F4-19. excluir conteudo com evento compartilhado preserva o evento para o 
 
   // nenhuma referência quebrada sobra para a varredura de integridade encontrar
   const removed = integrityService.sweepOrphans();
-  assert.deepEqual(removed, { reviews: 0, flashcardAttempts: 0, quizAttempts: 0, eventContentRefs: 0, contentSubjectRefs: 0, focusSessions: 0 });
+  assert.deepEqual(removed, {
+    reviews: 0,
+    flashcardAttempts: 0,
+    quizAttempts: 0,
+    eventContentRefs: 0,
+    contentSubjectRefs: 0,
+    focusSessions: 0,
+    readingProgress: 0,
+  });
 });
 
 // ─── Fase 4 — mover conteudo entre materias preserva tudo ─────────────────────
@@ -3519,6 +3529,152 @@ test("LC-16. segmentText preserva todo o conteudo em texto misto (lista + prosa 
   ].join("\n\n");
   const segments = segmentText(mixed, { maxChars: 80, minChars: 20 });
   assert.equal(stripWs(segments.join(" ")), stripWs(mixed));
+});
+
+test("LC-17. createReadingProgress aplica defaults corretos", () => {
+  const progress = createReadingProgress({ contentId: "cnt_x" });
+  assert.equal(progress.currentSegmentIndex, 0);
+  assert.equal(progress.playbackRate, READING_DEFAULT_RATE);
+  assert.equal(progress.status, "in_progress");
+  assert.equal(progress.segmentCount, 0);
+  assert.equal(progress.completedAt, null);
+});
+
+test("LC-18. createReadingProgress: playbackRate fora de READING_RATES cai no default", () => {
+  const progress = createReadingProgress({ contentId: "cnt_x", playbackRate: 3.5 });
+  assert.equal(progress.playbackRate, READING_DEFAULT_RATE);
+  const valid = createReadingProgress({ contentId: "cnt_x", playbackRate: 0.8, segmentCount: 5 });
+  assert.equal(valid.playbackRate, 0.8);
+});
+
+test("LC-19. createReadingProgress: indice negativo/NaN vira 0", () => {
+  const progress1 = createReadingProgress({ contentId: "cnt_x", currentSegmentIndex: -5, segmentCount: 5 });
+  assert.equal(progress1.currentSegmentIndex, 0);
+  const progress2 = createReadingProgress({ contentId: "cnt_x", currentSegmentIndex: NaN, segmentCount: 5 });
+  assert.equal(progress2.currentSegmentIndex, 0);
+});
+
+test("LC-20. sv_db antigo sem readingProgress le como array vazio", () => {
+  storage.setItem("sv_db", JSON.stringify({ version: 2, contents: [] }));
+  const db = readDb();
+  assert.deepEqual(db.readingProgress, []);
+});
+
+test("LC-21. migrateItems (DB legado) continua migrando e traz readingProgress vazio", () => {
+  const db = migrateItems([{ id: "1", subject: "Matemática", concept: "Teste", summary: "x" }]);
+  assert.deepEqual(db.readingProgress, []);
+  assert.equal(db.contents.length, 1);
+});
+
+test("LC-22. adicionar readingProgress nao afeta outras colecoes existentes", () => {
+  const { content } = contentService.createContentEntry({ title: "Teste", summary: "resumo" });
+  const db = readDb();
+  assert.equal(db.contents.length, 1);
+  assert.equal(db.contents[0].id, content.id);
+  assert.deepEqual(db.readingProgress, []);
+  assert.deepEqual(db.focusSessions, []);
+});
+
+test("LC-23. startOrResumeReadingProgress cria na primeira vez e nao duplica na segunda", () => {
+  const { content } = contentService.createContentEntry({ title: "Teste", summary: "resumo" });
+  const first = readingProgressService.startOrResumeReadingProgress(content.id, { segmentCount: 5, sourceFingerprint: "fp1" });
+  assert.equal(first.resumed, false);
+  const second = readingProgressService.startOrResumeReadingProgress(content.id, { segmentCount: 5, sourceFingerprint: "fp1" });
+  assert.equal(second.resumed, true);
+  assert.equal(second.progress.id, first.progress.id);
+  assert.equal(readDb().readingProgress.length, 1);
+});
+
+test("LC-24. setReadingSegmentIndex clampa ao segmentCount", () => {
+  const { content } = contentService.createContentEntry({ title: "Teste", summary: "resumo" });
+  readingProgressService.startOrResumeReadingProgress(content.id, { segmentCount: 3, sourceFingerprint: "fp1" });
+  const updated = readingProgressService.setReadingSegmentIndex(content.id, 99);
+  assert.equal(updated.currentSegmentIndex, 2);
+  const negative = readingProgressService.setReadingSegmentIndex(content.id, -10);
+  assert.equal(negative.currentSegmentIndex, 0);
+});
+
+test("LC-25. fingerprint diferente clampa o indice sem apagar o registro", () => {
+  const { content } = contentService.createContentEntry({ title: "Teste", summary: "resumo" });
+  readingProgressService.startOrResumeReadingProgress(content.id, { segmentCount: 10, sourceFingerprint: "fp1" });
+  readingProgressService.setReadingSegmentIndex(content.id, 8);
+  const resumed = readingProgressService.startOrResumeReadingProgress(content.id, { segmentCount: 3, sourceFingerprint: "fp2" });
+  assert.equal(resumed.resumed, true);
+  assert.equal(resumed.resegmented, true);
+  assert.equal(resumed.progress.currentSegmentIndex, 2);
+  assert.equal(resumed.progress.segmentCount, 3);
+  assert.equal(readDb().readingProgress.length, 1);
+});
+
+test("LC-26. completeReadingProgress grava completedAt real e sobrevive a releitura", () => {
+  const { content } = contentService.createContentEntry({ title: "Teste", summary: "resumo" });
+  readingProgressService.startOrResumeReadingProgress(content.id, { segmentCount: 2, sourceFingerprint: "fp1" });
+  const completed = readingProgressService.completeReadingProgress(content.id);
+  assert.equal(completed.status, "completed");
+  assert.ok(completed.completedAt);
+  const resumed = readingProgressService.startOrResumeReadingProgress(content.id, { segmentCount: 2, sourceFingerprint: "fp1" });
+  assert.equal(resumed.progress.status, "completed");
+});
+
+test("LC-27. restartReadingProgress volta ao indice 0 sem apagar createdAt", () => {
+  const { content } = contentService.createContentEntry({ title: "Teste", summary: "resumo" });
+  const { progress: created } = readingProgressService.startOrResumeReadingProgress(content.id, { segmentCount: 5, sourceFingerprint: "fp1" });
+  readingProgressService.setReadingSegmentIndex(content.id, 4);
+  readingProgressService.completeReadingProgress(content.id);
+  const restarted = readingProgressService.restartReadingProgress(content.id);
+  assert.equal(restarted.status, "in_progress");
+  assert.equal(restarted.currentSegmentIndex, 0);
+  assert.equal(restarted.completedAt, null);
+  assert.equal(restarted.createdAt, created.createdAt);
+});
+
+test("LC-28. setReadingRate rejeita valor invalido, mantendo o anterior", () => {
+  const { content } = contentService.createContentEntry({ title: "Teste", summary: "resumo" });
+  readingProgressService.startOrResumeReadingProgress(content.id, { segmentCount: 2, sourceFingerprint: "fp1" });
+  readingProgressService.setReadingRate(content.id, 0.8);
+  const afterInvalid = readingProgressService.setReadingRate(content.id, 99);
+  assert.equal(afterInvalid.playbackRate, READING_DEFAULT_RATE);
+});
+
+test("LC-29. deleteReadingProgressForContent remove o progresso do conteudo e nao toca em outro", () => {
+  const { content: a } = contentService.createContentEntry({ title: "A", summary: "resumo A" });
+  const { content: b } = contentService.createContentEntry({ title: "B", summary: "resumo B" });
+  readingProgressService.startOrResumeReadingProgress(a.id, { segmentCount: 2, sourceFingerprint: "fp1" });
+  readingProgressService.startOrResumeReadingProgress(b.id, { segmentCount: 2, sourceFingerprint: "fp1" });
+  const removed = readingProgressService.deleteReadingProgressForContent(a.id);
+  assert.equal(removed, 1);
+  assert.equal(readingProgressService.getReadingProgress(a.id), null);
+  assert.ok(readingProgressService.getReadingProgress(b.id));
+});
+
+test("LC-30. excluir conteudo remove o progresso de leitura e preserva focusSessions de outro conteudo", () => {
+  const { content: a } = contentService.createContentEntry({ title: "A", summary: "resumo A" });
+  const { content: b } = contentService.createContentEntry({ title: "B", summary: "resumo B" });
+  readingProgressService.startOrResumeReadingProgress(a.id, { segmentCount: 2, sourceFingerprint: "fp1" });
+  focusSessionService.persistFocusSession(
+    createFocusSession({ contentId: b.id, durationMinutes: 5, steps: [{ type: "concept", title: "t", content: "c" }] })
+  );
+  contentService.deleteContent(a.id);
+  assert.equal(readingProgressService.getReadingProgress(a.id), null);
+  assert.equal(focusSessionService.getFocusSessionsForContent(b.id).length, 1);
+});
+
+test("LC-31. validateReadingProgress aceita um registro valido e rejeita completed sem completedAt", () => {
+  const { content } = contentService.createContentEntry({ title: "Teste", summary: "resumo" });
+  const { progress } = readingProgressService.startOrResumeReadingProgress(content.id, { segmentCount: 3, sourceFingerprint: "fp1" });
+  assert.equal(validate.validateReadingProgress(progress).valid, true);
+  const broken = { ...progress, status: "completed", completedAt: null };
+  assert.equal(validate.validateReadingProgress(broken).valid, false);
+});
+
+test("LC-32. sweepOrphans remove progresso de leitura orfao", () => {
+  const { content } = contentService.createContentEntry({ title: "Teste", summary: "resumo" });
+  readingProgressService.startOrResumeReadingProgress(content.id, { segmentCount: 2, sourceFingerprint: "fp1" });
+  contentService.deleteContent(content.id);
+  withDb((db) => ({ ...db, readingProgress: [{ ...createReadingProgress({ contentId: "cnt_fantasma", segmentCount: 2 }) }] }));
+  const removed = integrityService.sweepOrphans();
+  assert.equal(removed.readingProgress, 1);
+  assert.deepEqual(readDb().readingProgress, []);
 });
 
 // ─── relatório ───────────────────────────────────────────────────────────────

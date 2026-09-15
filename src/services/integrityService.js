@@ -7,7 +7,15 @@
 import { withDb } from "../data/storage/index.js";
 
 export function sweepOrphans() {
-  const removed = { reviews: 0, flashcardAttempts: 0, quizAttempts: 0, eventContentRefs: 0, contentSubjectRefs: 0, focusSessions: 0 };
+  const removed = {
+    reviews: 0,
+    flashcardAttempts: 0,
+    quizAttempts: 0,
+    eventContentRefs: 0,
+    contentSubjectRefs: 0,
+    focusSessions: 0,
+    readingProgress: 0,
+  };
   withDb((db) => {
     const contentIds = new Set(db.contents.map((c) => c.id));
     const subjectIds = new Set(db.subjects.map((s) => s.id));
@@ -45,15 +53,19 @@ export function sweepOrphans() {
     const focusSessions = db.focusSessions.filter((s) => contentIds.has(s.contentId));
     removed.focusSessions = db.focusSessions.length - focusSessions.length;
 
+    const readingProgress = db.readingProgress.filter((p) => contentIds.has(p.contentId));
+    removed.readingProgress = db.readingProgress.length - readingProgress.length;
+
     const nothingChanged =
       removed.reviews === 0 &&
       removed.flashcardAttempts === 0 &&
       removed.quizAttempts === 0 &&
       removed.eventContentRefs === 0 &&
       removed.contentSubjectRefs === 0 &&
-      removed.focusSessions === 0;
+      removed.focusSessions === 0 &&
+      removed.readingProgress === 0;
     if (nothingChanged) return db;
-    return { ...db, reviews, flashcardAttempts, quizAttempts, events, contents, focusSessions };
+    return { ...db, reviews, flashcardAttempts, quizAttempts, events, contents, focusSessions, readingProgress };
   });
   return removed;
 }

@@ -4,7 +4,8 @@
 
 import { EVENT_TYPES, LEGACY_EVENT_TYPES } from "./event.js";
 import { FOCUS_SESSION_STATUSES } from "./focusSession.js";
-import { FOCUS_DURATIONS, FOCUS_STEP_TYPES, LEARNING_PREFERENCE_KEYS } from "../../constants.js";
+import { READING_PROGRESS_STATUSES } from "./readingProgress.js";
+import { FOCUS_DURATIONS, FOCUS_STEP_TYPES, LEARNING_PREFERENCE_KEYS, READING_RATES } from "../../constants.js";
 
 export function validateContent(content) {
   const errors = [];
@@ -139,6 +140,33 @@ export function validateFocusSession(session) {
     errors.push("pausedAt deveria ser string ISO ou null");
   }
 
+  return { valid: errors.length === 0, errors };
+}
+
+// Ler Comigo — tolerante a campos ausentes por natureza (índice/rate/status
+// sempre têm default na fábrica), mas nunca aceita tipos errados nem um
+// "completed" sem completedAt real.
+export function validateReadingProgress(progress) {
+  const errors = [];
+  if (!progress || typeof progress !== "object") {
+    return { valid: false, errors: ["progresso de leitura ausente ou inválido"] };
+  }
+  if (!progress.id || typeof progress.id !== "string") errors.push("id ausente");
+  if (!progress.contentId || typeof progress.contentId !== "string") errors.push("contentId ausente");
+  if (!READING_PROGRESS_STATUSES.includes(progress.status)) errors.push("status inválido");
+  if (!Number.isInteger(progress.currentSegmentIndex) || progress.currentSegmentIndex < 0) {
+    errors.push("currentSegmentIndex inválido");
+  }
+  if (!Number.isInteger(progress.segmentCount) || progress.segmentCount < 0) {
+    errors.push("segmentCount inválido");
+  }
+  if (!READING_RATES.includes(progress.playbackRate)) errors.push("playbackRate inválido");
+  if (progress.sourceFingerprint != null && typeof progress.sourceFingerprint !== "string") {
+    errors.push("sourceFingerprint deveria ser string ou null");
+  }
+  if (progress.status === "completed" && !progress.completedAt) {
+    errors.push("progresso completed sem completedAt");
+  }
   return { valid: errors.length === 0, errors };
 }
 

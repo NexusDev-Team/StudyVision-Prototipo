@@ -15,6 +15,7 @@ export const ID_PREFIX = {
   event: "evt",
   focusSession: "fcs",
   focusStep: "fst",
+  readingProgress: "rdp",
 };
 
 function randomPart() {

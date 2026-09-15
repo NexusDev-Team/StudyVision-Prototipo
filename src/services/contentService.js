@@ -38,9 +38,10 @@ export function updateContent(id, patch = {}) {
   return updated;
 }
 
-// Exclusão em cascata: remove tentativas e revisões do conteúdo, e retira o
-// contentId de qualquer evento acadêmico (removendo o evento só se ficar sem
-// nenhum conteúdo vinculado).
+// Exclusão em cascata: remove tentativas, revisões, sessões de foco e
+// progresso de leitura guiada do conteúdo, e retira o contentId de qualquer
+// evento acadêmico (removendo o evento só se ficar sem nenhum conteúdo
+// vinculado).
 export function deleteContent(id) {
   let removed = false;
   withDb((db) => {
@@ -54,6 +55,7 @@ export function deleteContent(id) {
       flashcardAttempts: db.flashcardAttempts.filter((a) => a.contentId !== id),
       quizAttempts: db.quizAttempts.filter((a) => a.contentId !== id),
       focusSessions: db.focusSessions.filter((s) => s.contentId !== id),
+      readingProgress: db.readingProgress.filter((p) => p.contentId !== id),
       events: db.events
         .map((e) => ({ ...e, contentIds: e.contentIds.filter((cid) => cid !== id) }))
         .filter((e) => e.contentIds.length > 0),

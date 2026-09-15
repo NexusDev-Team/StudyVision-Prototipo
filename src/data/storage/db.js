@@ -55,6 +55,7 @@ function emptyDb() {
     flameGoals: emptyFlameGoals(),
     learningPreferences: emptyLearningPreferences(),
     focusSessions: [],
+    readingProgress: [],
   };
 }
 
@@ -69,6 +70,13 @@ function emptyDb() {
 // `version: 2` fixo. Reavaliar apenas se algum campo existente mudar de tipo
 // ou significado — não é o caso de uma coleção nova.
 function coerceFocusSessions(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+// Ler Comigo (Etapa 3): mesma coleção nova de topo, mesma justificativa —
+// array vazio para chave ausente é retrocompatível por construção, então
+// nenhum bump de SCHEMA_VERSION é necessário aqui também.
+function coerceReadingProgress(value) {
   return Array.isArray(value) ? value : [];
 }
 
@@ -150,6 +158,7 @@ export function readDb() {
     flameGoals: coerceFlameGoals(parsed.flameGoals),
     learningPreferences: coerceLearningPreferences(parsed.learningPreferences),
     focusSessions: coerceFocusSessions(parsed.focusSessions),
+    readingProgress: coerceReadingProgress(parsed.readingProgress),
   };
 }
 
