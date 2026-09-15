@@ -73,3 +73,28 @@ export function readingSourceText(source) {
     .map((block) => (block.title ? `${block.title}: ${block.text}` : block.text))
     .join("\n\n");
 }
+
+// Hash determinístico e simples (djb2) do texto-fonte + perfil de
+// segmentação — usado como `sourceFingerprint` do progresso salvo. Não
+// precisa ser criptográfico: só precisa mudar quando o texto ou o perfil
+// mudam, para o service clampar o índice em vez de apontar para um trecho
+// que não existe mais.
+export function computeSourceFingerprint(text, profile) {
+  const base = `${profile?.maxChars || 0}:${text || ""}`;
+  let hash = 5381;
+  for (let i = 0; i < base.length; i += 1) {
+    hash = ((hash << 5) + hash + base.charCodeAt(i)) | 0;
+  }
+  return `fp_${(hash >>> 0).toString(36)}`;
+}
+
+const READING_ERROR_MESSAGES = {
+  insufficient_content: "Este conteúdo ainda não possui texto suficiente para iniciar a leitura.",
+  unsupported: "A leitura em voz não está disponível neste navegador.",
+};
+
+// Nunca expõe mensagem crua de erro — sempre traduz para uma das frases
+// acima (mesmo padrão de focusErrorMessage em useFocusSession.js).
+export function readingErrorMessage(kind) {
+  return READING_ERROR_MESSAGES[kind] || READING_ERROR_MESSAGES.insufficient_content;
+}

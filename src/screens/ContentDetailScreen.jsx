@@ -5,12 +5,14 @@ import CapturedPageVisual from "../components/brand/CapturedPageVisual";
 import ContentBlocks from "../components/study/ContentBlocks";
 import PhotosSection from "../components/study/PhotosSection";
 import FocusEntryCard from "../components/study/FocusEntryCard";
+import ReadingEntryCard from "../components/study/ReadingEntryCard";
 import NotesSection from "../components/study/NotesSection";
 import ExportSection from "../components/study/ExportSection";
 import CommitmentsSection from "../components/study/CommitmentsSection";
 import ReviewPlanPicker from "../components/study/ReviewPlanPicker";
 import SubjectPickerModal from "../components/study/SubjectPickerModal";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
+import SectionLabel from "../components/ui/SectionLabel";
 import { useContentStore } from "../context/ContentStoreContext.jsx";
 import {
   getReviewsForContent,
@@ -24,7 +26,7 @@ import { getEventsForContent, createEventEntry, updateEvent, unlinkContentFromEv
 import { moveContentToSubject, deleteContent, updateNotes, updateContent } from "../services/contentService";
 import { getSubjectVisual, UNASSIGNED_SUBJECT_LABEL } from "../constants";
 
-export default function ContentDetailScreen({ content, onBack, onDeleted, onFlashcards, onQuestions, onQuiz, onVisionPlus, onToast, onAddPhoto, onViewPhoto, onFocusMode }) {
+export default function ContentDetailScreen({ content, onBack, onDeleted, onFlashcards, onQuestions, onQuiz, onVisionPlus, onToast, onAddPhoto, onViewPhoto, onFocusMode, onReadingMode }) {
   const { mutate, subjects, contents, reviews: allReviews, events: allEvents } = useContentStore();
   const [subjectPickerOpen, setSubjectPickerOpen] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
@@ -246,8 +248,10 @@ export default function ContentDetailScreen({ content, onBack, onDeleted, onFlas
           onDelete={handleDeleteEvent}
         />
 
-        {/* Modo Foco */}
+        {/* Ferramentas de estudo — Modo Foco e Ler Comigo agrupados */}
+        <SectionLabel style={{ marginBottom: 8 }}>Ferramentas de estudo</SectionLabel>
         <FocusEntryCard content={content} onEnterFocus={onFocusMode} />
+        <ReadingEntryCard content={content} onEnterReading={onReadingMode} />
 
         {/* Action buttons */}
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }}

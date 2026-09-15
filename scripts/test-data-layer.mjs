@@ -3716,6 +3716,37 @@ test("LC-38. normalizeRate so aceita READING_RATES, resto cai no default", () =>
   assert.equal(normalizeRate(undefined), READING_DEFAULT_RATE);
 });
 
+test("LC-39. readingErrorMessage mapeia kinds conhecidos e cai no fallback para desconhecido", () => {
+  assert.equal(readingService.readingErrorMessage("insufficient_content"), "Este conteúdo ainda não possui texto suficiente para iniciar a leitura.");
+  assert.equal(readingService.readingErrorMessage("unsupported"), "A leitura em voz não está disponível neste navegador.");
+  assert.equal(readingService.readingErrorMessage("algo_desconhecido"), readingService.readingErrorMessage("insufficient_content"));
+});
+
+test("LC-40. avancar no ultimo trecho nao estoura o indice", () => {
+  const { content } = contentService.createContentEntry({ title: "Teste", summary: "resumo" });
+  readingProgressService.startOrResumeReadingProgress(content.id, { segmentCount: 3, sourceFingerprint: "fp1" });
+  readingProgressService.setReadingSegmentIndex(content.id, 2);
+  const stillLast = readingProgressService.setReadingSegmentIndex(content.id, 5);
+  assert.equal(stillLast.currentSegmentIndex, 2);
+});
+
+test("LC-41. voltar no primeiro trecho nunca fica negativo", () => {
+  const { content } = contentService.createContentEntry({ title: "Teste", summary: "resumo" });
+  readingProgressService.startOrResumeReadingProgress(content.id, { segmentCount: 3, sourceFingerprint: "fp1" });
+  const stillFirst = readingProgressService.setReadingSegmentIndex(content.id, -1);
+  assert.equal(stillFirst.currentSegmentIndex, 0);
+});
+
+test("LC-42. computeSourceFingerprint e deterministico e muda com texto/perfil diferente", () => {
+  const fp1 = readingService.computeSourceFingerprint("mesmo texto", { maxChars: 320 });
+  const fp2 = readingService.computeSourceFingerprint("mesmo texto", { maxChars: 320 });
+  const fp3 = readingService.computeSourceFingerprint("texto diferente", { maxChars: 320 });
+  const fp4 = readingService.computeSourceFingerprint("mesmo texto", { maxChars: 180 });
+  assert.equal(fp1, fp2);
+  assert.notEqual(fp1, fp3);
+  assert.notEqual(fp1, fp4);
+});
+
 // ─── relatório ───────────────────────────────────────────────────────────────
 console.log(`\n${passed} passaram, ${failed} falharam`);
 if (failed > 0) {
