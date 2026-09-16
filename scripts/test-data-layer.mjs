@@ -131,6 +131,7 @@ const { createReadingProgress } = await import("../src/data/models/readingProgre
 const readingProgressService = await import("../src/services/readingProgressService.js");
 const { isSpeechSupported, pickVoice, normalizeRate } = await import("../src/utils/speech.js");
 const { buildReadingHelpPrompt } = await import("../lib/readingHelpPrompts.js");
+const { parseSummaryBlocks } = await import("../src/utils/summaryBlocks.js");
 
 // helper: cria um conteúdo mínimo já com matéria
 // helper: gera `total` respostas de quiz com `correct` delas certas.
@@ -2561,6 +2562,71 @@ test("F12-8. bloco JSON e regras anti-invencao preservados com manySteps ativo",
     out.indexOf("Etapas de um processo, exercício ou demonstração") < out.indexOf("Responda EXATAMENTE no formato JSON abaixo"),
     "STEP_FORMATTING deve preceder a secao de formato JSON"
   );
+});
+
+// ─── Fase 12: parseSummaryBlocks — parser puro do resumo ────────────────────
+
+test("F12-9. Etapa N: isolada vira bloco step, corpo chega como paragrafo seguinte", () => {
+  const blocks = parseSummaryBlocks("Etapa 1:\nIsole o x.\nEtapa 2:\nDivida por 3.");
+  assert.deepEqual(blocks, [
+    { kind: "step", number: "1", label: "Etapa 1:", text: "" },
+    { kind: "paragraph", text: "Isole o x." },
+    { kind: "step", number: "2", label: "Etapa 2:", text: "" },
+    { kind: "paragraph", text: "Divida por 3." },
+  ]);
+});
+
+test("F12-10. Etapa N: com texto na mesma linha vira um unico bloco step com texto preenchido", () => {
+  const blocks = parseSummaryBlocks("Etapa 1: Isole o x de um lado.\nEtapa 2: Divida por 3.");
+  assert.deepEqual(blocks, [
+    { kind: "step", number: "1", label: "Etapa 1:", text: "Isole o x de um lado." },
+    { kind: "step", number: "2", label: "Etapa 2:", text: "Divida por 3." },
+  ]);
+});
+
+test("F12-11. Passo N: (variante) e reconhecido igual a Etapa N:", () => {
+  // "\n" a mais no fim para nao cair no atalho de paragrafo unico (linha sem
+  // "\n" nenhum) — um resumo real com etapas sempre tem mais de uma linha.
+  const blocks = parseSummaryBlocks("Passo 1: Some os dois lados.\n");
+  assert.deepEqual(blocks, [{ kind: "step", number: "1", label: "Etapa 1:", text: "Some os dois lados." }]);
+});
+
+test("F12-12. Etapa N: nunca cai no heuristico generico de heading/inline-label (bug do INLINE_LABEL_RE sem digito)", () => {
+  const blocks = parseSummaryBlocks("Etapa 1: isole o termo\n");
+  assert.equal(blocks.length, 1);
+  assert.equal(blocks[0].kind, "step", "nao deveria virar paragraph nem heading solto");
+});
+
+test("F12-13. sem stepMode, lista numerada continua sendo lista ordenada (comportamento legado)", () => {
+  const text = "1. primeiro\n2. segundo\n3. terceiro";
+  const blocks = parseSummaryBlocks(text, { stepMode: false });
+  assert.deepEqual(blocks, [{ kind: "list", ordered: true, items: ["primeiro", "segundo", "terceiro"] }]);
+});
+
+test("F12-14. com stepMode, a MESMA lista numerada vira blocos de etapa (fallback)", () => {
+  const text = "1. primeiro\n2. segundo\n3. terceiro";
+  const blocks = parseSummaryBlocks(text, { stepMode: true });
+  assert.deepEqual(blocks, [
+    { kind: "step", number: "1", label: "Etapa 1:", text: "primeiro" },
+    { kind: "step", number: "2", label: "Etapa 2:", text: "segundo" },
+    { kind: "step", number: "3", label: "Etapa 3:", text: "terceiro" },
+  ]);
+});
+
+test("F12-15. regressao: resumo legado com bullets e subtitulo produz exatamente os blocos de antes", () => {
+  const text = "Conceito:\n- primeira ideia\n- segunda ideia\n\nA derivada mede a taxa de variação.";
+  const blocks = parseSummaryBlocks(text);
+  assert.deepEqual(blocks, [
+    { kind: "heading", text: "Conceito:" },
+    { kind: "list", ordered: false, items: ["primeira ideia", "segunda ideia"] },
+    { kind: "paragraph", text: "A derivada mede a taxa de variação." },
+  ]);
+});
+
+test("F12-16. regressao: resumo sem quebras de linha vira um unico paragrafo, com ou sem stepMode", () => {
+  const text = "Um resumo corrido sem marcadores nenhuns.";
+  assert.deepEqual(parseSummaryBlocks(text, { stepMode: false }), [{ kind: "paragraph", text }]);
+  assert.deepEqual(parseSummaryBlocks(text, { stepMode: true }), [{ kind: "paragraph", text }]);
 });
 
 // ─── Modo Foco — Etapa 1 (motor) ──────────────────────────────────────────────
