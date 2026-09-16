@@ -53,6 +53,7 @@ export default function FocusScreen({ content, onExit }) {
 
   const comfortReading = session?.inclusionPreferencesSnapshot?.longText === true;
   const lowStimulus = session?.inclusionPreferencesSnapshot?.concentration === true;
+  const stepMode = session?.inclusionPreferencesSnapshot?.manySteps === true;
 
   const currentStep = useMemo(() => session?.steps?.[session.currentStepIndex] || null, [session]);
   const totalSteps = session?.steps?.length || 0;
@@ -158,7 +159,7 @@ export default function FocusScreen({ content, onExit }) {
       <div style={{ flex: 1, overflowY: "auto", padding: lowStimulus ? "8px 20px 20px" : "8px 20px 24px" }}>
         <AnimatePresence mode="wait">
           <motion.div key={session.currentStepIndex} {...fadeUp}>
-            <FocusStepRenderer step={currentStep} comfortReading={comfortReading} />
+            <FocusStepRenderer step={currentStep} comfortReading={comfortReading} stepMode={stepMode} />
           </motion.div>
         </AnimatePresence>
       </div>

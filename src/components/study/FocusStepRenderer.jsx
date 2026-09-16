@@ -12,14 +12,18 @@
 
 import { getStepVisual } from "../../utils/focusStepVisuals.js";
 
-export default function FocusStepRenderer({ step, comfortReading = false }) {
+// `stepMode` = necessidade "acompanhar muitas etapas" (manySteps) ativa no
+// snapshot da sessão: mais respiro entre o rótulo do tipo, o título e o corpo
+// da etapa — o mesmo eixo visual de ContentBlocks.jsx, aplicado aqui porque
+// cada step do Modo Foco já é exibido isoladamente (uma etapa por vez).
+export default function FocusStepRenderer({ step, comfortReading = false, stepMode = false }) {
   const visual = getStepVisual(step?.type);
   const Icon = visual.icon;
   const isQuestion = step?.type === "question";
 
   return (
     <div style={{ maxWidth: 560, margin: "0 auto", width: "100%" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: stepMode ? 18 : 12 }}>
         <span style={{ width: 30, height: 30, borderRadius: 10, background: `${visual.accent}1A`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
           <Icon size={15} color={visual.accent} />
         </span>
@@ -28,7 +32,7 @@ export default function FocusStepRenderer({ step, comfortReading = false }) {
         </span>
       </div>
 
-      <h2 style={{ fontSize: 20, fontWeight: 800, color: "#111827", margin: "0 0 14px", lineHeight: 1.3, fontFamily: "Inter,sans-serif" }}>
+      <h2 style={{ fontSize: 20, fontWeight: 800, color: "#111827", margin: stepMode ? "0 0 20px" : "0 0 14px", lineHeight: 1.3, fontFamily: "Inter,sans-serif" }}>
         {step?.title}
       </h2>
 

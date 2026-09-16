@@ -39,6 +39,12 @@ export default function ReadingScreen({ content, onExit }) {
 
   const comfortReading = preferences?.longText === true;
   const lowStimulus = preferences?.concentration === true;
+  // Necessidade "acompanhar muitas etapas" (manySteps): mais respiro ao redor
+  // do trecho em destaque, mesmo eixo visual de ContentBlocks.jsx. A
+  // segmentação em si já fica mais compacta com manySteps (ver
+  // segmentationProfile em src/utils/readingSegments.js); isto só afeta o
+  // espaçamento do cartão.
+  const stepMode = preferences?.manySteps === true;
 
   // Encadeia a fala de um trecho até o próximo, sem depender do state do
   // hook (que só atualiza no próximo render) — evita ler o índice antigo ao
@@ -218,7 +224,7 @@ export default function ReadingScreen({ content, onExit }) {
       {/* Trecho atual em destaque — vizinhos só aparecem como contexto
           esmaecido, e somem por completo com "dificuldade de concentração"
           declarada (seção 13 do briefing: nada de parede de texto). */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "8px 20px 24px", display: "flex", flexDirection: "column", justifyContent: "center", gap: 10 }}>
+      <div style={{ flex: 1, overflowY: "auto", padding: "8px 20px 24px", display: "flex", flexDirection: "column", justifyContent: "center", gap: stepMode ? 16 : 10 }}>
         {!lowStimulus && index > 0 && (
           <p style={{ fontSize: comfortReading ? 13 : 12, color: "#CBD5E1", margin: 0, lineHeight: 1.5, fontFamily: "Inter,sans-serif", textAlign: "center" }}>
             {segments[index - 1]}
@@ -226,7 +232,7 @@ export default function ReadingScreen({ content, onExit }) {
         )}
         <AnimatePresence mode="wait">
           <motion.div key={index} {...fadeUp}
-            style={{ background: "white", border: "1.5px solid #DBEAFE", borderRadius: 20, padding: comfortReading ? "24px 22px" : "20px 18px", boxShadow: "0 2px 10px rgba(37,99,235,0.08)" }}>
+            style={{ background: "white", border: "1.5px solid #DBEAFE", borderRadius: 20, padding: comfortReading ? "24px 22px" : stepMode ? "22px 20px" : "20px 18px", boxShadow: "0 2px 10px rgba(37,99,235,0.08)" }}>
             <p aria-live="polite"
               style={{ fontSize: comfortReading ? 17 : 15.5, lineHeight: comfortReading ? 1.8 : 1.65, color: "#111827", margin: 0, fontWeight: 600, fontFamily: "Inter,sans-serif", whiteSpace: "pre-wrap" }}>
               {segments[index]}
