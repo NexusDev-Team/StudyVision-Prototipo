@@ -11,7 +11,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test:data": "node scripts/test-data-layer.mjs",
-    "test:focus": "node --env-file=.env.local scripts/test-focus-live.mjs"
+    "test:focus": "node --env-file=.env.local scripts/test-focus-live.mjs",
+    "test:inclusao": "node --env-file=.env.local scripts/test-inclusao-live.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.20.0",
