@@ -68,12 +68,14 @@ export default function LearningPreferencesSheet({
         {LEARNING_PREFERENCE_KEYS.map((key) => {
           const meta = LEARNING_PREFERENCE_META[key];
           const active = !!selected[key];
+          const descriptionId = `learning-pref-desc-${key}`;
           return (
             <button
               key={key}
               type="button"
               role="checkbox"
               aria-checked={active}
+              aria-describedby={descriptionId}
               onClick={() => toggle(key)}
               style={{
                 display: "flex",
@@ -93,7 +95,7 @@ export default function LearningPreferencesSheet({
               <span aria-hidden="true" style={{ fontSize: 20, lineHeight: 1, flexShrink: 0 }}>{meta.emoji}</span>
               <span style={{ flex: 1, minWidth: 0 }}>
                 <span style={{ display: "block", fontSize: 14, fontWeight: 700, color: active ? "#1D4ED8" : "#111827" }}>{meta.label}</span>
-                <span style={{ display: "block", fontSize: 12, color: "#64748B", marginTop: 2 }}>{meta.description}</span>
+                <span id={descriptionId} style={{ display: "block", fontSize: 12, color: "#64748B", marginTop: 2 }}>{meta.description}</span>
               </span>
               <span
                 aria-hidden="true"
