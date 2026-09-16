@@ -243,6 +243,19 @@ Ordem cronológica das principais entregas desde o baseline do PRD (2026-08-07).
 - Resiliência do Gemini: a sonda mostrou que prompts adaptados maiores aumentam a taxa de resposta inválida (o modelo lite vaza o marcador `- ` para o array JSON `openQuestions`). Corrigido com escopo explícito no prompt + `repairJson()` em `lib/gemini.js` (2ª tentativa de parse) + timeout 45s→55s.
 - Suíte: de 180 para **189** cenários; bloco de testes da Fase 10 substituído por `F11-1` a `F11-44` (sem duplicar). Avaliação qualitativa real (mesma foto, cada necessidade isolada + combinações, Gemini real) em `plans/AVALIACAO-FASE-11-NECESSIDADES.md` — saídas distintas entre si, conteúdo acadêmico preservado.
 
+### 10.14 Fase 12 — Modo Inclusão Etapa 4: corrigir a contradição das etapas (2026-09-16)
+
+Etapa final da fase de upgrades aberta com o Modo Foco (Etapas 1–2, `MODO-FOCO-ETAPA-1.md`/`MODO-FOCO-ETAPA-2.md`) e o Ler Comigo (Etapa 3, `LER-COMIGO-ETAPA-3.md`). Corrige um bug relatado pelo usuário: com "dificuldade para acompanhar muitas etapas" (`manySteps`) ativa, o resumo continuava saindo como lista numerada empilhada — o exato formato que a necessidade existe para evitar.
+
+- Causa raiz: `SUMMARY_FORMATTING` (`lib/prompts.js`) ensinava genericamente "item de lista: linha iniciada por `- `" e, duas linhas abaixo, proibia lista para etapas — instrução positiva competindo com a proibição, e o modelo seguia a positiva. O renderizador (`ContentBlocks.jsx`) também reconhecia `1. `/`1)` e montava um `<ol>` compacto; e `INLINE_LABEL_RE` não casava dígito, então "Etapa 1: texto" na mesma linha virava parágrafo corrido sem hierarquia.
+- Prompt: nova `STEP_FORMATTING`, isolada, só entra quando `manySteps` está ativo — a única instrução sobre etapas, sem nenhuma regra positiva de lista por perto para competir com ela.
+- Parser extraído para `src/utils/summaryBlocks.js` (função pura, testável em node, sem React/DOM): reconhece "Etapa N:"/"Passo N:" isolada ou com texto na mesma linha como bloco de etapa; com `manySteps` ativo, até uma lista numerada solta que o modelo ainda devolva vira bloco de etapa (fallback).
+- `ContentBlocks` ganha `StepBlock` — pílula numerada + rótulo + parágrafo, nunca um item de `<ol>` — e um segundo eixo visual (`manySteps`, independente do conforto de leitura de `longText`) com mais respiro entre etapas. Mesmo eixo propagado ao Modo Foco (`FocusStepRenderer`) e ao Ler Comigo (`ReadingScreen`).
+- Acessibilidade da folha de necessidades: descrição de cada necessidade ligada ao botão via `aria-describedby`; auditoria de vocabulário (seção 12 do briefing) sem ocorrência fora de comentários de código.
+- Nenhuma chave nova: as 4 necessidades da Fase 11 permanecem intactas, sem bump de `LEARNING_KEYS_VERSION`, sem reset de preferências salvas.
+- Validação com o Gemini real: `npm run test:inclusao -- --image <foto>` (mesmo molde de `test:focus`), mais verificação manual no navegador (Playwright) — sheet, multisseleção, persistência, edição pelo ⚙️ e renderização das etapas confirmadas sem regressão.
+- Suíte: de 324 para **340** cenários (`F12-1` a `F12-16`).
+
 ## 11. Análise — concluído vs. pendente
 
 ### 11.1 Concluído
