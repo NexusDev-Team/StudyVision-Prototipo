@@ -2496,6 +2496,73 @@ test("F11-44. repairJson nao mexe em numeros negativos de array valido", () => {
   assert.deepEqual(JSON.parse(repairJson(ok)), { xs: [-1, -2, -3], y: "a - b" });
 });
 
+// ─── Fase 12: Modo Inclusão Etapa 4 — corrigir contradição de formato ───────
+// manySteps tinha DUAS instruções competindo: SUMMARY_FORMATTING ensinava
+// "Item de lista: linha iniciada por '- '" e, duas linhas abaixo, proibia
+// lista para etapas. O bloco STEP_FORMATTING isola a regra de etapas sem
+// nenhuma instrução positiva de lista por perto.
+
+test("F12-1. manySteps ativo injeta STEP_FORMATTING; longText sozinho nao", () => {
+  const withSteps = prompts.buildAnalysisPrompt({ ...NONE, manySteps: true });
+  assert.ok(withSteps.includes("Etapas de um processo, exercício ou demonstração"), "STEP_FORMATTING presente com manySteps");
+
+  const withLongTextOnly = prompts.buildAnalysisPrompt({ ...NONE, longText: true });
+  assert.ok(!withLongTextOnly.includes("Etapas de um processo, exercício ou demonstração"), "STEP_FORMATTING ausente sem manySteps");
+});
+
+test("F12-2. regra generica de lista fica explicitamente qualificada para nao competir com etapas", () => {
+  const out = prompts.buildAnalysisPrompt({ ...NONE, manySteps: true });
+  const listRuleIdx = out.indexOf('Item de lista: linha iniciada por "- "');
+  assert.ok(listRuleIdx >= 0, "regra generica de lista ainda presente (util p/ enumeracoes que nao sao etapas)");
+  assert.ok(out.includes("NÃO são etapas de um processo"), "regra generica exclui explicitamente etapas de processo");
+  // a proibicao de lista numerada para ETAPAS aparece uma unica vez, isolada em STEP_FORMATTING
+  assert.equal(out.split("NUNCA use lista numerada").length - 1, 1, "proibicao de lista para etapas nao duplicada");
+});
+
+test("F12-3. longText sozinho continua com SUMMARY_FORMATTING (blocos/subtitulos)", () => {
+  const out = prompts.buildAnalysisPrompt({ ...NONE, longText: true });
+  assert.ok(out.includes('Formatação — vale APENAS para o texto do campo'), "bloco de formatacao por blocos presente");
+  assert.ok(out.includes('Item de lista: linha iniciada por "- "'), "regra de lista generica presente para longText");
+});
+
+test("F12-4. longText + manySteps juntos trazem os dois blocos sem duplicar a proibicao de lista", () => {
+  const out = prompts.buildAnalysisPrompt({ ...NONE, longText: true, manySteps: true });
+  assert.ok(out.includes('Formatação — vale APENAS para o texto do campo'), "SUMMARY_FORMATTING presente");
+  assert.ok(out.includes("Etapas de um processo, exercício ou demonstração"), "STEP_FORMATTING presente");
+  const occurrences = out.split('NUNCA use lista numerada').length - 1;
+  assert.equal(occurrences, 1, "proibicao de lista numerada para etapas aparece uma unica vez");
+});
+
+test("F12-5. sem nenhuma preferencia, prompt permanece byte a byte igual (regressao)", () => {
+  assert.equal(prompts.buildAnalysisPrompt(NONE), prompts.ANALYSIS_PROMPT);
+});
+
+test("F12-6. concentration + complexContent (sem longText/manySteps) nao trazem nenhum bloco de formatacao", () => {
+  const out = prompts.buildAnalysisPrompt({ ...NONE, concentration: true, complexContent: true });
+  assert.ok(!out.includes('Formatação — vale APENAS para o texto do campo'));
+  assert.ok(!out.includes("Etapas de um processo, exercício ou demonstração"));
+});
+
+test("F12-7. as 4 necessidades ativas trazem SUMMARY_FORMATTING e STEP_FORMATTING juntos", () => {
+  const out = prompts.buildAnalysisPrompt({ concentration: true, longText: true, complexContent: true, manySteps: true });
+  for (const k of ["concentration", "longText", "complexContent", "manySteps"]) {
+    assert.ok(out.includes(RULE_SNIPPET[k]), `falta regra de ${k}`);
+  }
+  assert.ok(out.includes('Formatação — vale APENAS para o texto do campo'));
+  assert.ok(out.includes("Etapas de um processo, exercício ou demonstração"));
+});
+
+test("F12-8. bloco JSON e regras anti-invencao preservados com manySteps ativo", () => {
+  const out = prompts.buildAnalysisPrompt({ ...NONE, manySteps: true });
+  assert.ok(out.includes("Responda EXATAMENTE no formato JSON abaixo"));
+  assert.ok(out.includes('"success": true'));
+  assert.ok(out.includes("NUNCA invente textos, fórmulas, nomes, datas"));
+  assert.ok(
+    out.indexOf("Etapas de um processo, exercício ou demonstração") < out.indexOf("Responda EXATAMENTE no formato JSON abaixo"),
+    "STEP_FORMATTING deve preceder a secao de formato JSON"
+  );
+});
+
 // ─── Modo Foco — Etapa 1 (motor) ──────────────────────────────────────────────
 
 test("MF-01. FOCUS_DURATIONS e FOCUS_STEP_BOUNDS sao exatamente 2/5/10 e coerentes", () => {
