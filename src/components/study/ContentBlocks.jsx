@@ -5,14 +5,18 @@ import SectionLabel from "../ui/SectionLabel";
 import Badge from "../ui/Badge";
 import { getSubjectVisual } from "../../constants";
 import { getPreferenceOptions } from "../../services/learningPreferencesService";
+import { parseSummaryBlocks } from "../../utils/summaryBlocks";
 
 const P_STYLE = { fontFamily: "Inter,sans-serif", fontSize: 14, lineHeight: 1.75, color: "#374151", margin: 0 };
 
 // Perfil de leitura. `comfort` = necessidade "ler e acompanhar textos"
 // (longText) ativa AGORA na preferência do usuário: mais espaço entre linhas e
 // blocos, corpo ligeiramente maior, subtítulos mais destacados — vale para todo
-// conteúdo, inclusive o antigo. `comfort` falso → styles idênticos aos de antes.
-function readingStyles(comfort) {
+// conteúdo, inclusive o antigo. `steps` = necessidade "acompanhar muitas
+// etapas" (manySteps) ativa AGORA: mais respiro entre um bloco de etapa e o
+// próximo. Os dois eixos são independentes e combináveis; ambos falsos →
+// styles idênticos aos de antes.
+function readingStyles(comfort, steps) {
   const p = comfort
     ? { ...P_STYLE, fontSize: 15, lineHeight: 2.05 }
     : P_STYLE;
@@ -23,82 +27,82 @@ function readingStyles(comfort) {
     liMargin: comfort ? 8 : 4,
     listMargin: comfort ? "6px 0 12px" : "4px 0 8px",
     listPad: comfort ? 24 : 20,
+    stepGap: steps ? 20 : 10,
+    stepPad: steps ? "14px 16px" : "10px 12px",
   };
 }
 
-// Renderiza o resumo (string única) reconhecendo os marcadores que o Modo
-// Inclusão instrui a IA a emitir — ver lib/prompts.js.
-// CONTRATO: "- "/"• " no início da linha = item de lista; "1. "/"1) " = etapa
-// numerada; linha terminada em ":" = subtítulo. Tolerância: se a IA juntar
-// "Rótulo: texto" na mesma linha, o rótulo vira subtítulo e o texto, parágrafo.
-// Um resumo sem "\n" (todo o conteúdo legado) cai no caminho de um único <p>,
-// visualmente idêntico ao anterior (quando comfort está desligado).
-// Rótulo curto no início da linha: 1ª letra maiúscula, só letras/espaços antes
-// do ":". "u" para acentos (Conceito, Aplicação).
-const INLINE_LABEL_RE = /^(\p{Lu}[\p{L} ]{1,26}):\s+(\S.*)$/u;
+// Pílula numerada + rótulo + parágrafo da etapa — nunca um item de <ol>. A
+// hierarquia não depende só de cor: o número em pílula, o rótulo em negrito e
+// o espaçamento do bloco já carregam a informação (contraste do texto sobre
+// fundo claro ≥ 4.5:1).
+function StepBlock({ number, label, text, s }) {
+  return (
+    <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: s.stepPad, marginBottom: s.stepGap, background: "#F8FAFC", borderRadius: 12, borderLeft: "3px solid #2563EB" }}>
+      <span aria-hidden="true" style={{ flexShrink: 0, width: 24, height: 24, borderRadius: "50%", background: "#2563EB", color: "white", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 1 }}>
+        {number}
+      </span>
+      <div style={{ minWidth: 0 }}>
+        <p style={{ ...s.p, fontWeight: 700, color: "#1F2937", margin: 0 }}>{label}</p>
+        {text && <p style={{ ...s.p, margin: "2px 0 0" }}>{text}</p>}
+      </div>
+    </div>
+  );
+}
 
-function SummaryBody({ text, comfort = false }) {
-  const s = readingStyles(comfort);
-  const raw = String(text || "");
-  const lines = raw.split("\n");
-  if (lines.length <= 1) return <p style={s.p}>{raw}</p>;
+// Renderiza o resumo (string única) a partir dos blocos de src/utils/summaryBlocks.js
+// (parser puro, testado em node — ver scripts/test-data-layer.mjs F12-9..16).
+// `stepMode` (= manySteps ativo) manda o parser converter até uma lista
+// numerada solta em blocos de etapa (fallback caso o modelo, apesar do
+// prompt, ainda devolva a numeração compacta).
+function SummaryBody({ text, comfort = false, stepMode = false }) {
+  const s = readingStyles(comfort, stepMode);
+  const blocks = parseSummaryBlocks(text, { stepMode });
 
-  const blocks = [];
-  let list = null; // { ordered: boolean, items: string[] }
+  // Resumo sem "\n" (todo o conteúdo legado): um único <p>, sem marginBottom,
+  // visualmente idêntico ao de antes da extração do parser.
+  if (blocks.length === 1 && blocks[0].kind === "paragraph") {
+    return <p style={s.p}>{blocks[0].text}</p>;
+  }
 
-  const flushList = () => {
-    if (!list) return;
-    const Tag = list.ordered ? "ol" : "ul";
-    blocks.push(
-      <Tag key={`l${blocks.length}`} style={{ margin: s.listMargin, paddingLeft: s.listPad, ...s.p }}>
-        {list.items.map((it, i) => (
-          <li key={i} style={{ marginBottom: s.liMargin }}>{it}</li>
-        ))}
-      </Tag>
-    );
-    list = null;
-  };
-
-  const pushHeading = (label, key) => blocks.push(<p key={key} style={s.h}>{label}</p>);
-  const pushParagraph = (t, key) => blocks.push(<p key={key} style={{ ...s.p, marginBottom: s.paraMargin }}>{t}</p>);
-
-  lines.forEach((line, idx) => {
-    const trimmed = line.trim();
-    if (!trimmed) { flushList(); return; }
-
-    const bullet = trimmed.match(/^[-•]\s+(.*)$/);
-    const step = trimmed.match(/^\d+[.)]\s+(.*)$/);
-
-    if (bullet) {
-      if (!list || list.ordered) { flushList(); list = { ordered: false, items: [] }; }
-      list.items.push(bullet[1]);
-      return;
+  // Corpo de uma etapa isolada ("Etapa N:" sozinha na linha) chega como o
+  // bloco de parágrafo seguinte — junta os dois na mesma StepBlock em vez de
+  // exibir a etapa vazia seguida de um parágrafo solto.
+  const merged = [];
+  for (let i = 0; i < blocks.length; i++) {
+    const block = blocks[i];
+    if (block.kind === "step" && block.text === "" && blocks[i + 1]?.kind === "paragraph") {
+      merged.push({ ...block, text: blocks[i + 1].text });
+      i += 1;
+      continue;
     }
-    if (step) {
-      if (!list || !list.ordered) { flushList(); list = { ordered: true, items: [] }; }
-      list.items.push(step[1]);
-      return;
-    }
+    merged.push(block);
+  }
 
-    flushList();
-
-    // Subtítulo sozinho na linha (formato canônico).
-    if (/:$/.test(trimmed) && trimmed.length <= 60) {
-      pushHeading(trimmed, `h${idx}`);
-      return;
-    }
-    // Tolerância: "Rótulo: texto" na mesma linha → subtítulo + parágrafo.
-    const inline = trimmed.match(INLINE_LABEL_RE);
-    if (inline) {
-      pushHeading(`${inline[1]}:`, `hi${idx}`);
-      pushParagraph(inline[2], `pi${idx}`);
-      return;
-    }
-    pushParagraph(trimmed, `p${idx}`);
-  });
-  flushList();
-
-  return <div>{blocks}</div>;
+  return (
+    <div>
+      {merged.map((block, i) => {
+        const key = `b${i}`;
+        if (block.kind === "step") {
+          return <StepBlock key={key} number={block.number} label={block.label} text={block.text} s={s} />;
+        }
+        if (block.kind === "heading") {
+          return <p key={key} style={s.h}>{block.text}</p>;
+        }
+        if (block.kind === "list") {
+          const Tag = block.ordered ? "ol" : "ul";
+          return (
+            <Tag key={key} style={{ margin: s.listMargin, paddingLeft: s.listPad, ...s.p }}>
+              {block.items.map((it, j) => (
+                <li key={j} style={{ marginBottom: s.liMargin }}>{it}</li>
+              ))}
+            </Tag>
+          );
+        }
+        return <p key={key} style={{ ...s.p, marginBottom: s.paraMargin }}>{block.text}</p>;
+      })}
+    </div>
+  );
 }
 
 // Renders the RESUMO / CONCEITOS / PALAVRAS-CHAVE trio shared by SummaryScreen
@@ -119,13 +123,15 @@ export default function ContentBlocks({ content, variant = "summary", onSaveSumm
 
   const [editingSummary, setEditingSummary] = useState(false);
   const [summaryDraft, setSummaryDraft] = useState(content.summary);
-  // Conforto de leitura: necessidade "ler e acompanhar textos" ativa AGORA na
-  // preferência do usuário (não no snapshot do conteúdo) — lido uma vez.
-  const [comfort] = useState(() => {
+  // Conforto de leitura ("ler e acompanhar textos") e modo de etapas
+  // ("acompanhar muitas etapas") — necessidades ativas AGORA na preferência do
+  // usuário (não no snapshot do conteúdo), lidas uma vez.
+  const [{ comfort, stepMode }] = useState(() => {
     try {
-      return getPreferenceOptions().longText === true;
+      const options = getPreferenceOptions();
+      return { comfort: options.longText === true, stepMode: options.manySteps === true };
     } catch {
-      return false;
+      return { comfort: false, stepMode: false };
     }
   });
 
@@ -167,7 +173,7 @@ export default function ContentBlocks({ content, variant = "summary", onSaveSumm
             </div>
           </>
         ) : (
-          <SummaryBody text={content.summary} comfort={comfort} />
+          <SummaryBody text={content.summary} comfort={comfort} stepMode={stepMode} />
         )}
       </Card>
 
