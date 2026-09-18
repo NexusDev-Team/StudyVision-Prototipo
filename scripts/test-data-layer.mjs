@@ -110,6 +110,7 @@ const { createContent, createImage } = await import("../src/data/models/content.
 const learningPreferencesService = await import("../src/services/learningPreferencesService.js");
 const prompts = await import("../lib/prompts.js");
 const { validateCore, sanitizeExtras } = await import("../lib/analysisSanitize.js");
+const { buildExtrasPrompt, EXTRAS_KEYS } = await import("../lib/extrasPrompts.js");
 const { repairJson, parseModelJson, GeminiError, classifyFailure, stripCodeFence, closeTruncatedJson } = await import("../lib/gemini.js");
 const studyVisionService = await import("../src/services/studyVisionService.js");
 const learningInsightsService = await import("../src/services/learningInsightsService.js");
@@ -4434,6 +4435,36 @@ test("AN-15. sanitizeExtras normaliza openQuestions vindas como objeto {question
   const openQuestions = [{ question: "Por que isso acontece?" }, "Pergunta direta?"];
   const { result } = sanitizeExtras({ topic: "T", summary: "S", openQuestions });
   assert.deepEqual(result.openQuestions, ["Por que isso acontece?", "Pergunta direta?"]);
+});
+
+// ─── buildExtrasPrompt (Bloco 4) ──────────────────────────────────────────────
+
+test("EX-01. buildExtrasPrompt retorna null quando missing nao tem secao reconhecida", () => {
+  assert.equal(buildExtrasPrompt({ topic: "T", summary: "S", missing: [] }), null);
+  assert.equal(buildExtrasPrompt({ topic: "T", summary: "S", missing: ["algoOutro"] }), null);
+});
+
+test("EX-02. buildExtrasPrompt inclui so as secoes pedidas no schema", () => {
+  const prompt = buildExtrasPrompt({ topic: "Frações", summary: "Resumo.", missing: ["quiz"] });
+  assert.ok(prompt.includes('"quiz"'));
+  assert.ok(!prompt.includes('"flashcards"'));
+  assert.ok(!prompt.includes('"openQuestions"'));
+});
+
+test("EX-03. buildExtrasPrompt ignora chaves nao reconhecidas em missing e mantem as validas", () => {
+  const prompt = buildExtrasPrompt({ topic: "T", summary: "S", missing: ["quiz", "algoOutro", "flashcards"] });
+  assert.ok(prompt.includes('"quiz"'));
+  assert.ok(prompt.includes('"flashcards"'));
+});
+
+test("EX-04. buildExtrasPrompt inclui topic e summary no contexto", () => {
+  const prompt = buildExtrasPrompt({ topic: "Frações equivalentes", summary: "Resumo sobre frações.", missing: ["quiz"] });
+  assert.ok(prompt.includes("Frações equivalentes"));
+  assert.ok(prompt.includes("Resumo sobre frações."));
+});
+
+test("EX-05. EXTRAS_KEYS cobre exatamente as tres secoes degradaveis", () => {
+  assert.deepEqual(EXTRAS_KEYS.sort(), ["flashcards", "openQuestions", "quiz"]);
 });
 
 // ─── relatório ───────────────────────────────────────────────────────────────

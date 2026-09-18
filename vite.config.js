@@ -12,6 +12,7 @@ const API_ROUTES = {
   "/api/rephrase": "/api/rephrase.js",
   "/api/reading-help": "/api/reading-help.js",
   "/api/extract-text": "/api/extract-text.js",
+  "/api/analyze-extras": "/api/analyze-extras.js",
 };
 
 function apiPlugin(env) {
