@@ -4467,6 +4467,111 @@ test("EX-05. EXTRAS_KEYS cobre exatamente as tres secoes degradaveis", () => {
   assert.deepEqual(EXTRAS_KEYS.sort(), ["flashcards", "openQuestions", "quiz"]);
 });
 
+// ─── analyzeImage / analysisErrorMessage (Bloco 5) ───────────────────────────
+
+await testAsync("AZ-01. analyzeImage com falha de rede vira AnalysisError kind network", async () => {
+  globalThis.fetch = async () => { throw new TypeError("failed to fetch"); };
+  try {
+    await assert.rejects(
+      () => studyVisionService.analyzeImage("data:image/jpeg;base64,AAA"),
+      (err) => err instanceof studyVisionService.AnalysisError && err.kind === "network"
+    );
+  } finally {
+    blockNetwork();
+  }
+});
+
+await testAsync("AZ-02. analyzeImage com HTTP 502 vira AnalysisError kind server preservando a mensagem do backend", async () => {
+  globalThis.fetch = async () => ({ ok: false, status: 502, json: async () => ({ error: "Imagem muito grande." }) });
+  try {
+    await assert.rejects(
+      () => studyVisionService.analyzeImage("data:image/jpeg;base64,AAA"),
+      (err) => err instanceof studyVisionService.AnalysisError && err.kind === "server" && err.message === "Imagem muito grande."
+    );
+  } finally {
+    blockNetwork();
+  }
+});
+
+await testAsync("AZ-03. analyzeImage com success:false vira AnalysisError kind not_academic", async () => {
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ success: false, error: "Sem conteúdo." }) });
+  try {
+    await assert.rejects(
+      () => studyVisionService.analyzeImage("data:image/jpeg;base64,AAA"),
+      (err) => err instanceof studyVisionService.AnalysisError && err.kind === "not_academic"
+    );
+  } finally {
+    blockNetwork();
+  }
+});
+
+await testAsync("AZ-04. analyzeImage com JSON quebrado na resposta vira AnalysisError kind technical", async () => {
+  globalThis.fetch = async () => ({ ok: true, json: async () => { throw new SyntaxError("bad json"); } });
+  try {
+    await assert.rejects(
+      () => studyVisionService.analyzeImage("data:image/jpeg;base64,AAA"),
+      (err) => err instanceof studyVisionService.AnalysisError && err.kind === "technical"
+    );
+  } finally {
+    blockNetwork();
+  }
+});
+
+await testAsync("AZ-05. analyzeImage com cancelamento explicito (signal do chamador) propaga AbortError cru", async () => {
+  const controller = new AbortController();
+  globalThis.fetch = async (url, opts) => {
+    controller.abort(); // simula o chamador cancelando ANTES do fetch resolver
+    throw Object.assign(new Error("aborted"), { name: "AbortError" });
+  };
+  try {
+    await assert.rejects(
+      () => studyVisionService.analyzeImage("data:image/jpeg;base64,AAA", { signal: controller.signal }),
+      (err) => err.name === "AbortError" && !(err instanceof studyVisionService.AnalysisError)
+    );
+  } finally {
+    blockNetwork();
+  }
+});
+
+await testAsync("AZ-06. analyzeImage com sucesso sempre devolve partial como array, mesmo se o servidor omitir", async () => {
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ success: true, topic: "T", summary: "S" }) });
+  try {
+    const body = await studyVisionService.analyzeImage("data:image/jpeg;base64,AAA");
+    assert.deepEqual(body.partial, []);
+  } finally {
+    blockNetwork();
+  }
+});
+
+await testAsync("AZ-07. analyzeImage propaga o partial do servidor quando presente", async () => {
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ success: true, topic: "T", summary: "S", partial: ["quiz"] }) });
+  try {
+    const body = await studyVisionService.analyzeImage("data:image/jpeg;base64,AAA");
+    assert.deepEqual(body.partial, ["quiz"]);
+  } finally {
+    blockNetwork();
+  }
+});
+
+test("AZ-08. analysisErrorMessage nunca expoe err.message cru para kind network/timeout/technical", () => {
+  const raw = new studyVisionService.AnalysisError("TypeError: fetch failed at internal://stack", "network");
+  assert.equal(studyVisionService.analysisErrorMessage(raw), "Sem conexão com a internet. Verifique sua rede e tente novamente.");
+});
+
+test("AZ-09. analysisErrorMessage preserva a mensagem curada do servidor para kind server", () => {
+  const err = new studyVisionService.AnalysisError("Imagem muito grande.", "server");
+  assert.equal(studyVisionService.analysisErrorMessage(err), "Imagem muito grande.");
+});
+
+test("AZ-10. analysisErrorMessage preserva a mensagem para kind not_academic", () => {
+  const err = new studyVisionService.AnalysisError("Essa imagem não parece ter conteúdo de estudo.", "not_academic");
+  assert.equal(studyVisionService.analysisErrorMessage(err), "Essa imagem não parece ter conteúdo de estudo.");
+});
+
+test("AZ-11. analysisErrorMessage cai no generico para erro que nao e AnalysisError", () => {
+  assert.equal(studyVisionService.analysisErrorMessage(new Error("qualquer coisa")), "Não foi possível analisar a imagem agora. Tente novamente.");
+});
+
 // ─── relatório ───────────────────────────────────────────────────────────────
 console.log(`\n${passed} passaram, ${failed} falharam`);
 if (failed > 0) {

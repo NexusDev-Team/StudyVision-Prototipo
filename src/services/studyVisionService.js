@@ -4,8 +4,10 @@ import { createContent } from "../data/models/content.js";
 import { validateContent } from "../data/models/validate.js";
 import { hasActivePreference, normalizePreferenceOptions } from "./learningPreferencesService.js";
 
-// kind: "technical" (rede, timeout, erro do servidor, resposta malformada) ou
-// "not_academic" (a IA rodou e concluiu que a imagem não tem conteúdo de estudo).
+// kind: "network" (fetch rejeitou — sem conexão), "timeout" (nosso próprio
+// teto de cliente estourou), "server" (HTTP não-ok: 4xx/5xx do backend),
+// "technical" (resposta OK mas ilegível — JSON quebrado) ou "not_academic"
+// (a IA rodou e concluiu que a imagem não tem conteúdo de estudo).
 export class AnalysisError extends Error {
   constructor(message, kind = "technical") {
     super(message);
@@ -14,26 +16,80 @@ export class AnalysisError extends Error {
 }
 
 const GENERIC_ERROR = "Não foi possível analisar a imagem agora. Tente novamente.";
+const NOT_ACADEMIC_FALLBACK = "Não foi possível identificar o conteúdo da imagem com segurança.";
+
+// Acima do orçamento do servidor (TOTAL_BUDGET_MS=52s em lib/gemini.js, sob o
+// maxDuration=60s da Vercel) — o cliente nunca desiste antes do backend ter
+// chance de terminar suas próprias retentativas.
+const CLIENT_TIMEOUT_MS = 70000;
+
+const ERROR_MESSAGES = {
+  network: "Sem conexão com a internet. Verifique sua rede e tente novamente.",
+  timeout: "A análise está demorando mais do que o esperado. Tente novamente.",
+  server: GENERIC_ERROR,
+  technical: GENERIC_ERROR,
+};
+
+// Pura — nunca expõe err.message cru de uma exceção interna para a UI; o
+// caso "server" é a exceção deliberada, porque ali err.message já é uma
+// string curada pelo próprio backend (ex.: "Imagem muito grande."), não um
+// erro de runtime — mesmo espírito de focusErrorMessage/readingHelpErrorMessage,
+// adaptado a um fluxo cujo servidor já devolve mensagens prontas para o usuário.
+export function analysisErrorMessage(err) {
+  const kind = err instanceof AnalysisError ? err.kind : "technical";
+  if (kind === "not_academic") return err?.message || NOT_ACADEMIC_FALLBACK;
+  if (kind === "server" && err?.message) return err.message;
+  return ERROR_MESSAGES[kind] || GENERIC_ERROR;
+}
+
+// Combina o AbortSignal do chamador (cancelamento explícito) com um teto de
+// tempo próprio do cliente — sem isso, um /api/analyze pendurado nunca solta
+// a tela de carregamento. `didTimeout()` só é confiável depois do signal
+// combinado abortar: se o signal do chamador não abortou, foi o timeout.
+function withClientTimeout(callerSignal) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), CLIENT_TIMEOUT_MS);
+  const onCallerAbort = () => controller.abort();
+  callerSignal?.addEventListener("abort", onCallerAbort);
+  return {
+    signal: controller.signal,
+    didTimeout: () => !callerSignal?.aborted,
+    cleanup() {
+      clearTimeout(timer);
+      callerSignal?.removeEventListener("abort", onCallerAbort);
+    },
+  };
+}
 
 /**
- * Envia a foto capturada para /api/analyze e retorna o resultado bruto da IA.
+ * Envia a foto capturada para /api/analyze e retorna o resultado bruto da IA
+ * (sempre com `partial: string[]`, mesmo que o servidor não o inclua).
  * @param {string} imageDataUrl - data:image/jpeg;base64,...
  * @param {{ signal?: AbortSignal, preferences?: object }} [opts] - preferences
  *   são as preferências de aprendizagem (Modo Inclusão) desta captura; o
  *   servidor as sanitiza de novo. Ausente => análise padrão.
  */
 export async function analyzeImage(imageDataUrl, opts = {}) {
+  const { signal, didTimeout, cleanup } = withClientTimeout(opts.signal);
+
   let response;
   try {
     response = await fetch("/api/analyze", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ image: imageDataUrl, preferences: opts.preferences || null }),
-      signal: opts.signal,
+      signal,
     });
   } catch (err) {
-    if (err?.name === "AbortError") throw err;
-    throw new AnalysisError("Sem conexão com a internet. Verifique sua rede e tente novamente.", "technical");
+    if (err?.name === "AbortError") {
+      // Cancelamento explícito do chamador (ex.: analysis.reset()) propaga
+      // cru — não é uma AnalysisError, é o contrato de abort padrão.
+      if (!didTimeout()) throw err;
+      throw new AnalysisError(ERROR_MESSAGES.timeout, "timeout");
+    }
+    throw new AnalysisError(ERROR_MESSAGES.network, "network");
+  } finally {
+    cleanup();
   }
 
   let body;
@@ -44,16 +100,16 @@ export async function analyzeImage(imageDataUrl, opts = {}) {
   }
 
   if (!response.ok) {
-    throw new AnalysisError(body?.error || GENERIC_ERROR, "technical");
+    throw new AnalysisError(body?.error || GENERIC_ERROR, "server");
   }
 
   // success:false com HTTP 200 = a IA rodou e decidiu que não há conteúdo
   // acadêmico legível na imagem — não é uma falha técnica.
   if (body.success === false) {
-    throw new AnalysisError(body.error || "Não foi possível identificar o conteúdo da imagem com segurança.", "not_academic");
+    throw new AnalysisError(body.error || NOT_ACADEMIC_FALLBACK, "not_academic");
   }
 
-  return body;
+  return { ...body, partial: Array.isArray(body.partial) ? body.partial : [] };
 }
 
 /**
