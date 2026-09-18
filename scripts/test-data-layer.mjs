@@ -297,6 +297,58 @@ test("PTE-04. createContent preserva o texto já extraído de uma imagem existen
   assert.equal(content.images[0].contentId, content.id); // contentId sempre corrigido, resto preservado
 });
 
+// ─── PTE — extração de texto da foto (Bloco 3: setImageExtractedText) ────────
+
+test("PTE-05. setImageExtractedText grava na imagem certa", () => {
+  const { content } = seedContent();
+  const { image: img1 } = contentService.addImageToContent(content.id, { dataUrl: "data:image/jpeg;base64,AAA" });
+  contentService.addImageToContent(content.id, { dataUrl: "data:image/jpeg;base64,BBB" });
+
+  const { image } = contentService.setImageExtractedText(content.id, img1.id, { text: "Texto da foto 1", partial: false });
+  assert.equal(image.extractedText, "Texto da foto 1");
+  assert.equal(image.extractedTextPartial, false);
+  assert.ok(image.extractedTextAt);
+
+  const persisted = contentService.getContent(content.id).images.find((i) => i.id === img1.id);
+  assert.equal(persisted.extractedText, "Texto da foto 1");
+});
+
+test("PTE-06. setImageExtractedText não altera as demais imagens do mesmo conteúdo", () => {
+  const { content } = seedContent();
+  const { image: img1 } = contentService.addImageToContent(content.id, { dataUrl: "data:image/jpeg;base64,AAA" });
+  const { image: img2 } = contentService.addImageToContent(content.id, { dataUrl: "data:image/jpeg;base64,BBB" });
+
+  contentService.setImageExtractedText(content.id, img1.id, { text: "Só da foto 1", partial: false });
+
+  const untouched = contentService.getContent(content.id).images.find((i) => i.id === img2.id);
+  assert.equal(untouched.extractedText, "");
+  assert.equal(untouched.extractedTextAt, null);
+});
+
+test("PTE-07. setImageExtractedText não altera extractedText/summary/notes do content", () => {
+  const { content } = seedContent({ extractedText: "Resumo da análise", summary: "Resumo", notes: "Notas do usuário" });
+  const { image } = contentService.addImageToContent(content.id, { dataUrl: "data:image/jpeg;base64,AAA" });
+
+  contentService.setImageExtractedText(content.id, image.id, { text: "Transcrição fiel da foto", partial: true });
+
+  const after = contentService.getContent(content.id);
+  assert.equal(after.extractedText, "Resumo da análise");
+  assert.equal(after.summary, "Resumo");
+  assert.equal(after.notes, "Notas do usuário");
+});
+
+test("PTE-08. setImageExtractedText com id de imagem inexistente não quebra e não altera nada", () => {
+  const { content } = seedContent();
+  contentService.addImageToContent(content.id, { dataUrl: "data:image/jpeg;base64,AAA" });
+  const before = contentService.getContent(content.id);
+
+  const { image } = contentService.setImageExtractedText(content.id, "img_inexistente", { text: "x", partial: false });
+
+  assert.equal(image, null);
+  const after = contentService.getContent(content.id);
+  assert.deepEqual(after.images, before.images);
+});
+
 test("4. editar título mantém o mesmo id", () => {
   const { content } = seedContent();
   const updated = contentService.updateContent(content.id, { title: "Integrais" });

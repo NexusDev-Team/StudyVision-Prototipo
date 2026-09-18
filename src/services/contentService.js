@@ -80,6 +80,36 @@ export function addImageToContent(contentId, { dataUrl } = {}) {
   return { image, result };
 }
 
+// Persiste o texto extraído de UMA foto específica (feature de extração de
+// texto — usePhotoTextExtraction). Só toca na imagem alvo: não mexe em
+// content.extractedText/summary/notes nem nas demais imagens. Retorna
+// { image, result } no mesmo padrão de addImageToContent (result sinaliza
+// poda por cota do localStorage). imageId inexistente é um no-op silencioso
+// (image volta null), sem lançar.
+export function setImageExtractedText(contentId, imageId, { text, partial } = {}) {
+  let image = null;
+  const { result } = withDb((db) => ({
+    ...db,
+    contents: db.contents.map((c) => {
+      if (c.id !== contentId) return c;
+      let found = false;
+      const images = c.images.map((img) => {
+        if (img.id !== imageId) return img;
+        found = true;
+        image = {
+          ...img,
+          extractedText: typeof text === "string" ? text : "",
+          extractedTextAt: nowIso(),
+          extractedTextPartial: partial === true,
+        };
+        return image;
+      });
+      return found ? { ...c, images, updatedAt: nowIso() } : c;
+    }),
+  }));
+  return { image, result };
+}
+
 export function removeImageFromContent(contentId, imageId) {
   withDb((db) => ({
     ...db,
