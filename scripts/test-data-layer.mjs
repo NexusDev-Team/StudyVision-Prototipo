@@ -132,6 +132,8 @@ const readingProgressService = await import("../src/services/readingProgressServ
 const { isSpeechSupported, pickVoice, normalizeRate } = await import("../src/utils/speech.js");
 const { buildReadingHelpPrompt } = await import("../lib/readingHelpPrompts.js");
 const { parseSummaryBlocks } = await import("../src/utils/summaryBlocks.js");
+const photoTextService = await import("../src/services/photoTextService.js");
+const exportService = await import("../src/services/exportService.js");
 
 // helper: cria um conteúdo mínimo já com matéria
 // helper: gera `total` respostas de quiz com `correct` delas certas.
@@ -4106,6 +4108,120 @@ test("LC-52. segmentationProfile usa perfil compacto com manySteps mesmo sem lon
 test("LC-53. segmentationProfile com preferencias ausentes/null nao quebra e usa o padrao", () => {
   assert.equal(segmentationProfile(null).maxChars, READING_SEGMENT_BOUNDS.maxChars);
   assert.equal(segmentationProfile(undefined).maxChars, READING_SEGMENT_BOUNDS.maxChars);
+});
+
+// Node 21+ define globalThis.navigator com um getter só de leitura (o próprio
+// navigator do runtime) — atribuição direta lança. defineProperty sobrescreve
+// para o teste e a restauração no `finally` de cada caso devolve o original.
+function setNavigator(value) {
+  Object.defineProperty(globalThis, "navigator", { value, configurable: true, writable: true });
+}
+
+// ─── PTE — extração de texto da foto (Bloco 7: photoTextService + clipboard) ─
+
+await testAsync("PTE-09. extractPhotoText com sucesso devolve { text, partial }", async () => {
+  globalThis.fetch = async (url, opts) => {
+    assert.equal(url, "/api/extract-text");
+    const body = JSON.parse(opts.body);
+    assert.equal(body.image, "data:image/jpeg;base64,AAA");
+    assert.equal(body.preferences, undefined); // nunca envia Modo Inclusão (§22)
+    return { ok: true, json: async () => ({ success: true, text: "Texto da lousa", partial: false }) };
+  };
+  try {
+    const result = await photoTextService.extractPhotoText("data:image/jpeg;base64,AAA");
+    assert.deepEqual(result, { text: "Texto da lousa", partial: false });
+  } finally {
+    blockNetwork();
+  }
+});
+
+await testAsync("PTE-10. extractPhotoText com success:false vira PhotoTextError kind no_text", async () => {
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ success: false, reason: "no_text" }) });
+  try {
+    await assert.rejects(
+      () => photoTextService.extractPhotoText("data:image/jpeg;base64,AAA"),
+      (err) => err instanceof photoTextService.PhotoTextError && err.kind === "no_text"
+    );
+  } finally {
+    blockNetwork();
+  }
+});
+
+await testAsync("PTE-11. extractPhotoText com HTTP 500 vira PhotoTextError kind technical", async () => {
+  globalThis.fetch = async () => ({ ok: false, json: async () => ({ error: "Erro interno ao processar a imagem." }) });
+  try {
+    await assert.rejects(
+      () => photoTextService.extractPhotoText("data:image/jpeg;base64,AAA"),
+      (err) => err instanceof photoTextService.PhotoTextError && err.kind === "technical"
+    );
+  } finally {
+    blockNetwork();
+  }
+});
+
+await testAsync("PTE-12. extractPhotoText com JSON quebrado vira PhotoTextError kind technical", async () => {
+  globalThis.fetch = async () => ({ ok: true, json: async () => { throw new SyntaxError("bad json"); } });
+  try {
+    await assert.rejects(
+      () => photoTextService.extractPhotoText("data:image/jpeg;base64,AAA"),
+      (err) => err instanceof photoTextService.PhotoTextError && err.kind === "technical"
+    );
+  } finally {
+    blockNetwork();
+  }
+});
+
+await testAsync("PTE-13. extractPhotoText propaga AbortError sem embrulhar em PhotoTextError", async () => {
+  globalThis.fetch = async () => { throw Object.assign(new Error("aborted"), { name: "AbortError" }); };
+  try {
+    await assert.rejects(
+      () => photoTextService.extractPhotoText("data:image/jpeg;base64,AAA"),
+      (err) => err.name === "AbortError" && !(err instanceof photoTextService.PhotoTextError)
+    );
+  } finally {
+    blockNetwork();
+  }
+});
+
+await testAsync("PTE-14. copyText (exportService) rejeita quando clipboard indisponível", async () => {
+  const originalNavigator = globalThis.navigator;
+  setNavigator({});
+  try {
+    await assert.rejects(() => exportService.copyText("qualquer texto"));
+  } finally {
+    setNavigator(originalNavigator);
+  }
+});
+
+await testAsync("PTE-15. copyText (exportService) chama navigator.clipboard.writeText com o texto exato", async () => {
+  const originalNavigator = globalThis.navigator;
+  let written = null;
+  setNavigator({ clipboard: { writeText: async (t) => { written = t; } } });
+  try {
+    const result = await exportService.copyText("Texto para copiar");
+    assert.equal(written, "Texto para copiar");
+    assert.equal(result.text, "Texto para copiar");
+  } finally {
+    setNavigator(originalNavigator);
+  }
+});
+
+await testAsync("PTE-16. copyContent continua funcionando (reusa copyText, sem segunda implementação)", async () => {
+  const originalNavigator = globalThis.navigator;
+  let written = null;
+  setNavigator({ clipboard: { writeText: async (t) => { written = t; } } });
+  try {
+    const { content } = seedContent();
+    await exportService.copyContent(content);
+    assert.ok(written.includes(content.title));
+    assert.ok(written.includes("Resumo:"));
+  } finally {
+    setNavigator(originalNavigator);
+  }
+});
+
+test("PTE-17. photoTextService.copyText é a mesma função de exportService.copyText (sem clipboard duplicado)", () => {
+  assert.equal(photoTextService.copyText, exportService.copyText);
 });
 
 // ─── relatório ───────────────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
-import { relativeLabel } from "../utils/date";
-import { getSubjectVisual } from "../constants";
+import { relativeLabel } from "../utils/date.js";
+import { getSubjectVisual } from "../constants.js";
 
 // Documento de estudo em PDF real (jsPDF, gerado no cliente). Contém: título e
 // matéria, data, resumo, conceitos-chave / palavras-chave e a lista numerada de
@@ -100,13 +100,18 @@ function buildExportText(content) {
   ].join("\n");
 }
 
-// Cópia real para a área de transferência. Se falhar (permissão, contexto não
-// seguro), a rejeição é propagada para quem chamou avisar o usuário — não é
-// mais engolida.
-export function copyContent(content) {
-  const text = buildExportText(content);
+// Cópia genérica para a área de transferência — usada por qualquer feature
+// que precise copiar texto (export de conteúdo, extração de texto da foto).
+// Se falhar (permissão, contexto não seguro), a rejeição é propagada para
+// quem chamou avisar o usuário — não é engolida.
+export function copyText(text) {
   if (!navigator.clipboard?.writeText) {
     return Promise.reject(new Error("Área de transferência indisponível neste navegador."));
   }
   return navigator.clipboard.writeText(text).then(() => ({ text }));
+}
+
+// Cópia real para a área de transferência do texto de export do Content.
+export function copyContent(content) {
+  return copyText(buildExportText(content));
 }
