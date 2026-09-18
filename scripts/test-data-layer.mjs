@@ -109,7 +109,7 @@ const { LEARNING_KEYS_VERSION } = await import("../src/data/storage/db.js");
 const { createContent, createImage } = await import("../src/data/models/content.js");
 const learningPreferencesService = await import("../src/services/learningPreferencesService.js");
 const prompts = await import("../lib/prompts.js");
-const { repairJson, parseModelJson, GeminiError, classifyFailure } = await import("../lib/gemini.js");
+const { repairJson, parseModelJson, GeminiError, classifyFailure, stripCodeFence, closeTruncatedJson } = await import("../lib/gemini.js");
 const studyVisionService = await import("../src/services/studyVisionService.js");
 const learningInsightsService = await import("../src/services/learningInsightsService.js");
 const { FOCUS_DURATIONS, FOCUS_STEP_TYPES, FOCUS_STEP_BOUNDS, FOCUS_DURATION_DESCRIPTIONS } = await import("../src/constants.js");
@@ -2612,6 +2612,74 @@ test("F11-44. repairJson nao mexe em numeros negativos de array valido", () => {
   const ok = '{"xs": [-1, -2, -3], "y": "a - b"}';
   assert.equal(repairJson(ok), ok);
   assert.deepEqual(JSON.parse(repairJson(ok)), { xs: [-1, -2, -3], y: "a - b" });
+});
+
+// ─── stripCodeFence / closeTruncatedJson (Bloco 2) ────────────────────────────
+
+test("F11-45. stripCodeFence remove cerca ```json ... ``` ", () => {
+  const fenced = '```json\n{"a": 1}\n```';
+  assert.equal(stripCodeFence(fenced), '{"a": 1}');
+});
+
+test("F11-46. stripCodeFence remove cerca generica ``` ... ``` sem 'json'", () => {
+  const fenced = '```\n{"a": 1}\n```';
+  assert.equal(stripCodeFence(fenced), '{"a": 1}');
+});
+
+test("F11-47. stripCodeFence nao mexe em texto sem cerca", () => {
+  const plain = '{"a": 1}';
+  assert.equal(stripCodeFence(plain), plain);
+});
+
+test("F11-48. repairJson remove cerca de codigo antes de aplicar o resto", () => {
+  const fenced = '```json\n{"openQuestions": [\n  - "Pergunta um?"\n]}\n```';
+  const fixed = JSON.parse(repairJson(fenced));
+  assert.deepEqual(fixed.openQuestions, ["Pergunta um?"]);
+});
+
+test("F11-49. closeTruncatedJson fecha uma string aberta no final", () => {
+  const truncated = '{"summary": "texto sem fim';
+  const closed = closeTruncatedJson(truncated);
+  assert.deepEqual(JSON.parse(closed), { summary: "texto sem fim" });
+});
+
+test("F11-50. closeTruncatedJson fecha objeto e array aninhados em aberto", () => {
+  const truncated = '{"quiz": [{"question": "Qual e a capital?", "options": ["A", "B"]';
+  const closed = closeTruncatedJson(truncated);
+  const parsed = JSON.parse(closed);
+  assert.equal(parsed.quiz[0].question, "Qual e a capital?");
+  assert.deepEqual(parsed.quiz[0].options, ["A", "B"]);
+});
+
+test("F11-51. closeTruncatedJson descarta uma vírgula pendurada antes de fechar", () => {
+  const truncated = '{"a": 1,';
+  const closed = closeTruncatedJson(truncated);
+  assert.deepEqual(JSON.parse(closed), { a: 1 });
+});
+
+test("F11-52. closeTruncatedJson descarta uma chave sem valor no final", () => {
+  const truncated = '{"a": 1, "openQuestions":';
+  const closed = closeTruncatedJson(truncated);
+  assert.deepEqual(JSON.parse(closed), { a: 1 });
+});
+
+test("F11-53. closeTruncatedJson nao mexe em JSON ja fechado", () => {
+  const ok = '{"a": 1, "b": [1, 2]}';
+  assert.deepEqual(JSON.parse(closeTruncatedJson(ok)), { a: 1, b: [1, 2] });
+});
+
+test("F11-54. parseModelJson recupera JSON truncado dentro de array (defeito real de MAX_TOKENS)", () => {
+  const truncated = '{"subject": "Matemática", "quiz": [{"question": "Q1", "options": ["A", "B"], "answer": 0}, {"question": "Q2 sem f';
+  const parsed = parseModelJson(truncated);
+  assert.equal(parsed.subject, "Matemática");
+  assert.equal(parsed.quiz.length, 2);
+  assert.equal(parsed.quiz[0].question, "Q1");
+});
+
+test("F11-55. parseModelJson recupera resposta com cerca de codigo markdown", () => {
+  const fenced = '```json\n{"subject": "Física", "topic": "Ótica"}\n```';
+  const parsed = parseModelJson(fenced);
+  assert.equal(parsed.subject, "Física");
 });
 
 // ─── Fase 12: Modo Inclusão Etapa 4 — corrigir contradição de formato ───────
