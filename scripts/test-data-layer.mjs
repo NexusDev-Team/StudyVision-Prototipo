@@ -109,6 +109,7 @@ const { LEARNING_KEYS_VERSION } = await import("../src/data/storage/db.js");
 const { createContent, createImage } = await import("../src/data/models/content.js");
 const learningPreferencesService = await import("../src/services/learningPreferencesService.js");
 const prompts = await import("../lib/prompts.js");
+const { validateCore, sanitizeExtras } = await import("../lib/analysisSanitize.js");
 const { repairJson, parseModelJson, GeminiError, classifyFailure, stripCodeFence, closeTruncatedJson } = await import("../lib/gemini.js");
 const studyVisionService = await import("../src/services/studyVisionService.js");
 const learningInsightsService = await import("../src/services/learningInsightsService.js");
@@ -4335,6 +4336,104 @@ test("RETRY-08. GeminiError tem defaults quando attempts/failureKind ausentes", 
   const err = new GeminiError("BAD_JSON", "ruim");
   assert.equal(err.attempts, 1);
   assert.equal(err.failureKind, "permanent");
+});
+
+// ─── validateCore / sanitizeExtras (Bloco 3) ─────────────────────────────────
+
+test("AN-01. validateCore aprova resposta com topic e summary preenchidos", () => {
+  assert.equal(validateCore({ topic: "Frações", summary: "Resumo curto." }), true);
+});
+
+test("AN-02. validateCore reprova quando summary esta vazio", () => {
+  const verdict = validateCore({ topic: "Frações", summary: "" });
+  assert.notEqual(verdict, true);
+  assert.equal(typeof verdict, "string");
+});
+
+test("AN-03. validateCore reprova quando topic esta ausente", () => {
+  const verdict = validateCore({ summary: "Resumo." });
+  assert.notEqual(verdict, true);
+});
+
+test("AN-04. validateCore aprova success:false sem exigir topic/summary (nao e retentavel)", () => {
+  assert.equal(validateCore({ success: false, error: "sem conteudo academico" }), true);
+});
+
+test("AN-05. validateCore reprova entrada que nao e objeto", () => {
+  assert.notEqual(validateCore(null), true);
+  assert.notEqual(validateCore("string"), true);
+});
+
+test("AN-06. sanitizeExtras aplica defaults de subject/title/keyConcepts ausentes", () => {
+  const { result } = sanitizeExtras({ topic: "Frações", summary: "Resumo." });
+  assert.equal(result.subject, "Geral");
+  assert.equal(result.title, "Frações");
+  assert.deepEqual(result.keyConcepts, []);
+});
+
+test("AN-07. sanitizeExtras preserva subject/title informados", () => {
+  const { result } = sanitizeExtras({ topic: "Frações", summary: "Resumo.", subject: "Matemática", title: "Frações equivalentes" });
+  assert.equal(result.subject, "Matemática");
+  assert.equal(result.title, "Frações equivalentes");
+});
+
+test("AN-08. sanitizeExtras filtra 1 questao ruim do quiz e preserva as boas (nao descarta tudo)", () => {
+  const quiz = [
+    { question: "Q1", options: ["A", "B"], answer: 0 },
+    { question: "Q2 ruim", options: ["A", "B"], answer: 7 }, // fora do range
+    { question: "Q3", options: ["A", "B", "C"], answer: 2 },
+  ];
+  const { result, partial } = sanitizeExtras({ topic: "T", summary: "S", quiz });
+  assert.equal(result.quiz.length, 2);
+  assert.deepEqual(result.quiz.map((q) => q.question), ["Q1", "Q3"]);
+  assert.ok(!partial.includes("quiz"));
+});
+
+test("AN-09. sanitizeExtras marca partial quando quiz fica vazio apos filtro", () => {
+  const quiz = [{ question: "Q1", options: ["A"], answer: 9 }];
+  const { result, partial } = sanitizeExtras({ topic: "T", summary: "S", quiz });
+  assert.equal(result.quiz.length, 0);
+  assert.ok(partial.includes("quiz"));
+});
+
+test("AN-10. sanitizeExtras converte answer como letra ('B') para indice inteiro", () => {
+  const quiz = [{ question: "Q1", options: ["A", "B", "C"], answer: "B" }];
+  const { result } = sanitizeExtras({ topic: "T", summary: "S", quiz });
+  assert.equal(result.quiz[0].answer, 1);
+});
+
+test("AN-11. sanitizeExtras converte answer como string numerica para indice inteiro", () => {
+  const quiz = [{ question: "Q1", options: ["A", "B", "C"], answer: "2" }];
+  const { result } = sanitizeExtras({ topic: "T", summary: "S", quiz });
+  assert.equal(result.quiz[0].answer, 2);
+});
+
+test("AN-12. sanitizeExtras cai para q.correct quando answer ausente/invalido", () => {
+  const quiz = [{ question: "Q1", options: ["A", "B"], correct: 1 }];
+  const { result } = sanitizeExtras({ topic: "T", summary: "S", quiz });
+  assert.equal(result.quiz[0].answer, 1);
+});
+
+test("AN-13. sanitizeExtras descarta flashcard sem answer e mantem os validos", () => {
+  const flashcards = [
+    { question: "P1", answer: "R1" },
+    { question: "P2 sem resposta", answer: "" },
+  ];
+  const { result, partial } = sanitizeExtras({ topic: "T", summary: "S", flashcards });
+  assert.equal(result.flashcards.length, 1);
+  assert.equal(result.flashcards[0].question, "P1");
+  assert.ok(!partial.includes("flashcards"));
+});
+
+test("AN-14. sanitizeExtras marca partial de flashcards/openQuestions quando ausentes", () => {
+  const { partial } = sanitizeExtras({ topic: "T", summary: "S" });
+  assert.deepEqual(partial.sort(), ["flashcards", "openQuestions", "quiz"]);
+});
+
+test("AN-15. sanitizeExtras normaliza openQuestions vindas como objeto {question}", () => {
+  const openQuestions = [{ question: "Por que isso acontece?" }, "Pergunta direta?"];
+  const { result } = sanitizeExtras({ topic: "T", summary: "S", openQuestions });
+  assert.deepEqual(result.openQuestions, ["Por que isso acontece?", "Pergunta direta?"]);
 });
 
 // ─── relatório ───────────────────────────────────────────────────────────────

@@ -4,24 +4,10 @@
 import { generateAnalysis, isConfigured, GeminiError } from "../lib/gemini.js";
 import { sanitizePreferences } from "../lib/prompts.js";
 import { MAX_IMAGE_BYTES, DATA_URL_RE } from "../lib/imageDataUrl.js";
+import { validateCore, sanitizeExtras } from "../lib/analysisSanitize.js";
 
 function badRequest(res, message) {
   return res.status(400).json({ success: false, error: message });
-}
-
-// Sem responseSchema forçado (ver lib/gemini.js), o modelo ocasionalmente varia
-// pequenos detalhes de forma mesmo seguindo o prompt — corrige aqui os desvios
-// observados em teste antes de validar/repassar ao frontend.
-function normalizeResult(result) {
-  if (Array.isArray(result.openQuestions)) {
-    result.openQuestions = result.openQuestions.map((q) => (typeof q === "string" ? q : q?.question)).filter(Boolean);
-  }
-  if (Array.isArray(result.quiz)) {
-    result.quiz = result.quiz.map((q) => ({
-      ...q,
-      answer: Number.isInteger(q.answer) ? q.answer : q.correct,
-    }));
-  }
 }
 
 export default async function handler(req, res) {
@@ -56,10 +42,13 @@ export default async function handler(req, res) {
 
   let result;
   try {
-    result = await generateAnalysis({ mimeType, base64Data, preferences: safePreferences });
+    // validateCore roda DENTRO do laço de retentativa de lib/gemini.js: uma
+    // resposta sem tópico/resumo é tratada como falha transitória e gera de
+    // novo, no mesmo orçamento — não é mais um 502 na primeira variação ruim.
+    result = await generateAnalysis({ mimeType, base64Data, preferences: safePreferences, validate: validateCore });
   } catch (err) {
     if (err instanceof GeminiError) {
-      console.error(`[api/analyze] ${err.code}: ${err.message}`);
+      console.error(`[api/analyze] ${err.code}: ${err.message} (tentativas: ${err.attempts})`);
       return res.status(502).json({ success: false, error: "Não foi possível analisar a imagem agora. Tente novamente." });
     }
     console.error("[api/analyze] erro inesperado:", err);
@@ -77,23 +66,10 @@ export default async function handler(req, res) {
     });
   }
 
-  normalizeResult(result);
+  // Núcleo já garantido por validateCore (topic/summary não vazios); aqui só
+  // o secundário é saneado — itens ruins de quiz/flashcards/openQuestions são
+  // filtrados, nunca derrubam a resposta inteira (ver lib/analysisSanitize.js).
+  const { result: sanitized, partial } = sanitizeExtras(result);
 
-  const checks = {
-    success: result.success === true,
-    subject: typeof result.subject === "string" && !!result.subject,
-    topic: typeof result.topic === "string" && !!result.topic,
-    summary: typeof result.summary === "string" && !!result.summary,
-    keyConcepts: Array.isArray(result.keyConcepts),
-    flashcards: Array.isArray(result.flashcards),
-    quiz: Array.isArray(result.quiz) && result.quiz.every((q) => Array.isArray(q.options) && Number.isInteger(q.answer) && q.answer >= 0 && q.answer < q.options.length),
-  };
-  const isValid = Object.values(checks).every(Boolean);
-
-  if (!isValid) {
-    console.error("[api/analyze] resposta do Gemini não passou na validação de forma:", JSON.stringify(checks));
-    return res.status(502).json({ success: false, error: "Resposta inválida do serviço de análise." });
-  }
-
-  return res.status(200).json(result);
+  return res.status(200).json({ ...sanitized, partial });
 }
