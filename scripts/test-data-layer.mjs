@@ -109,7 +109,7 @@ const { LEARNING_KEYS_VERSION } = await import("../src/data/storage/db.js");
 const { createContent, createImage } = await import("../src/data/models/content.js");
 const learningPreferencesService = await import("../src/services/learningPreferencesService.js");
 const prompts = await import("../lib/prompts.js");
-const { repairJson, parseModelJson, GeminiError } = await import("../lib/gemini.js");
+const { repairJson, parseModelJson, GeminiError, classifyFailure } = await import("../lib/gemini.js");
 const studyVisionService = await import("../src/services/studyVisionService.js");
 const learningInsightsService = await import("../src/services/learningInsightsService.js");
 const { FOCUS_DURATIONS, FOCUS_STEP_TYPES, FOCUS_STEP_BOUNDS, FOCUS_DURATION_DESCRIPTIONS } = await import("../src/constants.js");
@@ -4222,6 +4222,51 @@ await testAsync("PTE-16. copyContent continua funcionando (reusa copyText, sem s
 
 test("PTE-17. photoTextService.copyText é a mesma função de exportService.copyText (sem clipboard duplicado)", () => {
   assert.equal(photoTextService.copyText, exportService.copyText);
+});
+
+// ─── RETRY — classificação de falha transitória vs. permanente (Bloco 1) ─────
+
+test("RETRY-01. classifyFailure marca 429/500/502/503/504 como transitórios", () => {
+  for (const status of [429, 500, 502, 503, 504]) {
+    assert.equal(classifyFailure({ status, message: "erro" }), "transient");
+  }
+});
+
+test("RETRY-02. classifyFailure usa statusCode quando status ausente", () => {
+  assert.equal(classifyFailure({ statusCode: 503, message: "erro" }), "transient");
+});
+
+test("RETRY-03. classifyFailure marca 400/401/403/404 como permanentes", () => {
+  for (const status of [400, 401, 403, 404]) {
+    assert.equal(classifyFailure({ status, message: "erro" }), "permanent");
+  }
+});
+
+test("RETRY-04. classifyFailure marca AbortError (timeout da tentativa) como transitório", () => {
+  assert.equal(classifyFailure({ name: "AbortError", message: "aborted" }), "transient");
+});
+
+test("RETRY-05. classifyFailure reconhece mensagens de indisponibilidade sem status numérico", () => {
+  assert.equal(classifyFailure({ message: "UNAVAILABLE: model overloaded" }), "transient");
+  assert.equal(classifyFailure({ message: "fetch failed" }), "transient");
+  assert.equal(classifyFailure({ message: "ECONNRESET" }), "transient");
+});
+
+test("RETRY-06. classifyFailure trata erro sem status/mensagem reconhecida como permanente", () => {
+  assert.equal(classifyFailure({ message: "API key not valid" }), "permanent");
+  assert.equal(classifyFailure({}), "permanent");
+});
+
+test("RETRY-07. GeminiError carrega attempts e failureKind", () => {
+  const err = new GeminiError("UPSTREAM", "falhou", { attempts: 3, failureKind: "transient" });
+  assert.equal(err.attempts, 3);
+  assert.equal(err.failureKind, "transient");
+});
+
+test("RETRY-08. GeminiError tem defaults quando attempts/failureKind ausentes", () => {
+  const err = new GeminiError("BAD_JSON", "ruim");
+  assert.equal(err.attempts, 1);
+  assert.equal(err.failureKind, "permanent");
 });
 
 // ─── relatório ───────────────────────────────────────────────────────────────
