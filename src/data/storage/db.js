@@ -134,6 +134,27 @@ function coerceFlameGoals(value) {
   return { preferredWeeklyTarget, weekTargets };
 }
 
+// Imagens gravadas antes da feature de extração de texto da foto não têm
+// extractedText/extractedTextAt/extractedTextPartial. Backfill defensivo na
+// leitura (mesmo padrão de coerceFlameGoals/coerceLearningPreferences acima)
+// para que o hook de extração nunca veja `undefined` nesses campos.
+function coerceImage(img) {
+  return {
+    ...img,
+    extractedText: typeof img.extractedText === "string" ? img.extractedText : "",
+    extractedTextAt: typeof img.extractedTextAt === "string" ? img.extractedTextAt : null,
+    extractedTextPartial: img.extractedTextPartial === true,
+  };
+}
+
+function coerceContents(value) {
+  if (!Array.isArray(value)) return [];
+  return value.map((c) => ({
+    ...c,
+    images: Array.isArray(c.images) ? c.images.map(coerceImage) : [],
+  }));
+}
+
 function safeParse(raw) {
   if (!raw) return null;
   try {
@@ -150,7 +171,7 @@ export function readDb() {
   return {
     version: parsed.version || SCHEMA_VERSION,
     subjects: Array.isArray(parsed.subjects) ? parsed.subjects : [],
-    contents: Array.isArray(parsed.contents) ? parsed.contents : [],
+    contents: coerceContents(parsed.contents),
     flashcardAttempts: Array.isArray(parsed.flashcardAttempts) ? parsed.flashcardAttempts : [],
     quizAttempts: Array.isArray(parsed.quizAttempts) ? parsed.quizAttempts : [],
     reviews: Array.isArray(parsed.reviews) ? parsed.reviews : [],

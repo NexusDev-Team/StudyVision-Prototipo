@@ -106,7 +106,7 @@ const { createReview } = await import("../src/data/models/review.js");
 const { migrateItems } = await import("../src/data/storage/migrations.js");
 const { LEARNING_PREFERENCE_KEYS } = await import("../src/constants.js");
 const { LEARNING_KEYS_VERSION } = await import("../src/data/storage/db.js");
-const { createContent } = await import("../src/data/models/content.js");
+const { createContent, createImage } = await import("../src/data/models/content.js");
 const learningPreferencesService = await import("../src/services/learningPreferencesService.js");
 const prompts = await import("../lib/prompts.js");
 const { repairJson, parseModelJson, GeminiError } = await import("../lib/gemini.js");
@@ -232,6 +232,69 @@ test("3. adicionar 2ª foto NÃO cria conteúdo novo", () => {
     contentService.getContent(content.id).images.map((i) => i.order),
     [0, 1]
   );
+});
+
+// ─── PTE — extração de texto da foto (Bloco 2: campos no registro da imagem) ──
+
+test("PTE-01. createImage traz os defaults de extração de texto", () => {
+  const image = createImage({ contentId: "cnt_1", dataUrl: "data:image/jpeg;base64,AAA", order: 0 });
+  assert.equal(image.extractedText, "");
+  assert.equal(image.extractedTextAt, null);
+  assert.equal(image.extractedTextPartial, false);
+});
+
+test("PTE-02. createImage aceita valores explícitos de texto já extraído", () => {
+  const image = createImage({
+    contentId: "cnt_1",
+    dataUrl: "data:image/jpeg;base64,AAA",
+    extractedText: "Texto da lousa",
+    extractedTextAt: "2026-01-01T00:00:00.000Z",
+    extractedTextPartial: true,
+  });
+  assert.equal(image.extractedText, "Texto da lousa");
+  assert.equal(image.extractedTextAt, "2026-01-01T00:00:00.000Z");
+  assert.equal(image.extractedTextPartial, true);
+});
+
+test("PTE-03. imagem legada (sv_db sem os campos novos) é lida com defaults", () => {
+  const { content } = seedContent();
+  // Simula uma foto gravada ANTES desta feature existir: escreve direto no
+  // storage um registro de imagem sem extractedText/extractedTextAt/extractedTextPartial.
+  withDb((db) => ({
+    ...db,
+    contents: db.contents.map((c) =>
+      c.id !== content.id
+        ? c
+        : { ...c, images: [{ id: "img_legacy_1", contentId: c.id, dataUrl: "data:image/jpeg;base64,LEG", order: 0, createdAt: nowIso() }] }
+    ),
+  }));
+
+  const image = contentService.getContent(content.id).images[0];
+  assert.equal(image.extractedText, "");
+  assert.equal(image.extractedTextAt, null);
+  assert.equal(image.extractedTextPartial, false);
+});
+
+test("PTE-04. createContent preserva o texto já extraído de uma imagem existente", () => {
+  const content = createContent({
+    title: "Com foto já extraída",
+    images: [
+      {
+        id: "img_1",
+        contentId: "will_be_overwritten",
+        dataUrl: "data:image/jpeg;base64,AAA",
+        order: 0,
+        createdAt: nowIso(),
+        extractedText: "Texto preservado",
+        extractedTextAt: "2026-01-01T00:00:00.000Z",
+        extractedTextPartial: true,
+      },
+    ],
+  });
+  assert.equal(content.images[0].extractedText, "Texto preservado");
+  assert.equal(content.images[0].extractedTextAt, "2026-01-01T00:00:00.000Z");
+  assert.equal(content.images[0].extractedTextPartial, true);
+  assert.equal(content.images[0].contentId, content.id); // contentId sempre corrigido, resto preservado
 });
 
 test("4. editar título mantém o mesmo id", () => {

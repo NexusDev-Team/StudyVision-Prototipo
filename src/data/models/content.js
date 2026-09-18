@@ -17,13 +17,22 @@ export function sanitizeLearningPreferences(raw) {
   return options;
 }
 
-export function createImage({ contentId, dataUrl, order, createdAt } = {}) {
+// extractedText/extractedTextAt/extractedTextPartial: texto transcrito desta
+// FOTO específica (feature de extração de texto), sob demanda, via
+// /api/extract-text. Independente e nunca misturado com content.extractedText,
+// content.summary ou content.notes — ver src/services/photoTextService.js.
+// extractedText === "" significa "nunca extraído" (não "sem texto na foto";
+// esse caso usa reason "no_text" na resposta do endpoint e não persiste nada).
+export function createImage({ contentId, dataUrl, order, createdAt, extractedText, extractedTextAt, extractedTextPartial } = {}) {
   return {
     id: newId(ID_PREFIX.image),
     contentId: contentId || null,
     dataUrl: dataUrl || "",
     order: typeof order === "number" ? order : 0,
     createdAt: createdAt || nowIso(),
+    extractedText: typeof extractedText === "string" ? extractedText : "",
+    extractedTextAt: typeof extractedTextAt === "string" ? extractedTextAt : null,
+    extractedTextPartial: extractedTextPartial === true,
   };
 }
 
