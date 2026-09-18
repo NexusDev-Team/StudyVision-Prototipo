@@ -4,6 +4,12 @@ import { motion } from "framer-motion";
 
 const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
+// Pilha de instâncias abertas, em módulo (compartilhada por todos os Modal).
+// Só o Modal no TOPO da pilha reage ao Esc — sem isso, dois modais empilhados
+// (ex.: PhotoViewerModal + ConfirmDialog, ambos Modal) têm cada um seu próprio
+// listener no mesmo `document`, e um único Esc fecha os dois de uma vez.
+const stack = [];
+
 // Bottom-sheet (default) or centered modal, portaled into .sv-frame so it
 // stays clipped to the phone shell instead of escaping to the real viewport.
 // role="dialog" + Esc + clique no backdrop fecham; foco vai para o primeiro
@@ -11,17 +17,33 @@ const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabi
 export default function Modal({ children, center = false, onClose, label = "Diálogo" }) {
   const panelRef = useRef(null);
   const previouslyFocused = useRef(null);
+  // onClose muda de referência a cada render do pai (arrow function inline).
+  // Um ref evita que o efeito de montagem/pilha abaixo dependa dessa
+  // referência instável — ele lê sempre a versão mais recente via
+  // onCloseRef.current, sem precisar reexecutar o efeito a cada render.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
+  // Roda só no mount/unmount (deps []): registra esta instância no topo da
+  // pilha e a remove ao desmontar. Reexecutar isto a cada re-render do pai
+  // (como acontecia com deps [onClose]) reordenava a pilha e fazia o Esc
+  // fechar o modal errado.
   useEffect(() => {
     previouslyFocused.current = document.activeElement;
     const panel = panelRef.current;
     const first = panel?.querySelector(FOCUSABLE);
     first?.focus();
 
+    const token = {};
+    stack.push(token);
+
     const handleKeyDown = (e) => {
-      if (e.key === "Escape" && onClose) {
-        e.stopPropagation();
-        onClose();
+      if (e.key === "Escape") {
+        if (stack[stack.length - 1] !== token) return; // não é o modal do topo
+        if (onCloseRef.current) {
+          e.stopPropagation();
+          onCloseRef.current();
+        }
         return;
       }
       // Trap simples: Tab no último elemento volta ao primeiro, e vice-versa.
@@ -42,9 +64,11 @@ export default function Modal({ children, center = false, onClose, label = "Diá
     document.addEventListener("keydown", handleKeyDown, true);
     return () => {
       document.removeEventListener("keydown", handleKeyDown, true);
+      const i = stack.indexOf(token);
+      if (i !== -1) stack.splice(i, 1);
       previouslyFocused.current?.focus?.();
     };
-  }, [onClose]);
+  }, []);
 
   const modal = (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
