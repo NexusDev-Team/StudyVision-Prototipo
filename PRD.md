@@ -256,6 +256,19 @@ Etapa final da fase de upgrades aberta com o Modo Foco (Etapas 1–2, `MODO-FOCO
 - Validação com o Gemini real: `npm run test:inclusao -- --image <foto>` (mesmo molde de `test:focus`), mais verificação manual no navegador (Playwright) — sheet, multisseleção, persistência, edição pelo ⚙️ e renderização das etapas confirmadas sem regressão.
 - Suíte: de 324 para **340** cenários (`F12-1` a `F12-16`).
 
+### 10.15 Extração e cópia de texto de uma foto (2026-09-17)
+
+O estudante pode pedir a transcrição fiel do texto de uma foto específica e copiá-la — sem nenhum botão novo na câmera, na biblioteca ou nos cards de conteúdo. A ação existe só dentro do visualizador de foto aberta.
+
+- **Não reaproveita** o `extractedText` gerado por `/api/analyze`: aquele campo é uma leitura livre (vira matéria-prima do resumo/flashcards) e é único por Content. Endpoint dedicado `POST /api/extract-text`, com prompt de transcrição fiel (`lib/photoTextPrompts.js`) que preserva ordem/títulos/listas/fórmulas e nunca resume, explica ou completa texto ilegível. Sem Modo Inclusão: nenhuma preferência de aprendizagem é enviada a este endpoint — o texto copiado é sempre o conteúdo original da imagem.
+- Texto vive **por foto**, não por Content: `createImage` (`src/data/models/content.js`) ganhou `extractedText`/`extractedTextAt`/`extractedTextPartial`; imagens legadas recebem os defaults na leitura (`coerceContents` em `src/data/storage/db.js`). `contentService.setImageExtractedText` grava só a imagem alvo, nunca `content.extractedText`/`summary`/`notes`.
+- Extração só acontece sob demanda (toque em "Extrair texto"); reabrir a mesma foto mostra o texto já salvo sem nova chamada ao Gemini. Hook `usePhotoTextExtraction` cobre isolamento entre fotos (trocar de foto reseta o estado — texto de uma nunca aparece em outra), proteção contra toque duplo (guarda síncrona por `ref`, não pelo `status` do React) e cancelamento via `AbortController`.
+- **Bug real corrigido durante a integração**: a persistência inicial chamava `contentService` direto de dentro do hook, sem passar por `mutate()` do `ContentStoreContext` — o array de imagens em memória nunca recarregava, e o cache-hit falhava silenciosamente (nova chamada a cada abertura mesmo com texto já salvo). Corrigido injetando `persist` no hook, chamado por `App.jsx` via `mutate()`.
+- **Bug pré-existente corrigido** (pré-requisito, não fazia parte do escopo original): `Modal.jsx` registrava um listener de Esc por instância no mesmo `document`, então um único Esc fechava todos os modais empilhados (ex.: `PhotoViewerModal` + `PhotoTextSheet`/`ConfirmDialog`). Corrigido com uma pilha em módulo — só o modal do topo reage ao Esc — e `onClose` estabilizado via `useRef` (a versão anterior, com o efeito dependendo de `[onClose]`, reordenava a pilha a cada re-render do pai).
+- Folha de resultado (`PhotoTextSheet.jsx`) reaproveita o `Modal` como bottom sheet: estados de carregamento/vazio/erro/parcial, texto selecionável em área rolável (`max-height` + `overflow-y`), "Copiar texto" sempre acessível e feedback "Texto copiado!" que some sozinho. Clipboard genérico extraído de `exportService.copyContent` para `exportService.copyText`, reutilizado por `photoTextService` — sem segunda implementação.
+- Validação ponta a ponta com Gemini real (Playwright): foto com texto (transcrição fiel, sem resumo), copiar (clipboard real), foto sem texto, erro forçado (rede offline) com "Tentar novamente", texto longo (3650 caracteres, rolável, botão sempre visível), troca de foto sem vazamento, 3 cliques síncronos = 1 requisição, reload com cache (zero chamadas novas).
+- Suíte: de 340 para **357** cenários (`PTE-01` a `PTE-17`).
+
 ## 11. Análise — concluído vs. pendente
 
 ### 11.1 Concluído
