@@ -3,9 +3,7 @@
 
 import { generateAnalysis, isConfigured, GeminiError } from "../lib/gemini.js";
 import { sanitizePreferences } from "../lib/prompts.js";
-
-const MAX_IMAGE_BYTES = 6 * 1024 * 1024; // ~6MB de base64, dentro do limite de body da Vercel
-const DATA_URL_RE = /^data:image\/(jpeg|jpg|png|webp);base64,(.+)$/i;
+import { MAX_IMAGE_BYTES, DATA_URL_RE } from "../lib/imageDataUrl.js";
 
 function badRequest(res, message) {
   return res.status(400).json({ success: false, error: message });
