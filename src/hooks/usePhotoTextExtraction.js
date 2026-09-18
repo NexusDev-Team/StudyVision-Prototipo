@@ -1,6 +1,5 @@
 import { useCallback, useRef, useState } from "react";
 import { extractPhotoText, PhotoTextError } from "../services/photoTextService";
-import { setImageExtractedText } from "../services/contentService";
 
 // Mensagens de erro centralizadas aqui — único lugar que decide o texto
 // exibido ao usuário para cada kind de PhotoTextError, evitando string
@@ -21,7 +20,15 @@ function messageForError(err) {
 // `contentId` é fixo por instância do hook (o Content da foto aberta);
 // `run(image)` recebe o registro de imagem completo (id + dataUrl +
 // extractedText já persistido, se houver).
-export function usePhotoTextExtraction(contentId) {
+//
+// `persist(contentId, imageId, { text, partial })` é injetado por quem usa o
+// hook (PhotoViewerModal, via App.jsx) em vez de chamar contentService
+// diretamente daqui: a escrita precisa passar por mutate() do
+// ContentStoreContext para o array `images` em memória (prop deste modal)
+// refletir o novo extractedText — sem isso, `image.extractedText` no cache-hit
+// abaixo permaneceria "" para sempre e a foto chamaria a API de novo a cada
+// abertura, mesmo já tendo o texto salvo em disco.
+export function usePhotoTextExtraction(contentId, persist) {
   const [status, setStatus] = useState("idle"); // idle | loading | done | empty | error
   const [text, setText] = useState("");
   const [partial, setPartial] = useState(false);
@@ -83,8 +90,9 @@ export function usePhotoTextExtraction(contentId) {
           setText(result.text);
           setPartial(result.partial);
           setStatus("done");
-          // Persiste na foto para a próxima abertura não chamar a API de novo.
-          setImageExtractedText(contentId, image.id, { text: result.text, partial: result.partial });
+          // Persiste na foto (e recarrega o store) para a próxima abertura
+          // não chamar a API de novo.
+          persist?.(contentId, image.id, { text: result.text, partial: result.partial });
         })
         .catch((err) => {
           if (err?.name === "AbortError") return;
@@ -103,7 +111,7 @@ export function usePhotoTextExtraction(contentId) {
           setStatus("error");
         });
     },
-    [contentId]
+    [contentId, persist]
   );
 
   const retry = useCallback(() => {

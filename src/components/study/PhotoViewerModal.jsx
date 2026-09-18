@@ -1,15 +1,21 @@
 import { useState, useEffect } from "react";
-import { ChevronLeft, ChevronRight, X, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, X, Trash2, FileText } from "lucide-react";
 import Modal from "../ui/Modal";
 import ConfirmDialog from "../ui/ConfirmDialog";
+import PhotoTextSheet from "./PhotoTextSheet";
+import { usePhotoTextExtraction } from "../../hooks/usePhotoTextExtraction";
 
 // Visualização ampliada de uma foto do Content, com navegação entre páginas
 // quando houver mais de uma. Portalizado pelo próprio Modal dentro da moldura.
 // A exclusão da foto acontece aqui (ícone de lixeira no topo), não na
-// miniatura da lista.
-export default function PhotoViewerModal({ images, initialIndex = 0, onClose, onRemoveImage }) {
+// miniatura da lista. "Extrair texto" (feature de extração de texto) é uma
+// ação discreta abaixo da imagem — existe SOMENTE aqui, nunca na câmera, na
+// biblioteca ou nos cards de conteúdo (§3 do briefing).
+export default function PhotoViewerModal({ contentId, images, initialIndex = 0, onClose, onRemoveImage, onPersistExtractedText }) {
   const [index, setIndex] = useState(Math.min(initialIndex, Math.max(images.length - 1, 0)));
   const [confirmRemove, setConfirmRemove] = useState(false);
+  const [showTextSheet, setShowTextSheet] = useState(false);
+  const photoText = usePhotoTextExtraction(contentId, onPersistExtractedText);
 
   // `images` vem derivado do store: ao remover, o array encolhe. Fecha quando
   // não sobra nenhuma; senão, mantém o índice dentro do intervalo.
@@ -21,8 +27,21 @@ export default function PhotoViewerModal({ images, initialIndex = 0, onClose, on
     setIndex((i) => Math.min(i, images.length - 1));
   }, [images.length, onClose]);
 
+  // Trocar de foto nunca pode vazar o texto extraído da foto anterior
+  // (Teste 6 do briefing) — reseta o hook e fecha a folha a cada navegação.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    setShowTextSheet(false);
+    photoText.reset();
+  }, [index]);
+
   const image = images[index];
   if (!image) return null;
+
+  const handleExtractText = () => {
+    setShowTextSheet(true);
+    photoText.run(image);
+  };
 
   const hasMultiple = images.length > 1;
   const goPrev = () => setIndex((i) => (i - 1 + images.length) % images.length);
@@ -73,6 +92,12 @@ export default function PhotoViewerModal({ images, initialIndex = 0, onClose, on
         </p>
       )}
 
+      <button onClick={handleExtractText} disabled={photoText.status === "loading"} aria-label="Extrair texto desta foto"
+        style={{ width: "100%", minHeight: 44, marginTop: 12, borderRadius: 12, border: "1.5px solid #E2E8F0", background: "white", color: photoText.status === "loading" ? "#94A3B8" : "#2563EB", fontFamily: "Inter,sans-serif", fontSize: 13.5, fontWeight: 700, cursor: photoText.status === "loading" ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+        <FileText size={16} />
+        {photoText.status === "loading" ? "Identificando texto..." : "Extrair texto"}
+      </button>
+
     </Modal>
 
     {confirmRemove && (
@@ -82,6 +107,17 @@ export default function PhotoViewerModal({ images, initialIndex = 0, onClose, on
         confirmLabel="Remover foto"
         onConfirm={handleConfirmRemove}
         onCancel={() => setConfirmRemove(false)}
+      />
+    )}
+
+    {showTextSheet && (
+      <PhotoTextSheet
+        status={photoText.status}
+        text={photoText.text}
+        partial={photoText.partial}
+        error={photoText.error}
+        onRetry={photoText.retry}
+        onClose={() => setShowTextSheet(false)}
       />
     )}
     </>

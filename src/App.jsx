@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useContentStore } from "./context/ContentStoreContext.jsx";
 import { nextPendingReview, markReviewDone } from "./services/reviewService";
-import { addImageToContent, removeImageFromContent } from "./services/contentService";
+import { addImageToContent, removeImageFromContent, setImageExtractedText } from "./services/contentService";
 import { useNavigation } from "./hooks/useNavigation";
 import { useToast } from "./hooks/useToast";
 import { useSubscription } from "./hooks/useSubscription";
@@ -61,6 +61,14 @@ export default function App() {
     if (!photoViewer) return;
     mutate(() => removeImageFromContent(photoViewer.contentId, imageId));
     showToast("✓ Foto removida");
+  };
+
+  // Persiste o texto extraído de uma foto (feature de extração de texto) via
+  // mutate() — nunca escrever direto pelo serviço aqui: sem passar por
+  // mutate(), o array `images` do store não recarrega e o PhotoViewerModal
+  // continuaria vendo extractedText desatualizado (cache-hit nunca acertaria).
+  const handlePersistExtractedText = (contentId, imageId, payload) => {
+    mutate(() => setImageExtractedText(contentId, imageId, payload));
   };
 
   const handleAttachCapture = (dataUrl) => {
@@ -245,10 +253,12 @@ export default function App() {
       <AnimatePresence>
         {photoViewer && photoViewerImages.length > 0 && (
           <PhotoViewerModal
+            contentId={photoViewer.contentId}
             images={photoViewerImages}
             initialIndex={photoViewer.index}
             onClose={() => setPhotoViewer(null)}
             onRemoveImage={handleRemoveViewerImage}
+            onPersistExtractedText={handlePersistExtractedText}
           />
         )}
       </AnimatePresence>
