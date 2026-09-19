@@ -36,21 +36,68 @@ export default function CameraScreen({ onCapture, onLibraryNav, mode = "capture"
   const [pendingCapture, setPendingCapture] = useState(null); // dataUrl aguardando análise
   const videoRef = useRef(null);
   const streamRef = useRef(null);
+  // Timers do disparo de captura (flash branco + delay antes de onCapture) —
+  // sem essas refs, um unmount no meio dos 350ms rodava o callback sobre uma
+  // closure obsoleta (ex.: cancelar rapidamente durante o modo anexar).
+  const captureTimersRef = useRef([]);
+  // Fallback de segurança para cameraReady — ver comentário em startCamera.
+  const readySafetyTimerRef = useRef(null);
+
+  const clearCaptureTimers = () => {
+    captureTimersRef.current.forEach(clearTimeout);
+    captureTimersRef.current = [];
+  };
 
   const startCamera = () => {
     setCameraError(null);
     setCameraReady(false);
+    if (readySafetyTimerRef.current) {
+      clearTimeout(readySafetyTimerRef.current);
+      readySafetyTimerRef.current = null;
+    }
     if (!navigator.mediaDevices?.getUserMedia) {
       setCameraError("Este navegador não suporta acesso à câmera.");
       return;
     }
+    // Para o stream anterior antes de pedir um novo — "Tentar novamente"
+    // não pode empilhar tracks de câmera abertas (bug antigo: startCamera
+    // nunca parava o stream anterior).
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+
     navigator.mediaDevices
       .getUserMedia({ video: { facingMode: "environment", width: { ideal: 1920 } }, audio: false })
       .then((stream) => {
+        if (!videoRef.current) {
+          // Componente desmontou entre o pedido e a resposta do navegador.
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
         streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.onloadedmetadata = () => setCameraReady(true);
+        videoRef.current.srcObject = stream;
+
+        let resolved = false;
+        const markReady = () => {
+          if (resolved) return;
+          resolved = true;
+          if (readySafetyTimerRef.current) {
+            clearTimeout(readySafetyTimerRef.current);
+            readySafetyTimerRef.current = null;
+          }
+          setCameraReady(true);
+        };
+        videoRef.current.onloadedmetadata = markReady;
+        // O metadata pode já ter carregado antes deste handler ser atribuído
+        // — o evento não dispara de novo depois. Sem esta checagem síncrona,
+        // cameraReady ficava false PARA SEMPRE (e cameraError também ficava
+        // null, então nem o overlay de "Tentar novamente" aparecia): shutter
+        // desabilitado sem nenhuma saída visível.
+        if (videoRef.current.readyState >= 1) markReady();
+
+        if (!resolved) {
+          readySafetyTimerRef.current = setTimeout(() => {
+            if (!resolved) setCameraError("Não foi possível iniciar a câmera. Tente novamente.");
+          }, 6000);
         }
       })
       .catch((err) => {
@@ -67,6 +114,8 @@ export default function CameraScreen({ onCapture, onLibraryNav, mode = "capture"
     return () => {
       streamRef.current?.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
+      if (readySafetyTimerRef.current) clearTimeout(readySafetyTimerRef.current);
+      clearCaptureTimers();
     };
   }, []);
 
@@ -90,10 +139,13 @@ export default function CameraScreen({ onCapture, onLibraryNav, mode = "capture"
     if (!dataUrl) return;
     setCapturing(true);
     setFlashWhite(true);
-    setTimeout(() => setFlashWhite(false), 180);
-    setTimeout(() => {
-      // Attach: nenhuma análise de IA — segue direto.
+    const flashTimer = setTimeout(() => setFlashWhite(false), 180);
+    const proceedTimer = setTimeout(() => {
+      // Attach: nenhuma análise de IA — segue direto. `capturing` volta a
+      // false ANTES de onCapture (bug antigo: nesse modo nada resetava o
+      // estado, e o shutter ficava travado para sempre após a 1ª foto).
       if (isAttach) {
+        setCapturing(false);
         onCapture(dataUrl);
         return;
       }
@@ -108,6 +160,10 @@ export default function CameraScreen({ onCapture, onLibraryNav, mode = "capture"
       setPendingCapture(dataUrl);
       setSheet("capture");
     }, 350);
+    // Registrados para cleanup no unmount (ver useEffect acima) — sem isso,
+    // desmontar o componente dentro dos 350ms rodava o callback sobre uma
+    // closure obsoleta (ex.: cancelar rapidamente durante o modo anexar).
+    captureTimersRef.current.push(flashTimer, proceedTimer);
   };
 
   // "Adaptar e analisar": dispara a análise com as preferências desta captura.
