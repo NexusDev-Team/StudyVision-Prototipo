@@ -12,13 +12,17 @@ import { createContentEntry } from "../services/contentService";
 import { ensureSubject } from "../services/subjectService";
 import { applyReviewPlan } from "../services/reviewService";
 import { scheduleCommitment } from "../services/calendarService";
+import { useAnalysisExtras } from "../hooks/useAnalysisExtras";
 import Badge from "../components/ui/Badge";
 import { getSubjectVisual, LEARNING_PREFERENCE_KEYS, LEARNING_PREFERENCE_META } from "../constants";
 import { fadeUp } from "../styles/motion";
 
 // capturedContent: Content normalizado ainda não persistido (vem de useAnalysis).
-// Quem salva de verdade é handleSave aqui, ao clicar em "Salvar".
-export default function SummaryScreen({ capturedContent, onSave, onLibrary, onToast, onBackToCamera }) {
+// Quem salva de verdade é handleSave aqui, ao clicar em "Salvar". `partial`
+// (também de useAnalysis) lista as seções secundárias que ficaram vazias na
+// análise inicial — useAnalysisExtras as completa em segundo plano enquanto
+// o usuário já está vendo o resumo, sem travar nem arriscar erro visível.
+export default function SummaryScreen({ capturedContent, partial, onSave, onLibrary, onToast, onBackToCamera }) {
   const [saving, setSaving] = useState(false);
   const [calendarEvent, setCalendarEvent] = useState(null);
   const [reviewPlan, setReviewPlan] = useState("weekly");
@@ -27,7 +31,12 @@ export default function SummaryScreen({ capturedContent, onSave, onLibrary, onTo
   // então só o state não bastaria para bloquear o clique duplo.
   const savedRef = useRef(false);
 
-  if (!capturedContent) {
+  // Hooks nunca podem vir depois de um return condicional — mesmo com
+  // capturedContent nulo, useAnalysisExtras é chamado (e não faz nada nesse
+  // caso: seu guard interno cobre content ausente).
+  const { content: mergedContent, pending: extrasPending } = useAnalysisExtras(capturedContent, partial);
+
+  if (!mergedContent) {
     return (
       <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#F8FAFC", fontFamily: "Inter,sans-serif", padding: 32 }}>
         <EmptyState
@@ -43,9 +52,9 @@ export default function SummaryScreen({ capturedContent, onSave, onLibrary, onTo
       </div>
     );
   }
-  const visual = getSubjectVisual(capturedContent.subjectName);
+  const visual = getSubjectVisual(mergedContent.subjectName);
   // Modo Inclusão: adaptações que geraram este material (só leitura).
-  const appliedPrefs = LEARNING_PREFERENCE_KEYS.filter((k) => capturedContent.learningPreferences?.[k]);
+  const appliedPrefs = LEARNING_PREFERENCE_KEYS.filter((k) => mergedContent.learningPreferences?.[k]);
 
   // O agendamento fica só em memória até o usuário confirmar "Salvar" — não
   // persiste um conteúdo pela metade se ele fechar a tela sem salvar.
@@ -58,10 +67,13 @@ export default function SummaryScreen({ capturedContent, onSave, onLibrary, onTo
     savedRef.current = true;
     setSaving(true);
 
-    const subject = ensureSubject(capturedContent.subjectName);
+    // Salva o que estiver disponível NESTE instante — se o complemento em
+    // segundo plano (useAnalysisExtras) ainda não chegou, salva sem ele; não
+    // há por que travar "Salvar" esperando o material secundário.
+    const subject = ensureSubject(mergedContent.subjectName);
 
     const { content: saved, result } = createContentEntry({
-      ...capturedContent,
+      ...mergedContent,
       subjectId: subject?.id || null,
       subjectName: subject?.name || "",
       reviewPlan,
@@ -88,6 +100,9 @@ export default function SummaryScreen({ capturedContent, onSave, onLibrary, onTo
           <span style={{ fontSize: 11, fontWeight: 700, color: "#2563EB", letterSpacing: 1 }}>STUDY VISION</span>
         </div>
         <h1 style={{ fontSize: 24, fontWeight: 800, color: "#111827", margin: 0, lineHeight: 1.2 }}>Resumo Inteligente</h1>
+        {extrasPending && (
+          <p style={{ fontSize: 12, color: "#94A3B8", margin: "6px 0 0" }}>Preparando material de apoio adicional…</p>
+        )}
       </div>
 
       {/* Scroll area */}
@@ -99,13 +114,13 @@ export default function SummaryScreen({ capturedContent, onSave, onLibrary, onTo
           <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
             <span style={{ fontSize: 36, lineHeight: 1 }}>{visual.emoji}</span>
             <div>
-              <p style={{ fontSize: 18, fontWeight: 800, color: "#111827", margin: 0 }}>{capturedContent.subjectName}</p>
+              <p style={{ fontSize: 18, fontWeight: 800, color: "#111827", margin: 0 }}>{mergedContent.subjectName}</p>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
-                <span style={{ fontSize: 11, color: "#64748B" }}>📍 {capturedContent.topic}</span>
+                <span style={{ fontSize: 11, color: "#64748B" }}>📍 {mergedContent.topic}</span>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
                 <GraduationCap size={12} color="#2563EB" />
-                <span style={{ fontSize: 12, color: "#2563EB", fontWeight: 700 }}>{capturedContent.title}</span>
+                <span style={{ fontSize: 12, color: "#2563EB", fontWeight: 700 }}>{mergedContent.title}</span>
               </div>
             </div>
           </div>
@@ -113,7 +128,7 @@ export default function SummaryScreen({ capturedContent, onSave, onLibrary, onTo
 
         {/* Captured image */}
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }} style={{ marginBottom: 12 }}>
-          <CapturedPageVisual content={capturedContent} />
+          <CapturedPageVisual content={mergedContent} />
         </motion.div>
 
         {/* Adaptações do Modo Inclusão aplicadas a este material */}
@@ -129,10 +144,10 @@ export default function SummaryScreen({ capturedContent, onSave, onLibrary, onTo
         )}
 
         {/* Content blocks */}
-        <ContentBlocks content={capturedContent} variant="summary" />
+        <ContentBlocks content={mergedContent} variant="summary" />
 
         {/* Export content */}
-        <ExportSection content={capturedContent} onToast={onToast} />
+        <ExportSection content={mergedContent} onToast={onToast} />
 
         {/* Review plan */}
         <ReviewPlanPicker value={reviewPlan} onChange={setReviewPlan} delay={0.5} />

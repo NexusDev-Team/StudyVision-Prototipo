@@ -128,6 +128,37 @@ export async function analyzeImage(imageDataUrl, opts = {}) {
  *   captura; gravadas no Content como rastro (null quando nenhuma ativa).
  * @returns {{ content: object, validation: { valid: boolean, errors: string[] } }}
  */
+// Mapeamentos reaproveitados também pelo complemento em segundo plano
+// (analysisExtrasService.js, Bloco 8): mesma conversão de "quiz"/"flashcards"
+// crus da IA para o shape que createContent (flashcard.js/quiz.js) espera,
+// não importa se vieram da análise inicial ou de /api/analyze-extras.
+export function mapFlashcards(rawFlashcards) {
+  return Array.isArray(rawFlashcards)
+    ? rawFlashcards.map((f) => ({ front: f.question || "", back: f.answer || "", source: "ai" }))
+    : [];
+}
+
+export function mapQuizzes(rawQuiz) {
+  return Array.isArray(rawQuiz) && rawQuiz.length > 0
+    ? [
+        {
+          source: "ai",
+          questions: rawQuiz.map((q) => ({
+            type: q.type === "vf" ? "vf" : "mc",
+            question: q.question || "",
+            options: Array.isArray(q.options) ? q.options : [],
+            correctAnswer: q.answer,
+            explanation: q.explanation || "",
+          })),
+        },
+      ]
+    : [];
+}
+
+export function mapOpenQuestions(rawOpenQuestions) {
+  return Array.isArray(rawOpenQuestions) ? rawOpenQuestions : [];
+}
+
 export function normalizeAnalysisResult(geminiResponse, thumbnailDataUrl, preferences) {
   const result = geminiResponse && typeof geminiResponse === "object" ? geminiResponse : {};
   const learningPreferences = hasActivePreference(preferences)
@@ -145,25 +176,9 @@ export function normalizeAnalysisResult(geminiResponse, thumbnailDataUrl, prefer
     keywords: Array.isArray(result.keywords) ? result.keywords : [],
     difficulty: result.difficulty || null,
     images: thumbnailDataUrl ? [{ dataUrl: thumbnailDataUrl, order: 0 }] : [],
-    flashcards: Array.isArray(result.flashcards)
-      ? result.flashcards.map((f) => ({ front: f.question || "", back: f.answer || "", source: "ai" }))
-      : [],
-    quizzes:
-      Array.isArray(result.quiz) && result.quiz.length > 0
-        ? [
-            {
-              source: "ai",
-              questions: result.quiz.map((q) => ({
-                type: q.type === "vf" ? "vf" : "mc",
-                question: q.question || "",
-                options: Array.isArray(q.options) ? q.options : [],
-                correctAnswer: q.answer,
-                explanation: q.explanation || "",
-              })),
-            },
-          ]
-        : [],
-    openQuestions: Array.isArray(result.openQuestions) ? result.openQuestions : [],
+    flashcards: mapFlashcards(result.flashcards),
+    quizzes: mapQuizzes(result.quiz),
+    openQuestions: mapOpenQuestions(result.openQuestions),
     learningPreferences,
   });
 

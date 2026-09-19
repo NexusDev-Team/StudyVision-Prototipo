@@ -114,6 +114,7 @@ const { buildExtrasPrompt, EXTRAS_KEYS } = await import("../lib/extrasPrompts.js
 const { repairJson, parseModelJson, GeminiError, classifyFailure, stripCodeFence, closeTruncatedJson } = await import("../lib/gemini.js");
 const studyVisionService = await import("../src/services/studyVisionService.js");
 const { runAnalysisWithRetry, MAX_CLIENT_ATTEMPTS } = await import("../src/services/analysisRunner.js");
+const analysisExtrasService = await import("../src/services/analysisExtrasService.js");
 const learningInsightsService = await import("../src/services/learningInsightsService.js");
 const { FOCUS_DURATIONS, FOCUS_STEP_TYPES, FOCUS_STEP_BOUNDS, FOCUS_DURATION_DESCRIPTIONS } = await import("../src/constants.js");
 const { ID_PREFIX, newId } = await import("../src/utils/id.js");
@@ -4662,6 +4663,100 @@ await testAsync("RN-06. runAnalysisWithRetry para na 1a falha quando o kind nao 
   } finally {
     blockNetwork();
   }
+});
+
+// ─── requestExtras / mergeExtrasIntoContent (Bloco 8) ────────────────────────
+
+function baseContentForExtras() {
+  return createContent({
+    subjectName: "Matemática",
+    topic: "Frações",
+    title: "Frações equivalentes",
+    summary: "Resumo curto.",
+    keyConcepts: ["fração"],
+    flashcards: [],
+    quizzes: [],
+    openQuestions: [],
+  });
+}
+
+await testAsync("MG-01. requestExtras devolve o body em caso de sucesso", async () => {
+  globalThis.fetch = async (url, opts) => {
+    assert.equal(url, "/api/analyze-extras");
+    const body = JSON.parse(opts.body);
+    assert.equal(body.topic, "Frações");
+    assert.deepEqual(body.missing, ["quiz"]);
+    return { ok: true, json: async () => ({ success: true, quiz: [{ question: "Q1", options: ["A", "B"], answer: 0 }], partial: [] }) };
+  };
+  try {
+    const body = await analysisExtrasService.requestExtras({ topic: "Frações", summary: "S", missing: ["quiz"] });
+    assert.equal(body.success, true);
+    assert.equal(body.quiz.length, 1);
+  } finally {
+    blockNetwork();
+  }
+});
+
+await testAsync("MG-02. requestExtras com HTTP nao-ok vira AnalysisExtrasError kind server", async () => {
+  globalThis.fetch = async () => ({ ok: false, json: async () => ({ error: "Falhou." }) });
+  try {
+    await assert.rejects(
+      () => analysisExtrasService.requestExtras({ topic: "T", summary: "S", missing: ["quiz"] }),
+      (err) => err instanceof analysisExtrasService.AnalysisExtrasError && err.kind === "server"
+    );
+  } finally {
+    blockNetwork();
+  }
+});
+
+await testAsync("MG-03. requestExtras com falha de rede vira AnalysisExtrasError kind network", async () => {
+  globalThis.fetch = async () => { throw new TypeError("failed to fetch"); };
+  try {
+    await assert.rejects(
+      () => analysisExtrasService.requestExtras({ topic: "T", summary: "S", missing: ["quiz"] }),
+      (err) => err instanceof analysisExtrasService.AnalysisExtrasError && err.kind === "network"
+    );
+  } finally {
+    blockNetwork();
+  }
+});
+
+test("MG-04. mergeExtrasIntoContent preenche quiz vazio sem tocar em flashcards/openQuestions", () => {
+  const content = baseContentForExtras();
+  const merged = analysisExtrasService.mergeExtrasIntoContent(content, {
+    quiz: [{ question: "Q1", options: ["A", "B"], answer: 1 }],
+  });
+  assert.equal(merged.quizzes.length, 1);
+  assert.equal(merged.quizzes[0].questions[0].correctAnswer, 1);
+  assert.deepEqual(merged.flashcards, []);
+  assert.deepEqual(merged.openQuestions, []);
+  // id/contentId preservados — mesmo Content, não um novo registro
+  assert.equal(merged.id, content.id);
+});
+
+test("MG-05. mergeExtrasIntoContent nunca sobrescreve com secao vazia", () => {
+  const content = analysisExtrasService.mergeExtrasIntoContent(baseContentForExtras(), {
+    quiz: [{ question: "Q1", options: ["A", "B"], answer: 0 }],
+  });
+  const merged = analysisExtrasService.mergeExtrasIntoContent(content, { quiz: [] });
+  assert.equal(merged.quizzes.length, 1, "quiz ja preenchido nao pode ser apagado por uma resposta vazia");
+});
+
+test("MG-06. mergeExtrasIntoContent devolve o mesmo content quando extrasResult e null/vazio", () => {
+  const content = baseContentForExtras();
+  assert.equal(analysisExtrasService.mergeExtrasIntoContent(content, null), content);
+  assert.equal(analysisExtrasService.mergeExtrasIntoContent(content, {}), content);
+});
+
+test("MG-07. mergeExtrasIntoContent preenche flashcards e openQuestions juntos", () => {
+  const content = baseContentForExtras();
+  const merged = analysisExtrasService.mergeExtrasIntoContent(content, {
+    flashcards: [{ question: "P1", answer: "R1" }],
+    openQuestions: ["Por que isso ocorre?"],
+  });
+  assert.equal(merged.flashcards.length, 1);
+  assert.equal(merged.flashcards[0].front, "P1");
+  assert.equal(merged.openQuestions.length, 1);
 });
 
 // ─── relatório ───────────────────────────────────────────────────────────────
