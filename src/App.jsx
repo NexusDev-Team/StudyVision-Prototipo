@@ -138,6 +138,8 @@ export default function App() {
               status={analysis.status}
               error={analysis.error}
               errorKind={analysis.errorKind}
+              slow={analysis.slow}
+              canRetry={analysis.canRetry}
               onRetry={analysis.retry}
               onCancel={() => { analysis.reset(); goBack(); }}
               onDone={() => { setPrevScreens([]); setScreen("summary"); }}

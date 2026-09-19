@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { AlertTriangle } from "lucide-react";
 import LogoSVG from "../components/brand/LogoSVG";
@@ -6,10 +6,29 @@ import LogoSVG from "../components/brand/LogoSVG";
 // Progresso refletindo o status real da requisição a /api/analyze — uma única
 // mensagem honesta enquanto a IA processa (a requisição não expõe fases
 // intermediárias reais, então nada de lista de passos fingindo etapas).
-export default function AnalysisScreen({ status, error, errorKind, onRetry, onCancel, onDone }) {
+//
+// `slow`: true depois de ~15s sem terminar (ver useAnalysis) — só acrescenta
+// uma linha honesta, nunca progresso falso. `canRetry`: false quando não há
+// mais foto memorizada para reenviar (ex.: depois de um reset) — desabilita
+// "Tentar novamente" em vez de deixar um clique sem efeito nenhum.
+export default function AnalysisScreen({ status, error, errorKind, slow, canRetry, onRetry, onCancel, onDone }) {
+  // `onDone` é uma arrow inline recriada a cada render do App — sem essa
+  // estabilização, um useEffect com [status, onDone] reexecuta em loop
+  // enquanto status==="done" permanecer true e o App re-renderizar por
+  // qualquer outro motivo, reempurrando a navegação repetidas vezes.
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
+  const firedRef = useRef(false);
+
   useEffect(() => {
-    if (status === "done") onDone();
-  }, [status, onDone]);
+    if (status === "done" && !firedRef.current) {
+      firedRef.current = true;
+      onDoneRef.current();
+    }
+    if (status !== "done") {
+      firedRef.current = false;
+    }
+  }, [status]);
 
   if (status === "error") {
     const isNotAcademic = errorKind === "not_academic";
@@ -29,10 +48,12 @@ export default function AnalysisScreen({ status, error, errorKind, onRetry, onCa
             style={{ padding: "12px 20px", borderRadius: 30, background: "rgba(255,255,255,0.1)", border: "1.5px solid rgba(255,255,255,0.25)", color: "white", fontFamily: "Inter,sans-serif", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
             {isNotAcademic ? "Tirar outra foto" : "Voltar à câmera"}
           </button>
-          <button onClick={onRetry}
-            style={{ padding: "12px 20px", borderRadius: 30, background: "#2563EB", border: "none", color: "white", fontFamily: "Inter,sans-serif", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
-            Tentar novamente
-          </button>
+          {!isNotAcademic && (
+            <button onClick={onRetry} disabled={canRetry === false}
+              style={{ padding: "12px 20px", borderRadius: 30, background: canRetry === false ? "rgba(37,99,235,0.4)" : "#2563EB", border: "none", color: "white", fontFamily: "Inter,sans-serif", fontSize: 14, fontWeight: 700, cursor: canRetry === false ? "default" : "pointer" }}>
+              Tentar novamente
+            </button>
+          )}
         </div>
       </div>
     );
@@ -58,9 +79,16 @@ export default function AnalysisScreen({ status, error, errorKind, onRetry, onCa
         Analisando seu conteúdo
       </motion.p>
       <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-        style={{ fontFamily: "Inter,sans-serif", fontSize: 14, color: "rgba(255,255,255,0.6)", marginBottom: 36, zIndex: 10, textAlign: "center" }}>
+        style={{ fontFamily: "Inter,sans-serif", fontSize: 14, color: "rgba(255,255,255,0.6)", marginBottom: slow ? 12 : 36, zIndex: 10, textAlign: "center" }}>
         A IA está identificando a matéria e gerando seu material de estudo
       </motion.p>
+
+      {slow && (
+        <motion.p initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+          style={{ fontFamily: "Inter,sans-serif", fontSize: 13, color: "rgba(255,255,255,0.45)", marginBottom: 36, zIndex: 10, textAlign: "center", maxWidth: 260 }}>
+          Está demorando um pouco mais que o normal — continuamos tentando.
+        </motion.p>
+      )}
 
       {/* Dots */}
       <div style={{ display: "flex", gap: 5, zIndex: 10 }}>
@@ -70,6 +98,13 @@ export default function AnalysisScreen({ status, error, errorKind, onRetry, onCa
             style={{ width: 6, height: 6, borderRadius: "50%", background: "#2563EB" }} />
         ))}
       </div>
+
+      {/* Cancelar — discreto, mas sempre presente: sem ele, uma requisição
+          pendurada prendia o usuário na tela de carregamento sem saída. */}
+      <button onClick={onCancel}
+        style={{ position: "absolute", bottom: 28, zIndex: 10, background: "none", border: "none", color: "rgba(255,255,255,0.4)", fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 600, cursor: "pointer", padding: 8 }}>
+        Cancelar
+      </button>
     </div>
   );
 }
