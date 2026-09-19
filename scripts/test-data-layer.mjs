@@ -113,6 +113,7 @@ const { validateCore, sanitizeExtras } = await import("../lib/analysisSanitize.j
 const { buildExtrasPrompt, EXTRAS_KEYS } = await import("../lib/extrasPrompts.js");
 const { repairJson, parseModelJson, GeminiError, classifyFailure, stripCodeFence, closeTruncatedJson } = await import("../lib/gemini.js");
 const studyVisionService = await import("../src/services/studyVisionService.js");
+const { runAnalysisWithRetry, MAX_CLIENT_ATTEMPTS } = await import("../src/services/analysisRunner.js");
 const learningInsightsService = await import("../src/services/learningInsightsService.js");
 const { FOCUS_DURATIONS, FOCUS_STEP_TYPES, FOCUS_STEP_BOUNDS, FOCUS_DURATION_DESCRIPTIONS } = await import("../src/constants.js");
 const { ID_PREFIX, newId } = await import("../src/utils/id.js");
@@ -4570,6 +4571,97 @@ test("AZ-10. analysisErrorMessage preserva a mensagem para kind not_academic", (
 
 test("AZ-11. analysisErrorMessage cai no generico para erro que nao e AnalysisError", () => {
   assert.equal(studyVisionService.analysisErrorMessage(new Error("qualquer coisa")), "Não foi possível analisar a imagem agora. Tente novamente.");
+});
+
+// ─── runAnalysisWithRetry (Bloco 6) ───────────────────────────────────────────
+
+function queueFetchResponses(responses) {
+  let calls = 0;
+  globalThis.fetch = async () => {
+    const item = responses[Math.min(calls, responses.length - 1)];
+    calls++;
+    if (typeof item === "function") return item();
+    return item;
+  };
+  return () => calls;
+}
+
+const OK_BODY = { success: true, topic: "Frações", summary: "Resumo curto." };
+
+await testAsync("RN-01. runAnalysisWithRetry recupera apos 2 falhas transitorias (network) e sucede na 3a", async () => {
+  const getCalls = queueFetchResponses([
+    () => { throw new TypeError("failed to fetch"); },
+    () => { throw new TypeError("failed to fetch"); },
+    { ok: true, json: async () => OK_BODY },
+  ]);
+  try {
+    const outcome = await runAnalysisWithRetry("data:image/jpeg;base64,AAA", null);
+    assert.equal(outcome.ok, true);
+    assert.equal(outcome.content.topic, "Frações");
+    assert.equal(getCalls(), 3);
+  } finally {
+    blockNetwork();
+  }
+});
+
+await testAsync("RN-02. runAnalysisWithRetry nunca retenta not_academic (falha na 1a tentativa)", async () => {
+  const getCalls = queueFetchResponses([{ ok: true, json: async () => ({ success: false, error: "Sem conteúdo." }) }]);
+  try {
+    const outcome = await runAnalysisWithRetry("data:image/jpeg;base64,AAA", null);
+    assert.equal(outcome.ok, false);
+    assert.equal(outcome.kind, "not_academic");
+    assert.equal(getCalls(), 1);
+  } finally {
+    blockNetwork();
+  }
+});
+
+await testAsync(`RN-03. runAnalysisWithRetry esgota as ${MAX_CLIENT_ATTEMPTS} tentativas e devolve erro server quando tudo falha`, async () => {
+  const getCalls = queueFetchResponses([{ ok: false, status: 502, json: async () => ({ error: "Indisponível." }) }]);
+  try {
+    const outcome = await runAnalysisWithRetry("data:image/jpeg;base64,AAA", null);
+    assert.equal(outcome.ok, false);
+    assert.equal(outcome.kind, "server");
+    assert.equal(getCalls(), MAX_CLIENT_ATTEMPTS);
+  } finally {
+    blockNetwork();
+  }
+});
+
+await testAsync("RN-04. runAnalysisWithRetry com signal ja abortado devolve null sem chamar fetch", async () => {
+  const getCalls = queueFetchResponses([{ ok: true, json: async () => OK_BODY }]);
+  const controller = new AbortController();
+  controller.abort();
+  try {
+    const outcome = await runAnalysisWithRetry("data:image/jpeg;base64,AAA", null, controller.signal);
+    assert.equal(outcome, null);
+    assert.equal(getCalls(), 0);
+  } finally {
+    blockNetwork();
+  }
+});
+
+await testAsync("RN-05. runAnalysisWithRetry propaga partial do resultado bem-sucedido", async () => {
+  queueFetchResponses([{ ok: true, json: async () => ({ ...OK_BODY, partial: ["quiz"] }) }]);
+  try {
+    const outcome = await runAnalysisWithRetry("data:image/jpeg;base64,AAA", null);
+    assert.equal(outcome.ok, true);
+    assert.deepEqual(outcome.partial, ["quiz"]);
+  } finally {
+    blockNetwork();
+  }
+});
+
+await testAsync("RN-06. runAnalysisWithRetry para na 1a falha quando o kind nao e retentavel (technical)", async () => {
+  const getCalls = queueFetchResponses([{ ok: true, json: async () => { throw new SyntaxError("bad json"); } }]);
+  try {
+    const outcome = await runAnalysisWithRetry("data:image/jpeg;base64,AAA", null);
+    assert.equal(outcome.ok, false);
+    assert.equal(outcome.kind, "technical");
+    assert.equal(getCalls(), 1);
+  } finally {
+    blockNetwork();
+  }
 });
 
 // ─── relatório ───────────────────────────────────────────────────────────────
