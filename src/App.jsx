@@ -149,10 +149,10 @@ export default function App() {
             <SummaryScreen
               capturedContent={analysis.content}
               partial={analysis.partial}
-              onSave={() => { showToast("✓ Conteúdo salvo com sucesso"); refreshDueCount(); setTimeout(() => openLibrary(), 500); }}
+              onSave={() => { showToast("✓ Conteúdo salvo com sucesso"); refreshDueCount(); setTimeout(() => { analysis.reset(); openLibrary(); }, 500); }}
               onLibrary={() => openLibrary()}
               onToast={showToast}
-              onBackToCamera={() => goTo("camera")}
+              onBackToCamera={() => { analysis.reset(); goTo("camera"); }}
             />
           )}
           {screen === "library" && (
