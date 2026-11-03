@@ -28,6 +28,7 @@ export function navActiveFor(pathname, search, state) {
     return "library";
   }
   if (pathname.startsWith("/app/biblioteca")) return "library";
+  if (pathname.startsWith("/app/perfil")) return "profile";
   if (pathname.startsWith("/app/evolucao") || pathname.startsWith("/app/plus")) return "evolution";
   return "camera";
 }
@@ -74,6 +75,7 @@ export default function AppShell() {
     else if (id === "library") nav.openLibrary();
     else if (id === "review") nav.openReview();
     else if (id === "evolution") nav.openEvolution();
+    else if (id === "profile") nav.navigate("/app/perfil");
   };
   const handleLogout = () => { logout(); nav.navigate("/", { replace: true }); };
 
