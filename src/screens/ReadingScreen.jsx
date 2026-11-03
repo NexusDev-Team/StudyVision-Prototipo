@@ -198,7 +198,7 @@ export default function ReadingScreen({ content, onExit }) {
   return (
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#F8FAFC", fontFamily: "Inter,sans-serif", overflow: "hidden" }}>
       {/* Header mínimo — só sair e título. */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "52px 16px 14px", flexShrink: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "28px 16px 14px", flexShrink: 0 }}>
         <button onClick={handleExit} aria-label="Sair do Ler Comigo"
           style={{ width: 44, height: 44, borderRadius: 12, background: "white", border: "1px solid #E2E8F0", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <ChevronLeft size={20} color="#374151" />

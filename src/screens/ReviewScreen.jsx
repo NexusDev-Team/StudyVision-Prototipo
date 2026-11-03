@@ -106,7 +106,7 @@ export default function ReviewScreen({ onReview, onOpenContent, onToast, onVisio
 
   return (
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#F8FAFC", fontFamily: "Inter,sans-serif", overflow: "hidden" }}>
-      <div style={{ background: "white", padding: "52px 20px 16px", borderBottom: "1px solid #F1F5F9", flexShrink: 0 }}>
+      <div style={{ background: "white", padding: "28px 20px 16px", borderBottom: "1px solid #F1F5F9", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <LogoSVG size={24} />

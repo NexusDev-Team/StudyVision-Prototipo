@@ -87,7 +87,7 @@ export default function LibraryScreen({ onOpenItem, onVisionPlus, onToast, initi
   return (
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#F8FAFC", fontFamily: "Inter,sans-serif", overflow: "hidden" }}>
       {/* Header */}
-      <div style={{ background: "white", padding: "52px 20px 14px", borderBottom: "1px solid #F1F5F9", flexShrink: 0 }}>
+      <div style={{ background: "white", padding: "28px 20px 14px", borderBottom: "1px solid #F1F5F9", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
             <LogoSVG size={22} />

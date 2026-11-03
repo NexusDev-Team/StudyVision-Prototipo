@@ -94,7 +94,7 @@ export default function SummaryScreen({ capturedContent, partial, onSave, onLibr
   return (
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#F8FAFC", fontFamily: "Inter,sans-serif", overflow: "hidden" }}>
       {/* Header */}
-      <div style={{ background: "white", padding: "52px 20px 16px", borderBottom: "1px solid #F1F5F9", flexShrink: 0 }}>
+      <div style={{ background: "white", padding: "28px 20px 16px", borderBottom: "1px solid #F1F5F9", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
           <LogoSVG size={24} />
           <span style={{ fontSize: 11, fontWeight: 700, color: "#2563EB", letterSpacing: 1 }}>STUDY VISION</span>

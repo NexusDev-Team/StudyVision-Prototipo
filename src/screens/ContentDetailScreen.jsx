@@ -146,7 +146,7 @@ export default function ContentDetailScreen({ content, onBack, onDeleted, onFlas
   return (
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#F8FAFC", fontFamily: "Inter,sans-serif", overflow: "hidden" }}>
       {/* Header */}
-      <div style={{ background: "white", padding: "52px 20px 14px", borderBottom: "1px solid #F1F5F9", flexShrink: 0 }}>
+      <div style={{ background: "white", padding: "28px 20px 14px", borderBottom: "1px solid #F1F5F9", flexShrink: 0 }}>
         <button onClick={onBack}
           style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", padding: 0, marginBottom: 12 }}>
           <ChevronLeft size={20} color="#2563EB" />

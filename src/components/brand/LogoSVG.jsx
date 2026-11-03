@@ -1,23 +1,30 @@
+import { useId } from "react";
+
+// ids únicos por instância: com vários logos na página (ex.: SideNav oculta), um
+// id repetido faria o gradiente resolver para o primeiro — possivelmente display:none.
 export default function LogoSVG({ size = 32, glow = false }) {
+  const uid = useId().replace(/:/g, "");
+  const eyeId = `eyeGrad-${uid}`;
+  const irisId = `irisGrad-${uid}`;
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"
       style={glow ? { filter: "drop-shadow(0 0 8px rgba(37,99,235,0.7))" } : {}}>
       <defs>
-        <radialGradient id="eyeGrad" cx="50%" cy="50%" r="50%">
+        <radialGradient id={eyeId} cx="50%" cy="50%" r="50%">
           <stop offset="0%" stopColor="#38BDF8" />
           <stop offset="60%" stopColor="#2563EB" />
           <stop offset="100%" stopColor="#1E3A8A" />
         </radialGradient>
-        <radialGradient id="irisGrad" cx="50%" cy="50%" r="50%">
+        <radialGradient id={irisId} cx="50%" cy="50%" r="50%">
           <stop offset="0%" stopColor="#0EA5E9" />
           <stop offset="100%" stopColor="#1D4ED8" />
         </radialGradient>
       </defs>
       {/* Eye outline */}
       <path d="M4 32 C14 16, 50 16, 60 32 C50 48, 14 48, 4 32 Z"
-        fill="none" stroke="url(#eyeGrad)" strokeWidth="3.5" strokeLinecap="round" />
+        fill="none" stroke={`url(#${eyeId})`} strokeWidth="3.5" strokeLinecap="round" />
       {/* Iris */}
-      <circle cx="32" cy="32" r="10" fill="url(#irisGrad)" />
+      <circle cx="32" cy="32" r="10" fill={`url(#${irisId})`} />
       {/* Network nodes */}
       <circle cx="32" cy="32" r="3" fill="white" />
       <circle cx="25" cy="28" r="2.2" fill="white" opacity="0.9" />

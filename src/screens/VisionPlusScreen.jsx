@@ -22,7 +22,7 @@ export default function VisionPlusScreen({ onBack, isPremium, isTrialActive, sta
 
   return (
     <Screen>
-      <div style={{ padding: "52px 20px 0", flexShrink: 0 }}>
+      <div style={{ padding: "28px 20px 0", flexShrink: 0 }}>
         <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
           <ChevronLeft size={20} color="#64748B" />
           <span style={{ fontSize: 14, fontWeight: 600, color: "#64748B" }}>Voltar</span>

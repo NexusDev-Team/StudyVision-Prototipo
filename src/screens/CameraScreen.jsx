@@ -227,7 +227,7 @@ export default function CameraScreen({ onCapture, onLibraryNav, mode = "capture"
 
       {/* TOP BAR */}
       {isAttach ? (
-        <div style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 20, padding: "50px 16px 12px", display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 20, padding: "28px 16px 12px", display: "flex", alignItems: "center", gap: 10 }}>
           <button onClick={onClose} aria-label="Cancelar e voltar"
             style={{ width: 34, height: 34, flexShrink: 0, borderRadius: "50%", background: "rgba(255,255,255,0.12)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(8px)" }}>
             <X size={18} color="white" />
@@ -235,7 +235,7 @@ export default function CameraScreen({ onCapture, onLibraryNav, mode = "capture"
           <span style={{ fontFamily: "Inter,sans-serif", fontSize: 14, fontWeight: 700, color: "white" }}>Adicionar foto</span>
         </div>
       ) : (
-        <div style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 20, padding: "50px 12px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4 }}>
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 20, padding: "28px 12px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4 }}>
           {/* Flash */}
           <button onClick={() => setFlash(v => !v)} style={{ width: 34, height: 34, flexShrink: 0, borderRadius: "50%", background: flash ? "rgba(252,211,77,0.2)" : "rgba(255,255,255,0.1)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(8px)" }}>
             <Zap size={18} fill={flash ? "#FCD34D" : "none"} color={flash ? "#FCD34D" : "white"} />
