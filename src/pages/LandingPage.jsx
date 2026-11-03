@@ -27,7 +27,8 @@ export default function LandingPage() {
           </p>
         </InfoSection>
 
-        <section className="mx-auto max-w-6xl px-5 pb-6">
+        <section id="como-funciona" className="mx-auto flex w-full max-w-6xl flex-col justify-center px-5 py-6 md:py-10 min-h-[calc(100dvh-4.25rem)] scroll-mt-[4.25rem]">
+          <h2 className="mb-5 text-center md:mb-8 text-3xl font-extrabold text-white md:text-4xl">Como funciona</h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {FEATURES.map((f, i) => <FeatureCard key={f.title} index={i} {...f} />)}
           </div>
@@ -44,17 +45,17 @@ export default function LandingPage() {
           </p>
         </InfoSection>
 
-        <section id="galeria" className="mx-auto max-w-4xl scroll-mt-20 px-5 py-14">
-          <h2 className="mb-8 text-center text-3xl font-extrabold text-white md:text-4xl">Galeria</h2>
-          <div className="overflow-hidden rounded-2xl border border-lp-line bg-lp-bg2 p-2">
-            <video controls preload="metadata" className="w-full rounded-xl" aria-label="Vídeo de demonstração do Study Vision">
+        <section id="galeria" className="mx-auto flex w-full max-w-4xl flex-col justify-center px-5 py-6 md:py-10 min-h-[calc(100dvh-4.25rem)] scroll-mt-[4.25rem]">
+          <h2 className="mb-5 text-center md:mb-8 text-3xl font-extrabold text-white md:text-4xl">Galeria</h2>
+          <div className="mx-auto w-full max-w-xl overflow-hidden rounded-2xl border border-lp-line bg-lp-bg2 p-2">
+            <video controls preload="metadata" className="max-h-[45dvh] w-full rounded-xl bg-black" aria-label="Vídeo de demonstração do Study Vision">
               <source src="/landing/galeria.mp4" type="video/mp4" />
             </video>
           </div>
         </section>
 
-        <section id="equipe" className="mx-auto max-w-6xl scroll-mt-20 px-5 py-14">
-          <h2 className="mb-8 text-center text-3xl font-extrabold text-white md:text-4xl">Nossa equipe</h2>
+        <section id="equipe" className="mx-auto flex w-full max-w-6xl flex-col justify-center px-5 py-6 md:py-10 min-h-[calc(100dvh-4.25rem)] scroll-mt-[4.25rem]">
+          <h2 className="mb-5 text-center md:mb-8 text-3xl font-extrabold text-white md:text-4xl">Nossa equipe</h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             {TEAM.map((m) => <TeamCard key={m.name} {...m} />)}
           </div>

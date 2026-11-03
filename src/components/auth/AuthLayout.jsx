@@ -1,10 +1,15 @@
 import { Link } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import LogoSVG from "../brand/LogoSVG";
 
 export default function AuthLayout({ title, subtitle, children, footer }) {
   return (
     <div className="flex min-h-dvh items-center justify-center bg-lp-bg px-5 py-10 font-sans">
       <div className="w-full max-w-md">
+        <Link to="/" aria-label="Voltar para a tela inicial"
+          className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-lp-muted no-underline transition-colors hover:text-white">
+          <ArrowLeft size={18} /> Voltar ao início
+        </Link>
         <Link to="/" className="mb-8 flex items-center justify-center gap-2.5 no-underline">
           <LogoSVG size={36} />
           <span className="text-2xl font-extrabold text-white">

@@ -18,8 +18,8 @@ export default function ContactSection() {
   const { values, errors, formError, submitting, sent, handleChange, handleSubmit, sendAnother } = useContactForm();
 
   return (
-    <section id="contato" className="mx-auto max-w-xl scroll-mt-20 px-5 py-14">
-      <h2 className="mb-8 text-center text-3xl font-extrabold text-white md:text-4xl">Contato</h2>
+    <section id="contato" className="mx-auto flex w-full max-w-xl flex-col justify-center px-5 py-6 md:py-10 min-h-[calc(100dvh-4.25rem)] scroll-mt-[4.25rem]">
+      <h2 className="mb-5 text-center md:mb-8 text-3xl font-extrabold text-white md:text-4xl">Contato</h2>
 
       {sent ? (
         <div className="rounded-2xl border border-lp-line bg-lp-bg2 p-8 text-center">
