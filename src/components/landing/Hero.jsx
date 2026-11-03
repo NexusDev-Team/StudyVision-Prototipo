@@ -33,7 +33,7 @@ export default function Hero() {
         <img
           src={heroImg}
           alt="Study Vision em uso: câmera do celular analisando uma página de estudo"
-          className="mx-auto max-h-[28dvh] w-full max-w-md rounded-3xl object-contain md:max-h-[60dvh]"
+          className="mx-auto w-full max-w-md rounded-3xl object-contain md:max-w-none"
         />
       </div>
     </section>
