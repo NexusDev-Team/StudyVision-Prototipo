@@ -2,39 +2,30 @@ import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import heroImg from "../../assets/landing/hero.jpeg";
 
+// Banner da página: a arte já traz título e slogan, então ocupa a largura
+// toda e os botões ficam logo abaixo, dentro da altura de uma tela.
 export default function Hero() {
   return (
-    <section id="topo" className="relative flex items-center overflow-hidden min-h-[calc(100dvh-4.25rem)]">
-      <div className="mx-auto grid w-full max-w-6xl items-center gap-10 px-5 py-6 md:grid-cols-2 md:py-10">
-        <div>
-          <p className="mb-3 text-sm font-bold tracking-widest text-lp-cyan uppercase">FIAP × JOVI Smartphones</p>
-          <h1 className="m-0 text-4xl leading-tight font-extrabold text-white md:text-5xl">
-            Aponte a câmera. <span className="text-lp-blue-light">Estude de verdade.</span>
-          </h1>
-          <p className="mt-5 max-w-lg text-base leading-relaxed text-lp-muted md:text-lg">
-            O Study Vision transforma a foto de qualquer página em resumo, flashcards, quiz e um plano de revisão
-            — tudo dentro da câmera do seu celular.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link
-              to="/login"
-              className="inline-flex items-center gap-2 rounded-full bg-lp-blue px-6 py-3 font-bold text-white no-underline transition-colors hover:bg-lp-blue-light"
-            >
-              Experimentar agora <ArrowRight size={18} />
-            </Link>
-            <a
-              href="#solucao"
-              className="rounded-full border border-lp-line px-6 py-3 font-bold text-lp-text no-underline transition-colors hover:border-lp-blue-light"
-            >
-              Saiba mais
-            </a>
-          </div>
-        </div>
-        <img
-          src={heroImg}
-          alt="Study Vision em uso: câmera do celular analisando uma página de estudo"
-          className="mx-auto w-full max-w-md rounded-3xl object-contain md:max-w-none"
-        />
+    <section id="topo" className="flex min-h-[calc(100dvh-4.25rem)] flex-col items-center justify-center gap-5 px-3 py-4 md:px-6">
+      <h1 className="sr-only">Study Vision — da foto ao conhecimento</h1>
+      <img
+        src={heroImg}
+        alt="Study Vision: a câmera que captura conhecimento e transforma registros em aprendizado organizado"
+        className="w-full max-w-[1400px] rounded-2xl object-contain md:max-h-[calc(100dvh-4.25rem-6.5rem)]"
+      />
+      <div className="flex flex-wrap items-center justify-center gap-3">
+        <Link
+          to="/login"
+          className="inline-flex items-center gap-2 rounded-full bg-lp-blue px-6 py-3 font-bold text-white no-underline transition-colors hover:bg-lp-blue-light"
+        >
+          Experimentar agora <ArrowRight size={18} />
+        </Link>
+        <a
+          href="#solucao"
+          className="rounded-full border border-lp-line px-6 py-3 font-bold text-lp-text no-underline transition-colors hover:border-lp-blue-light"
+        >
+          Saiba mais
+        </a>
       </div>
     </section>
   );
