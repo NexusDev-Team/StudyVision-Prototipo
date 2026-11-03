@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 
 // Serve as Serverless Functions de api/ dentro do próprio `vite dev`, já que o
 // dev server não as executa nativamente. Em produção a Vercel usa os mesmos
@@ -64,7 +65,7 @@ function apiPlugin(env) {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   return {
-    plugins: [react(), apiPlugin(env)],
-    base: "./",
+    plugins: [react(), tailwindcss(), apiPlugin(env)],
+    base: "/",
   };
 });

@@ -1,4 +1,43 @@
+@import "tailwindcss";
 @import "./tokens.css";
+
+@theme {
+  --color-sv-blue: #2563EB;
+  --color-sv-blue-dark: #1D4ED8;
+  --color-sv-blue-bg: #EFF6FF;
+  --color-sv-purple: #7C3AED;
+  --color-sv-purple-bg: #EDE9FE;
+  --color-sv-purple-text: #6D28D9;
+  --color-sv-teal: #14B8A6;
+  --color-sv-green: #16A34A;
+  --color-sv-green-bg: #F0FDF4;
+  --color-sv-red: #DC2626;
+  --color-sv-red-bg: #FEF2F2;
+  --color-sv-orange: #EA580C;
+  --color-sv-amber: #F59E0B;
+  --color-sv-amber-bg: #FFFBEB;
+  --color-sv-ink: #111827;
+  --color-sv-text: #374151;
+  --color-sv-muted: #64748B;
+  --color-sv-faint: #94A3B8;
+  --color-sv-line: #E2E8F0;
+  --color-sv-line-soft: #F1F5F9;
+  --color-sv-bg: #F8FAFC;
+  --color-sv-dark: #030712;
+  --font-sans: "Inter", sans-serif;
+  --radius-sv-sm: 8px;
+  --radius-sv-md: 12px;
+  --radius-sv-lg: 16px;
+  --radius-sv-xl: 20px;
+  --radius-sv-2xl: 24px;
+  --shadow-sv-card: 0 1px 8px rgba(0, 0, 0, 0.05);
+  --shadow-sv-btn: 0 4px 18px rgba(37, 99, 235, 0.3);
+}
+
+@utility bg-sv-grad-primary { background-image: linear-gradient(135deg, #2563EB, #7C3AED); }
+@utility bg-sv-grad-blue { background-image: linear-gradient(135deg, #2563EB, #0EA5E9); }
+@utility bg-sv-grad-purple { background-image: linear-gradient(135deg, #7C3AED, #4F46E5); }
+@utility bg-sv-grad-orange { background-image: linear-gradient(135deg, #EA580C, #F59E0B); }
 
 * {
   box-sizing: border-box;
