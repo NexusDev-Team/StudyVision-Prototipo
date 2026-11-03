@@ -1,9 +1,8 @@
 import { forwardRef } from "react";
-import styles from "./ScrollArea.module.css";
 
 const ScrollArea = forwardRef(function ScrollArea({ padding = "14px 20px 20px", flexColumn = false, children }, ref) {
   return (
-    <div ref={ref} className={styles.scroll} style={{ padding, display: flexColumn ? "flex" : undefined, flexDirection: flexColumn ? "column" : undefined }}>
+    <div ref={ref} className={`flex-1 overflow-y-auto ${flexColumn ? "flex flex-col" : ""}`} style={{ padding }}>
       {children}
     </div>
   );

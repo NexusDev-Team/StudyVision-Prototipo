@@ -92,21 +92,21 @@ export default function SummaryScreen({ capturedContent, partial, onSave, onLibr
   };
 
   return (
-    <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#F8FAFC", fontFamily: "Inter,sans-serif", overflow: "hidden" }}>
+    <div className="flex h-full w-full flex-col overflow-hidden bg-sv-bg font-sans">
       {/* Header */}
-      <div style={{ background: "white", padding: "28px 20px 16px", borderBottom: "1px solid #F1F5F9", flexShrink: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+      <div className="shrink-0 border-b border-sv-line-soft bg-white px-5 pt-7 pb-4">
+        <div className="mb-2.5 flex items-center gap-2">
           <LogoSVG size={24} />
-          <span style={{ fontSize: 11, fontWeight: 700, color: "#2563EB", letterSpacing: 1 }}>STUDY VISION</span>
+          <span className="text-[11px] font-bold tracking-[1px] text-sv-blue">STUDY VISION</span>
         </div>
-        <h1 style={{ fontSize: 24, fontWeight: 800, color: "#111827", margin: 0, lineHeight: 1.2 }}>Resumo Inteligente</h1>
+        <h1 className="m-0 text-2xl leading-tight font-extrabold text-sv-ink">Resumo Inteligente</h1>
         {extrasPending && (
-          <p style={{ fontSize: 12, color: "#94A3B8", margin: "6px 0 0" }}>Preparando material de apoio adicional…</p>
+          <p className="mt-1.5 mb-0 text-xs text-sv-faint">Preparando material de apoio adicional…</p>
         )}
       </div>
 
       {/* Scroll area */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px 20px" }}>
+      <div className="flex-1 overflow-y-auto px-5 pt-4 pb-5">
         {/* Identified content */}
         <motion.div {...fadeUp} transition={{ delay: 0.1 }}
           style={{ background: "white", borderRadius: 20, padding: "16px 18px", marginBottom: 12, boxShadow: "0 1px 8px rgba(0,0,0,0.05)", border: "1px solid #E2E8F0" }}>

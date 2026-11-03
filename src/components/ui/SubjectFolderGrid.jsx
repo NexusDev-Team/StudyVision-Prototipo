@@ -5,7 +5,6 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { getSubjectMeta } from "../../constants";
-import styles from "./SubjectFolderGrid.module.css";
 
 const ICONS = {
   LayoutGrid, Calculator, Landmark, FlaskConical, Atom, BookA, Code2,
@@ -50,20 +49,20 @@ export default function SubjectFolderGrid({ options, activeId, onSelect, onAdd }
   };
 
   return (
-    <div className={styles.wrap}>
+    <div className="mt-2.5 flex items-center gap-0.5">
       <motion.button animate={{ opacity: canScrollLeft ? 1 : 0 }} transition={{ duration: 0.15 }}
         whileTap={canScrollLeft ? { scale: 0.9 } : undefined} onClick={() => scrollBy(-1)} aria-label="Ver matérias anteriores"
-        className={styles.navBtn} style={{ pointerEvents: canScrollLeft ? "auto" : "none" }}>
+        className="flex h-[26px] w-[26px] shrink-0 cursor-pointer items-center justify-center rounded-full border border-sv-line bg-white p-0 shadow-[0_2px_6px_rgba(15,23,42,0.12)]" style={{ pointerEvents: canScrollLeft ? "auto" : "none" }}>
         <ChevronLeft size={15} strokeWidth={2.75} color="#475569" />
       </motion.button>
 
-      <div ref={scrollRef} className={styles.row}>
+      <div ref={scrollRef} className="flex gap-2.5 overflow-x-auto pt-2 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {options.map(opt => {
           const meta = getSubjectMeta(opt.label);
           const Icon = ICONS[meta.icon] || BookOpen;
           const isActive = activeId === opt.id;
           return (
-            <motion.button key={opt.id} className={styles.folder} whileTap={{ scale: 0.95 }} onClick={() => onSelect(opt.id)}
+            <motion.button key={opt.id} className="shrink-0" whileTap={{ scale: 0.95 }} onClick={() => onSelect(opt.id)}
               aria-pressed={isActive}
               style={{
                 display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
@@ -87,7 +86,7 @@ export default function SubjectFolderGrid({ options, activeId, onSelect, onAdd }
           );
         })}
         {onAdd && (
-          <motion.button className={styles.folder} whileTap={{ scale: 0.95 }} onClick={onAdd}
+          <motion.button className="shrink-0" whileTap={{ scale: 0.95 }} onClick={onAdd}
             aria-label="Gerenciar matérias"
             style={{
               display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
@@ -106,7 +105,7 @@ export default function SubjectFolderGrid({ options, activeId, onSelect, onAdd }
 
       <motion.button animate={{ opacity: canScrollRight ? 1 : 0 }} transition={{ duration: 0.15 }}
         whileTap={canScrollRight ? { scale: 0.9 } : undefined} onClick={() => scrollBy(1)} aria-label="Ver mais matérias"
-        className={styles.navBtn} style={{ pointerEvents: canScrollRight ? "auto" : "none" }}>
+        className="flex h-[26px] w-[26px] shrink-0 cursor-pointer items-center justify-center rounded-full border border-sv-line bg-white p-0 shadow-[0_2px_6px_rgba(15,23,42,0.12)]" style={{ pointerEvents: canScrollRight ? "auto" : "none" }}>
         <ChevronRight size={15} strokeWidth={2.75} color="#475569" />
       </motion.button>
     </div>

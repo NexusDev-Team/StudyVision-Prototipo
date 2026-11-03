@@ -105,23 +105,23 @@ export default function ReviewScreen({ onReview, onOpenContent, onToast, onVisio
   };
 
   return (
-    <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#F8FAFC", fontFamily: "Inter,sans-serif", overflow: "hidden" }}>
-      <div style={{ background: "white", padding: "28px 20px 16px", borderBottom: "1px solid #F1F5F9", flexShrink: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+    <div className="flex h-full w-full flex-col overflow-hidden bg-sv-bg font-sans">
+      <div className="shrink-0 border-b border-sv-line-soft bg-white px-5 pt-7 pb-4">
+        <div className="mb-2.5 flex items-center justify-between">
+          <div className="flex items-center gap-2">
             <LogoSVG size={24} />
-            <span style={{ fontSize: 11, fontWeight: 700, color: "#2563EB", letterSpacing: 1 }}>STUDY VISION</span>
+            <span className="text-[11px] font-bold tracking-[1px] text-sv-blue">STUDY VISION</span>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div className="flex items-center gap-2">
             <FlameBadge state={flameState} onClick={onOpenEvolution} />
             <VisionPlusButton onClick={onVisionPlus} />
           </div>
         </div>
-        <h1 style={{ fontSize: 24, fontWeight: 800, color: "#111827", margin: 0 }}>Revisão Inteligente</h1>
-        <p style={{ fontSize: 13, color: "#64748B", margin: "2px 0 0" }}>Repetição espaçada para combater o esquecimento</p>
+        <h1 className="m-0 text-2xl font-extrabold text-sv-ink">Revisão Inteligente</h1>
+        <p className="mt-0.5 mb-0 text-[13px] text-sv-muted">Repetição espaçada para combater o esquecimento</p>
       </div>
 
-      <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px 24px" }}>
+      <div className="flex-1 overflow-y-auto px-5 pt-4 pb-6">
         <p style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: 1.2, marginBottom: 10 }}>PARA HOJE · {due.length}</p>
         {due.length === 0 ? (
           <div style={{ background: "white", borderRadius: 20, padding: "24px 18px", textAlign: "center", border: "1px solid #E2E8F0", marginBottom: 20 }}>

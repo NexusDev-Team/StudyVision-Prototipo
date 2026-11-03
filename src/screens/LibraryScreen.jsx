@@ -85,15 +85,15 @@ export default function LibraryScreen({ onOpenItem, onVisionPlus, onToast, initi
   });
 
   return (
-    <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#F8FAFC", fontFamily: "Inter,sans-serif", overflow: "hidden" }}>
+    <div className="flex h-full w-full flex-col overflow-hidden bg-sv-bg font-sans">
       {/* Header */}
-      <div style={{ background: "white", padding: "28px 20px 14px", borderBottom: "1px solid #F1F5F9", flexShrink: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+      <div className="shrink-0 border-b border-sv-line-soft bg-white px-5 pt-7 pb-3.5">
+        <div className="mb-2 flex items-center justify-between">
+          <div className="flex items-center gap-[7px]">
             <LogoSVG size={22} />
-            <span style={{ fontSize: 11, fontWeight: 700, color: "#2563EB", letterSpacing: 0.5 }}>JOVI · STUDY VISION</span>
+            <span className="text-[11px] font-bold tracking-[0.5px] text-sv-blue">JOVI · STUDY VISION</span>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, position: "relative" }}>
+          <div className="relative flex items-center gap-2">
             <button onClick={() => setSortMenuOpen((v) => !v)} aria-label="Ordenar" aria-haspopup="true" aria-expanded={sortMenuOpen}
               style={{ width: 30, height: 30, borderRadius: 10, background: sortMenuOpen ? "#E2E8F0" : "#F1F5F9", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <ArrowUpDown size={15} color="#475569" />
@@ -129,15 +129,15 @@ export default function LibraryScreen({ onOpenItem, onVisionPlus, onToast, initi
             <VisionPlusButton onClick={onVisionPlus} />
           </div>
         </div>
-        <h1 style={{ fontSize: 24, fontWeight: 800, color: "#111827", margin: 0 }}>Biblioteca</h1>
-        <p style={{ fontSize: 13, color: "#64748B", margin: "2px 0 12px" }}>{sorted.length} conteúdo{sorted.length !== 1 ? "s" : ""} organizado{sorted.length !== 1 ? "s" : ""}</p>
+        <h1 className="m-0 text-2xl font-extrabold text-sv-ink">Biblioteca</h1>
+        <p className="mt-0.5 mb-3 text-[13px] text-sv-muted">{sorted.length} conteúdo{sorted.length !== 1 ? "s" : ""} organizado{sorted.length !== 1 ? "s" : ""}</p>
 
         {/* Search */}
-        <div style={{ position: "relative" }}>
-          <label htmlFor="library-search" style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>Buscar conteúdo na biblioteca</label>
-          <Search size={15} color="#94A3B8" style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)" }} />
+        <div className="relative">
+          <label htmlFor="library-search" className="sr-only">Buscar conteúdo na biblioteca</label>
+          <Search size={15} color="#94A3B8" className="absolute top-1/2 left-[13px] -translate-y-1/2" />
           <input id="library-search" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar conteúdo..."
-            style={{ width: "100%", height: 42, borderRadius: 12, paddingLeft: 38, paddingRight: 14, border: "1.5px solid #E2E8F0", background: "#F8FAFC", fontFamily: "Inter,sans-serif", fontSize: 14, color: "#111827", outline: "none", boxSizing: "border-box" }} />
+            className="box-border h-[42px] w-full rounded-sv-md border-[1.5px] border-solid border-sv-line bg-sv-bg pr-3.5 pl-[38px] font-sans text-sm text-sv-ink outline-none" />
         </div>
 
         {/* Filters */}
@@ -145,7 +145,7 @@ export default function LibraryScreen({ onOpenItem, onVisionPlus, onToast, initi
       </div>
 
       {/* List */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "14px 20px 24px" }}>
+      <div className="flex-1 overflow-y-auto px-5 pt-3.5 pb-6">
         {sorted.length === 0 ? (
           hasQuery ? (
             <EmptyState icon={<BookOpen size={40} style={{ margin: "0 auto 12px", display: "block", color: "#94A3B8" }} />} message={`Nada encontrado para "${search.trim()}"`} />
@@ -159,7 +159,7 @@ export default function LibraryScreen({ onOpenItem, onVisionPlus, onToast, initi
             <EmptyState icon={<BookOpen size={40} style={{ margin: "0 auto 12px", display: "block", color: "#94A3B8" }} />} message="Nenhum conteúdo nesta matéria ainda" />
           )
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div className="flex flex-col gap-2.5 md:grid md:grid-cols-2">
             {sorted.map((content, i) => (
               <ContentCard
                 key={content.id}
