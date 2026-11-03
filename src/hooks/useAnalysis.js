@@ -21,6 +21,7 @@ export function useAnalysis() {
   const [content, setContent] = useState(null);
   const [error, setError] = useState(null);
   const [errorKind, setErrorKind] = useState(null); // "network" | "timeout" | "server" | "technical" | "not_academic"
+  const [errorRequestId, setErrorRequestId] = useState(null); // correlaciona com o log do servidor (Bloco 11)
   const [slow, setSlow] = useState(false);
   const [partial, setPartial] = useState([]); // seções secundárias que ficaram vazias (ver Bloco 8)
   const [canRetry, setCanRetry] = useState(false);
@@ -46,6 +47,7 @@ export function useAnalysis() {
 
     setError(null);
     setErrorKind(null);
+    setErrorRequestId(null);
     setContent(null);
     setPartial([]);
     setSlow(false);
@@ -70,6 +72,7 @@ export function useAnalysis() {
     } else {
       setError(outcome.message);
       setErrorKind(outcome.kind);
+      setErrorRequestId(outcome.requestId || null);
       setStatus("error");
     }
   }, [clearSlowTimer]);
@@ -89,6 +92,7 @@ export function useAnalysis() {
     setContent(null);
     setError(null);
     setErrorKind(null);
+    setErrorRequestId(null);
     setSlow(false);
     setPartial([]);
     setCanRetry(false);
@@ -96,5 +100,5 @@ export function useAnalysis() {
     lastPreferencesRef.current = null;
   }, [clearSlowTimer]);
 
-  return { status, content, error, errorKind, slow, partial, canRetry, run, retry, reset };
+  return { status, content, error, errorKind, errorRequestId, slow, partial, canRetry, run, retry, reset };
 }

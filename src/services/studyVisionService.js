@@ -3,6 +3,7 @@
 import { createContent } from "../data/models/content.js";
 import { validateContent } from "../data/models/validate.js";
 import { hasActivePreference, normalizePreferenceOptions } from "./learningPreferencesService.js";
+import { newId } from "../utils/id.js";
 
 // kind: "network" (fetch rejeitou — sem conexão), "timeout" (nosso próprio
 // teto de cliente estourou), "server" (HTTP não-ok: 4xx/5xx do backend),
@@ -71,12 +72,21 @@ function withClientTimeout(callerSignal) {
  */
 export async function analyzeImage(imageDataUrl, opts = {}) {
   const { signal, didTimeout, cleanup } = withClientTimeout(opts.signal);
+  // Correlaciona esta requisição com o log do servidor (Bloco 11) — o
+  // requestId viaja no header, o servidor só o ecoa nos seus console.error.
+  // Anexado a toda AnalysisError abaixo para aparecer, discreto, na tela de
+  // erro (ver AnalysisScreen) quando o usuário precisar reportar uma falha.
+  const requestId = newId("req");
+  const withRequestId = (err) => {
+    err.requestId = requestId;
+    return err;
+  };
 
   let response;
   try {
     response = await fetch("/api/analyze", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "x-sv-request-id": requestId },
       body: JSON.stringify({ image: imageDataUrl, preferences: opts.preferences || null }),
       signal,
     });
@@ -85,9 +95,9 @@ export async function analyzeImage(imageDataUrl, opts = {}) {
       // Cancelamento explícito do chamador (ex.: analysis.reset()) propaga
       // cru — não é uma AnalysisError, é o contrato de abort padrão.
       if (!didTimeout()) throw err;
-      throw new AnalysisError(ERROR_MESSAGES.timeout, "timeout");
+      throw withRequestId(new AnalysisError(ERROR_MESSAGES.timeout, "timeout"));
     }
-    throw new AnalysisError(ERROR_MESSAGES.network, "network");
+    throw withRequestId(new AnalysisError(ERROR_MESSAGES.network, "network"));
   } finally {
     cleanup();
   }
@@ -96,17 +106,17 @@ export async function analyzeImage(imageDataUrl, opts = {}) {
   try {
     body = await response.json();
   } catch {
-    throw new AnalysisError(GENERIC_ERROR, "technical");
+    throw withRequestId(new AnalysisError(GENERIC_ERROR, "technical"));
   }
 
   if (!response.ok) {
-    throw new AnalysisError(body?.error || GENERIC_ERROR, "server");
+    throw withRequestId(new AnalysisError(body?.error || GENERIC_ERROR, "server"));
   }
 
   // success:false com HTTP 200 = a IA rodou e decidiu que não há conteúdo
   // acadêmico legível na imagem — não é uma falha técnica.
   if (body.success === false) {
-    throw new AnalysisError(body.error || NOT_ACADEMIC_FALLBACK, "not_academic");
+    throw withRequestId(new AnalysisError(body.error || NOT_ACADEMIC_FALLBACK, "not_academic"));
   }
 
   return { ...body, partial: Array.isArray(body.partial) ? body.partial : [] };

@@ -138,6 +138,7 @@ export default function App() {
               status={analysis.status}
               error={analysis.error}
               errorKind={analysis.errorKind}
+              errorRequestId={analysis.errorRequestId}
               slow={analysis.slow}
               canRetry={analysis.canRetry}
               onRetry={analysis.retry}

@@ -71,5 +71,8 @@ export async function runAnalysisWithRetry(photoDataUrl, preferences, signal) {
     ok: false,
     message: analysisErrorMessage(lastErr),
     kind: lastErr instanceof AnalysisError ? lastErr.kind : "technical",
+    // Do último requestId tentado (Bloco 11) — correlaciona com o log do
+    // servidor se o usuário precisar reportar a falha.
+    requestId: lastErr?.requestId || null,
   };
 }

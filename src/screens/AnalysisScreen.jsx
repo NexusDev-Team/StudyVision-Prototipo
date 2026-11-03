@@ -11,7 +11,7 @@ import LogoSVG from "../components/brand/LogoSVG";
 // uma linha honesta, nunca progresso falso. `canRetry`: false quando não há
 // mais foto memorizada para reenviar (ex.: depois de um reset) — desabilita
 // "Tentar novamente" em vez de deixar um clique sem efeito nenhum.
-export default function AnalysisScreen({ status, error, errorKind, slow, canRetry, onRetry, onCancel, onDone }) {
+export default function AnalysisScreen({ status, error, errorKind, errorRequestId, slow, canRetry, onRetry, onCancel, onDone }) {
   // `onDone` é uma arrow inline recriada a cada render do App — sem essa
   // estabilização, um useEffect com [status, onDone] reexecuta em loop
   // enquanto status==="done" permanecer true e o App re-renderizar por
@@ -55,6 +55,11 @@ export default function AnalysisScreen({ status, error, errorKind, slow, canRetr
             </button>
           )}
         </div>
+        {errorRequestId && (
+          <p style={{ fontFamily: "Inter,sans-serif", fontSize: 10, color: "rgba(255,255,255,0.25)", margin: "4px 0 0" }}>
+            Código: {errorRequestId}
+          </p>
+        )}
       </div>
     );
   }

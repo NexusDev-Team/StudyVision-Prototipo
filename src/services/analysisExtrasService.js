@@ -6,6 +6,7 @@
 // (ver useAnalysisExtras.js).
 import { createContent } from "../data/models/content.js";
 import { mapFlashcards, mapQuizzes, mapOpenQuestions } from "./studyVisionService.js";
+import { newId } from "../utils/id.js";
 
 export class AnalysisExtrasError extends Error {
   constructor(message, kind = "technical") {
@@ -39,17 +40,23 @@ function withClientTimeout(callerSignal) {
  */
 export async function requestExtras({ topic, summary, extractedText, missing, preferences, signal }) {
   const { signal: fetchSignal, cleanup } = withClientTimeout(signal);
+  // Mesmo contrato do analyzeImage (Bloco 11): o servidor só ecoa este id nos logs.
+  const requestId = newId("req");
+  const withRequestId = (err) => {
+    err.requestId = requestId;
+    return err;
+  };
   let response;
   try {
     response = await fetch("/api/analyze-extras", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "x-sv-request-id": requestId },
       body: JSON.stringify({ topic, summary, extractedText, missing, preferences: preferences || null }),
       signal: fetchSignal,
     });
   } catch (err) {
     if (err?.name === "AbortError") throw err;
-    throw new AnalysisExtrasError("Sem conexão com a internet.", "network");
+    throw withRequestId(new AnalysisExtrasError("Sem conexão com a internet.", "network"));
   } finally {
     cleanup();
   }
@@ -58,11 +65,11 @@ export async function requestExtras({ topic, summary, extractedText, missing, pr
   try {
     body = await response.json();
   } catch {
-    throw new AnalysisExtrasError(GENERIC_ERROR, "technical");
+    throw withRequestId(new AnalysisExtrasError(GENERIC_ERROR, "technical"));
   }
 
   if (!response.ok || body.success === false) {
-    throw new AnalysisExtrasError(body?.error || GENERIC_ERROR, "server");
+    throw withRequestId(new AnalysisExtrasError(body?.error || GENERIC_ERROR, "server"));
   }
 
   return body;

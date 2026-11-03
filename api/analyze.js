@@ -5,12 +5,15 @@ import { generateAnalysis, isConfigured, GeminiError } from "../lib/gemini.js";
 import { sanitizePreferences } from "../lib/prompts.js";
 import { MAX_IMAGE_BYTES, DATA_URL_RE } from "../lib/imageDataUrl.js";
 import { validateCore, sanitizeExtras } from "../lib/analysisSanitize.js";
+import { getRequestId } from "../lib/requestId.js";
 
 function badRequest(res, message) {
   return res.status(400).json({ success: false, error: message });
 }
 
 export default async function handler(req, res) {
+  const requestId = getRequestId(req);
+
   if (req.method !== "POST") {
     return res.status(405).json({ success: false, error: "Método não permitido." });
   }
@@ -36,7 +39,7 @@ export default async function handler(req, res) {
   }
 
   if (!isConfigured()) {
-    console.error("[api/analyze] GEMINI_API_KEY ausente.");
+    console.error(`[api/analyze#${requestId}] GEMINI_API_KEY ausente.`);
     return res.status(500).json({ success: false, error: "Serviço de análise indisponível no momento." });
   }
 
@@ -48,18 +51,20 @@ export default async function handler(req, res) {
     result = await generateAnalysis({ mimeType, base64Data, preferences: safePreferences, validate: validateCore });
   } catch (err) {
     if (err instanceof GeminiError) {
-      console.error(`[api/analyze] ${err.code}: ${err.message} (tentativas: ${err.attempts})`);
+      console.error(`[api/analyze#${requestId}] ${err.code}: ${err.message} (tentativas: ${err.attempts}, imagem: ${base64Data.length}b64)`);
       return res.status(502).json({ success: false, error: "Não foi possível analisar a imagem agora. Tente novamente." });
     }
-    console.error("[api/analyze] erro inesperado:", err);
+    console.error(`[api/analyze#${requestId}] erro inesperado:`, err);
     return res.status(500).json({ success: false, error: "Erro interno ao processar a imagem." });
   }
 
   if (!result || typeof result !== "object") {
+    console.error(`[api/analyze#${requestId}] resposta nao e um objeto apos generateAnalysis.`);
     return res.status(502).json({ success: false, error: "Resposta inválida do serviço de análise." });
   }
 
   if (result.success === false) {
+    console.log(`[api/analyze#${requestId}] not_academic — imagem: ${base64Data.length}b64`);
     return res.status(200).json({
       success: false,
       error: result.error || "Não foi possível identificar o conteúdo da imagem com segurança.",
@@ -71,5 +76,6 @@ export default async function handler(req, res) {
   // filtrados, nunca derrubam a resposta inteira (ver lib/analysisSanitize.js).
   const { result: sanitized, partial } = sanitizeExtras(result);
 
+  console.log(`[api/analyze#${requestId}] sucesso — imagem: ${base64Data.length}b64${partial.length ? `, partial: [${partial.join(", ")}]` : ""}`);
   return res.status(200).json({ ...sanitized, partial });
 }
