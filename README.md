@@ -9,6 +9,8 @@ Este repositório contém o protótipo completo — front-end React/Vite **e um 
 
 > **Sprint 4 — Front-End Design + Web Development.** Evolução do projeto da Sprint 3: a Landing Page (antes em HTML/CSS puro, repositório `StudyVision-LandingPage`) foi integrada ao React junto com o protótipo do app, com rotas públicas e privadas, autenticação de demonstração, Tailwind CSS e layout responsivo (mobile, tablet e desktop).
 
+> **Atenção — chave da Gemini API:** para testar a análise de fotos em outra máquina é preciso uma `GEMINI_API_KEY` própria (gratuita em https://aistudio.google.com/apikey) no arquivo `.env.local`. Sem ela o app abre e dá para navegar por todas as telas (landing, login, biblioteca, revisão etc.), mas a análise de fotos mostra uma mensagem de erro. No deploy da Vercel a chave já está configurada.
+
 ## Tecnologias utilizadas
 
 - **React 18** — componentização, props, hooks nativos (`useState`, `useEffect`, `useContext`, `useRef`, `useMemo`, `useCallback`, `useId`) e hooks customizados
