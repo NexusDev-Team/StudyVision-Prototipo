@@ -24,6 +24,14 @@
   --color-sv-line-soft: #F1F5F9;
   --color-sv-bg: #F8FAFC;
   --color-sv-dark: #030712;
+  --color-lp-bg: #050810;
+  --color-lp-bg2: #0a1128;
+  --color-lp-line: #2a3350;
+  --color-lp-blue: #1e5fd6;
+  --color-lp-blue-light: #4a90f0;
+  --color-lp-cyan: #3bc9f0;
+  --color-lp-text: #eaf2ff;
+  --color-lp-muted: #8a95ab;
   --font-sans: "Inter", sans-serif;
   --radius-sv-sm: 8px;
   --radius-sv-md: 12px;
@@ -54,4 +62,8 @@ body {
   outline: 2.5px solid #2563EB;
   outline-offset: 2px;
   border-radius: 4px;
+}
+
+html {
+  scroll-behavior: smooth;
 }
