@@ -8,7 +8,9 @@ import { useToast } from "../../hooks/useToast";
 import { useSubscription } from "../../hooks/useSubscription";
 import { useAnalysis } from "../../hooks/useAnalysis";
 import { slideIn, fadeUp } from "../../styles/motion";
+import { useAuth } from "../../hooks/useAuth";
 import BottomNav from "./BottomNav";
+import SideNav from "./SideNav";
 import Toast from "../ui/Toast";
 import PhotoViewerModal from "../study/PhotoViewerModal";
 
@@ -36,6 +38,7 @@ export function navActiveFor(pathname, search, state) {
 export default function AppShell() {
   const location = useLocation();
   const nav = useAppNavigation();
+  const { user, logout } = useAuth();
   const { contents, dueCount, mutate } = useContentStore();
   const { toast, showToast, clearToast } = useToast();
   const analysis = useAnalysis();
@@ -65,6 +68,15 @@ export default function AppShell() {
     mutate(() => setImageExtractedText(contentId, imageId, payload));
   };
 
+  const active = navActiveFor(pathname, search, state);
+  const goNav = (id) => {
+    if (id === "camera") nav.goCamera();
+    else if (id === "library") nav.openLibrary();
+    else if (id === "review") nav.openReview();
+    else if (id === "evolution") nav.openEvolution();
+  };
+  const handleLogout = () => { logout(); nav.navigate("/", { replace: true }); };
+
   const shell = {
     analysis,
     showToast,
@@ -75,8 +87,19 @@ export default function AppShell() {
   };
 
   return (
-    <div className={`flex h-dvh w-full justify-center ${dark ? "bg-sv-dark" : "bg-sv-bg"}`}>
-      <div className="relative h-full w-full max-w-2xl overflow-hidden bg-sv-bg font-sans">
+    <div className={`flex h-dvh w-full ${dark ? "bg-sv-dark" : "bg-sv-bg"}`}>
+      {showNav && (
+        <SideNav
+          active={active}
+          dueCount={dueCount}
+          user={user}
+          onGo={goNav}
+          onLogout={handleLogout}
+          onPlus={nav.openPlus}
+          plusActive={pathname.startsWith("/app/plus")}
+        />
+      )}
+      <div className="sv-frame relative mx-auto h-full w-full max-w-2xl min-w-0 flex-1 overflow-hidden bg-sv-bg font-sans">
         <AnimatePresence mode="wait">
           <motion.div
             key={pathname}
@@ -87,18 +110,7 @@ export default function AppShell() {
           </motion.div>
         </AnimatePresence>
 
-        {showNav && (
-          <BottomNav
-            active={navActiveFor(pathname, search, state)}
-            dueCount={dueCount}
-            onGo={(id) => {
-              if (id === "camera") nav.goCamera();
-              else if (id === "library") nav.openLibrary();
-              else if (id === "review") nav.openReview();
-              else if (id === "evolution") nav.openEvolution();
-            }}
-          />
-        )}
+        {showNav && <BottomNav active={active} dueCount={dueCount} onGo={goNav} />}
 
         <AnimatePresence>
           {toast && <Toast key={toast} message={toast} onDone={clearToast} />}

@@ -10,8 +10,8 @@ const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabi
 // listener no mesmo `document`, e um único Esc fecha os dois de uma vez.
 const stack = [];
 
-// Bottom-sheet (default) or centered modal, portaled into .sv-frame so it
-// stays clipped to the phone shell instead of escaping to the real viewport.
+// Bottom-sheet (default) or centered modal, portaled into .sv-frame (a coluna
+// de conteúdo do AppShell) so it stays clipped ao app em vez de escapar para o viewport.
 // role="dialog" + Esc + clique no backdrop fecham; foco vai para o primeiro
 // controle ao abrir e volta para quem abriu o modal ao fechar.
 export default function Modal({ children, center = false, onClose, label = "Diálogo" }) {

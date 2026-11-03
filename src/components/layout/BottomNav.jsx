@@ -1,34 +1,32 @@
 import { motion } from "framer-motion";
-import { Camera, BookMarked, CalendarClock, TrendingUp } from "lucide-react";
-import styles from "./BottomNav.module.css";
+import { NAV_ITEMS } from "./navItems.jsx";
 
-const NAV_ITEMS = [
-  { id: "camera", icon: <Camera size={22} />, label: "Câmera" },
-  { id: "library", icon: <BookMarked size={22} />, label: "Biblioteca" },
-  { id: "review", icon: <CalendarClock size={22} />, label: "Revisão" },
-  { id: "evolution", icon: <TrendingUp size={22} />, label: "Evolução" },
-];
-
+// Navegação inferior — só no mobile (< md); em telas maiores entra a SideNav.
 export default function BottomNav({ active, onGo, dueCount = 0 }) {
   return (
-    <div className={styles.nav}>
-      {NAV_ITEMS.map(item => {
-        const isActive = active === item.id;
+    <nav className="absolute inset-x-0 bottom-0 z-[150] flex border-t border-sv-line-soft bg-white/95 pt-0.5 pb-5 backdrop-blur-xl md:hidden">
+      {NAV_ITEMS.map(({ id, Icon, label }) => {
+        const isActive = active === id;
+        const color = isActive ? "text-sv-blue" : "text-sv-faint";
         return (
-          <button key={item.id} className={styles.item} onClick={() => onGo(item.id)}>
-            <div className={styles.iconWrap}>
-              <motion.span animate={{ color: isActive ? "#2563EB" : "#94A3B8" }} transition={{ duration: 0.2 }}>
-                {item.icon}
-              </motion.span>
-              {item.id === "review" && dueCount > 0 && (
-                <span className={styles.badge}>{dueCount}</span>
+          <button
+            key={id}
+            onClick={() => onGo(id)}
+            className={`relative flex flex-1 cursor-pointer flex-col items-center gap-[3px] border-none bg-transparent pt-2 font-sans transition-colors ${color}`}
+          >
+            <span className="relative">
+              <Icon size={22} />
+              {id === "review" && dueCount > 0 && (
+                <span className="absolute -top-1 -right-2 flex h-[15px] min-w-[15px] items-center justify-center rounded-lg bg-red-500 px-[3px] text-[9px] font-extrabold text-white">
+                  {dueCount}
+                </span>
               )}
-            </div>
-            <span className={styles.label} style={{ color: isActive ? "#2563EB" : "#94A3B8" }}>{item.label}</span>
-            {isActive && <motion.div layoutId="navdot" className={styles.dot} />}
+            </span>
+            <span className="text-[10px] font-semibold">{label}</span>
+            {isActive && <motion.div layoutId="navdot" className="h-1 w-1 rounded-full bg-sv-blue" />}
           </button>
         );
       })}
-    </div>
+    </nav>
   );
 }
