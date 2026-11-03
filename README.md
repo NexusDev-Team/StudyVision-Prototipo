@@ -2,7 +2,7 @@
 
 Protótipo do **Study Vision**, feature nativa de câmera com IA desenvolvida para o desafio **FIAP × JOVI Smartphones**. A proposta transforma a câmera do celular na porta de entrada para um sistema de aprendizagem baseado em ciência cognitiva: captura inteligente, entendimento contextual do conteúdo, síntese em resumos e flashcards, aprendizado ativo (Active Recall) e revisão programada (Spaced Repetition), com biblioteca inteligente, integração com calendário e dashboard acadêmico.
 
-Este repositório contém o protótipo completo — front-end React/Vite **e um backend serverless que usa a Gemini API real** para analisar a foto capturada pela câmera e gerar resumo, conceitos, flashcards e quiz. Contexto completo de negócio, pesquisa e roadmap em `PRD.md` e `contexto-studyvision.md`.
+Este repositório contém o protótipo completo — front-end React/Vite **e um backend serverless que usa a Gemini API real** para analisar a foto capturada pela câmera e gerar resumo, conceitos, flashcards e quiz. Contexto completo de negócio, pesquisa e roadmap em `PRD.md`.
 
 **Deploy (Vercel):** https://study-vision-one.vercel.app
 **Repositório:** https://github.com/NexusDev-Team/StudyVision-Prototipo
